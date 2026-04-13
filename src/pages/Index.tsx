@@ -12,19 +12,18 @@ export default function Index() {
   const [tasks, setTasks] = useState<Task[]>(() => store.getTasks());
   const [projects, setProjects] = useState<Project[]>(() => store.getProjects());
   const [reminders, setReminders] = useState<Reminder[]>(() => store.getReminders());
-  const [lifePlan, setLifePlan] = useState(() => store.getLifePlan());
 
   useEffect(() => { store.saveTasks(tasks); }, [tasks]);
   useEffect(() => { store.saveProjects(projects); }, [projects]);
   useEffect(() => { store.saveReminders(reminders); }, [reminders]);
-  useEffect(() => { store.saveLifePlan(lifePlan); }, [lifePlan]);
+  
 
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar active={view} onChange={setView} taskCount={tasks.filter((t) => !t.completed).length} />
       {view === "tasks" && <TasksView tasks={tasks} projects={projects} onSave={setTasks} />}
       {view === "projects" && <ProjectsView projects={projects} tasks={tasks} onSaveProjects={setProjects} />}
-      {view === "lifeplan" && <LifePlanView content={lifePlan} onSave={setLifePlan} />}
+      {view === "lifeplan" && <LifePlanView />}
       {view === "reminders" && <RemindersView reminders={reminders} tasks={tasks} onSave={setReminders} />}
     </div>
   );
