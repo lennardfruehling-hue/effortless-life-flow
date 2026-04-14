@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project } from "@/lib/types";
-import { CategoryBadge } from "./CategoryBadge";
+import { CategoryBadgeFull } from "./CategoryBadge";
 import { v4 as uuid } from "uuid";
 import { X } from "lucide-react";
 
@@ -95,7 +95,7 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
                     : "opacity-50 hover:opacity-80"
                 }`}
               >
-                <CategoryBadge category={cat} />
+                <CategoryBadgeFull category={cat} />
               </button>
             ))}
           </div>

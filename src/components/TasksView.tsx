@@ -108,13 +108,13 @@ export default function TasksView({ tasks, projects, onSave }: TasksViewProps) {
             <button
               key={cat}
               onClick={() => setFilterCat(filterCat === cat ? null : cat)}
-              className={`text-xs px-2.5 py-1 rounded-sm border font-mono transition-colors flex-shrink-0 ${
+              className={`text-xs px-2.5 py-1 rounded-sm border font-mono transition-colors flex-shrink-0 whitespace-nowrap ${
                 filterCat === cat
                   ? "bg-primary/20 text-primary border-primary/30"
                   : "text-muted-foreground border-border hover:border-primary/20"
               }`}
             >
-              {cat}
+              {CATEGORY_META[cat].label}
               {count > 0 && <span className="ml-1 text-[10px] opacity-60">{count}</span>}
             </button>
           );
