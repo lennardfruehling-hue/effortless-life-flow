@@ -1,15 +1,16 @@
 import { useState } from "react";
-import { Project, Task } from "@/lib/types";
-import { Plus, Trash2, FolderKanban } from "lucide-react";
+import { Project, Task, LifePlanProject } from "@/lib/types";
+import { Plus, Trash2, FolderKanban, Compass } from "lucide-react";
 import { v4 as uuid } from "uuid";
 
 interface ProjectsViewProps {
   projects: Project[];
   tasks: Task[];
   onSaveProjects: (p: Project[]) => void;
+  lifePlanProjects: LifePlanProject[];
 }
 
-export default function ProjectsView({ projects, tasks, onSaveProjects }: ProjectsViewProps) {
+export default function ProjectsView({ projects, tasks, onSaveProjects, lifePlanProjects }: ProjectsViewProps) {
   const [name, setName] = useState("");
   const [desc, setDesc] = useState("");
 
@@ -56,7 +57,49 @@ export default function ProjectsView({ projects, tasks, onSaveProjects }: Projec
         </button>
       </div>
 
-      {/* Project list */}
+      {/* Life Plan Projects */}
+      {lifePlanProjects.length > 0 && (
+        <div className="mb-6">
+          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+            <Compass size={12} /> Life Plan Projects
+          </h3>
+          <div className="space-y-2">
+            {lifePlanProjects.map((lp) => {
+              const lpTasks = tasks.filter((t) => t.projectId === `lp-${lp.id}`);
+              const completedCount = lpTasks.filter((t) => t.completed).length;
+              return (
+                <div key={lp.id} className="bg-card border border-border rounded-lg p-4">
+                  <div className="flex items-start gap-3">
+                    <Compass size={18} className="text-primary mt-0.5" />
+                    <div className="flex-1">
+                      <h3 className="font-medium text-foreground">{lp.name}</h3>
+                      <p className="text-xs text-muted-foreground mt-1 font-mono">
+                        {lpTasks.length} linked tasks · {completedCount} done
+                      </p>
+                    </div>
+                  </div>
+                  {lpTasks.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-border space-y-1">
+                      {lpTasks.map((t) => (
+                        <p key={t.id} className={`text-xs ${t.completed ? "line-through text-muted-foreground" : "text-secondary-foreground"}`}>
+                          {t.completed ? "✓" : "○"} {t.title}
+                        </p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Regular Projects */}
+      {projects.length > 0 && lifePlanProjects.length > 0 && (
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+          <FolderKanban size={12} /> Custom Projects
+        </h3>
+      )}
       <div className="space-y-3">
         {projects.map((project) => {
           const projectTasks = tasks.filter((t) => t.projectId === project.id);
@@ -94,7 +137,7 @@ export default function ProjectsView({ projects, tasks, onSaveProjects }: Projec
         })}
       </div>
 
-      {projects.length === 0 && (
+      {projects.length === 0 && lifePlanProjects.length === 0 && (
         <div className="text-center py-16">
           <p className="text-muted-foreground text-sm">No projects yet</p>
           <p className="text-xs text-muted-foreground mt-1">
