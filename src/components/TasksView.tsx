@@ -42,10 +42,12 @@ export default function TasksView({ tasks, projects, onSave }: TasksViewProps) {
   }, [tasks, filterCat, showCompleted]);
 
   const handleSubmit = (task: Task) => {
+    console.log("[TasksView] handleSubmit called with task:", task);
     const existing = tasks.findIndex((t) => t.id === task.id);
     const updated = existing >= 0
       ? tasks.map((t) => (t.id === task.id ? task : t))
       : [...tasks, task];
+    console.log("[TasksView] saving updated tasks, count:", updated.length);
     onSave(updated);
     setShowForm(false);
     setEditTask(undefined);
