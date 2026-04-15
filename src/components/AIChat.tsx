@@ -16,12 +16,18 @@ interface ChatMessage {
   content: string;
 }
 
-const TASK_COMMAND_REGEX = /^(?:add|create|new)\s+task\s+(?:["“](.+?)["”]|(.+))$/i;
+const TASK_COMMAND_REGEX = /^(?:add|create|new)\s+task\s+(?:["\u201C\u201D](.+?)["\u201C\u201D]|(.+))$/i;
+const PROJECT_COMMAND_REGEX = /^(?:add|create|new)\s+project\s+(?:["\u201C\u201D](.+?)["\u201C\u201D]|(.+))$/i;
 const CATEGORY_CODE_REGEX = /\b(A1|A2|A3|B1|B2|C|D|E|F|G|H|I|J)\b(?=\s*:|\b)/g;
 const LIFE_PLAN_PROJECT_REGEX = /\b(lp-[a-z0-9]+)\b/i;
 
 function extractTaskTitle(input: string) {
   const match = input.trim().match(TASK_COMMAND_REGEX);
+  return match ? (match[1] || match[2] || "").trim() : "";
+}
+
+function extractProjectName(input: string) {
+  const match = input.trim().match(PROJECT_COMMAND_REGEX);
   return match ? (match[1] || match[2] || "").trim() : "";
 }
 
@@ -67,10 +73,11 @@ ${projectList || "No projects"}
 ## Your Capabilities
 You can help users:
 1. Create new tasks - suggest categories, help prioritize
-2. Edit existing tasks - change categories, titles, descriptions
-3. Plan their day - recommend which tasks to do based on the Serpent system
-4. Manage projects - suggest new projects or organize existing ones
-5. Life planning advice - based on the Serpent prioritization system
+2. Create new projects - organize long-term work
+3. Edit existing tasks - change categories, titles, descriptions
+4. Plan their day - recommend which tasks to do based on the Serpent system
+5. Manage projects - suggest new projects or organize existing ones
+6. Life planning advice - based on the Serpent prioritization system
 
 ## Serpent System Rules
 - A1 tasks are done FIRST (today, urgent)
@@ -117,6 +124,19 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
       const data = resp.data;
       const assistantContent = data?.choices?.[0]?.message?.content || data?.content || "I couldn't process that. Please try again.";
 
+      // Check for project creation command
+      const projectName = extractProjectName(text);
+      if (projectName) {
+        const newProject: Project = {
+          id: uuid(),
+          name: projectName,
+          description: undefined,
+          createdAt: new Date().toISOString(),
+        };
+        onSaveProjects((currentProjects) => [...currentProjects, newProject]);
+      }
+
+      // Check for task creation command
       const taskTitle = extractTaskTitle(text);
       if (taskTitle) {
         const categories = extractCategories(assistantContent);
@@ -141,7 +161,7 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
       const errorMsg = e?.message?.includes("429")
         ? "Rate limit reached. Please wait a moment and try again."
         : e?.message?.includes("402")
-        ? "AI credits exhausted. Please add funds in Settings → Workspace → Usage."
+        ? "AI credits exhausted. Please add funds in Settings > Workspace > Usage."
         : "Something went wrong. Please try again.";
       setMessages((prev) => [...prev, { role: "assistant", content: errorMsg }]);
     } finally {
@@ -157,7 +177,7 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
           <Bot size={24} className="text-primary" /> AI Assistant
         </h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          Ask me to create tasks, plan your day, or organize your projects
+          Ask me to create tasks, projects, plan your day, or organize your life
         </p>
       </div>
 
@@ -171,7 +191,7 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
               {[
                 "What should I do today?",
                 "Help me plan my week",
-                "What tasks have the most categories?",
+                'Add project "Learn Spanish"',
                 "Suggest a hate day plan",
               ].map((q) => (
                 <button
@@ -229,7 +249,7 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
-            placeholder="Ask about tasks, plan your day, manage projects..."
+            placeholder="Ask about tasks, plan your day, add projects..."
             className="flex-1 bg-secondary border border-border rounded-lg px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             disabled={isLoading}
           />
