@@ -26,7 +26,7 @@ export function CategoryBadge({ category, small }: { category: Category; small?:
         small ? "text-[10px] px-1.5 py-0" : "text-xs px-2 py-0.5"
       }`}
     >
-      {category}
+      {meta.label}
     </span>
   );
 }
