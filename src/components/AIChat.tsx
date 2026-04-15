@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from "react";
 import { Task, Project, Category, ALL_CATEGORIES, CATEGORY_META } from "@/lib/types";
 import { v4 as uuid } from "uuid";
 import { Send, Bot, User, Loader2 } from "lucide-react";
@@ -7,13 +7,34 @@ import { supabase } from "@/integrations/supabase/client";
 interface AIChatProps {
   tasks: Task[];
   projects: Project[];
-  onSaveTasks: (tasks: Task[]) => void;
-  onSaveProjects: (projects: Project[]) => void;
+  onSaveTasks: Dispatch<SetStateAction<Task[]>>;
+  onSaveProjects: Dispatch<SetStateAction<Project[]>>;
 }
 
 interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+}
+
+const TASK_COMMAND_REGEX = /^(?:add|create|new)\s+task\s+(?:["“](.+?)["”]|(.+))$/i;
+const CATEGORY_CODE_REGEX = /\b(A1|A2|A3|B1|B2|C|D|E|F|G|H|I|J)\b(?=\s*:|\b)/g;
+const LIFE_PLAN_PROJECT_REGEX = /\b(lp-[a-z0-9]+)\b/i;
+
+function extractTaskTitle(input: string) {
+  const match = input.trim().match(TASK_COMMAND_REGEX);
+  return match ? (match[1] || match[2] || "").trim() : "";
+}
+
+function extractCategories(content: string): Category[] {
+  const matches = content.match(CATEGORY_CODE_REGEX) || [];
+  return Array.from(new Set(matches)).filter(
+    (category): category is Category => ALL_CATEGORIES.includes(category as Category)
+  );
+}
+
+function extractProjectId(content: string, projects: Project[]) {
+  const match = content.match(LIFE_PLAN_PROJECT_REGEX)?.[1];
+  return match && projects.some((project) => project.id === match) ? match : undefined;
 }
 
 function buildSystemPrompt(tasks: Task[], projects: Project[]): string {
@@ -95,6 +116,24 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
 
       const data = resp.data;
       const assistantContent = data?.choices?.[0]?.message?.content || data?.content || "I couldn't process that. Please try again.";
+
+      const taskTitle = extractTaskTitle(text);
+      if (taskTitle) {
+        const categories = extractCategories(assistantContent);
+        const projectId = extractProjectId(assistantContent, projects);
+
+        onSaveTasks((currentTasks) => [
+          ...currentTasks,
+          {
+            id: uuid(),
+            title: taskTitle,
+            categories: categories.length > 0 ? categories : ["A3"],
+            completed: false,
+            createdAt: new Date().toISOString(),
+            projectId,
+          },
+        ]);
+      }
 
       setMessages((prev) => [...prev, { role: "assistant", content: assistantContent }]);
     } catch (e: any) {
