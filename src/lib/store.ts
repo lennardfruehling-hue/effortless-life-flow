@@ -1,10 +1,12 @@
-import { Task, Project, Reminder } from "./types";
+import { Task, Project, Reminder, ResearchNote } from "./types";
 
 const KEYS = {
   tasks: "serpent-tasks",
   projects: "serpent-projects",
   reminders: "serpent-reminders",
   lifeplan: "serpent-lifeplan",
+  research: "serpent-research",
+  chatHistory: "serpent-chat-history",
 };
 
 function load<T>(key: string, fallback: T): T {
@@ -32,4 +34,10 @@ export const store = {
 
   getLifePlan: (): string => load(KEYS.lifeplan, ""),
   saveLifePlan: (text: string) => save(KEYS.lifeplan, text),
+
+  getResearch: (): ResearchNote[] => load(KEYS.research, []),
+  saveResearch: (r: ResearchNote[]) => save(KEYS.research, r),
+
+  getChatHistory: (): { role: "user" | "assistant"; content: string }[] => load(KEYS.chatHistory, []),
+  saveChatHistory: (msgs: { role: "user" | "assistant"; content: string }[]) => save(KEYS.chatHistory, msgs),
 };
