@@ -53,9 +53,18 @@ export interface Reminder {
   completed: boolean;
 }
 
-export type ViewMode = "tasks" | "projects" | "lifeplan" | "reminders" | "ai";
+export type ViewMode = "tasks" | "projects" | "lifeplan" | "reminders" | "research" | "ai";
 
 export interface LifePlanProject {
   id: string;
   name: string;
+}
+
+export interface ResearchNote {
+  id: string;
+  projectId?: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
 }
