@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from "react";
 import { Task, Project, Category, ALL_CATEGORIES, CATEGORY_META } from "@/lib/types";
+import { store } from "@/lib/store";
 import { v4 as uuid } from "uuid";
-import { Send, Bot, User, Loader2 } from "lucide-react";
+import { Send, Bot, User, Loader2, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface AIChatProps {
@@ -58,6 +59,7 @@ function buildSystemPrompt(tasks: Task[], projects: Project[]): string {
   const projectList = projects.map((p) => `- [${p.id.slice(0, 8)}] "${p.name}"${p.description ? ` - ${p.description}` : ""}`).join("\n");
 
   return `You are the Serpent List AI assistant. You help manage tasks, projects, and life planning.
+You have MEMORY of all previous conversations. Use this context to give better, personalized advice.
 
 ## Serpent List Categories
 ${categoryDescriptions}
@@ -91,14 +93,23 @@ When suggesting actions, be specific and reference the Serpent system. Be concis
 }
 
 export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }: AIChatProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => store.getChatHistory());
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Persist chat history
+  useEffect(() => {
+    store.saveChatHistory(messages);
+  }, [messages]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
+
+  const clearHistory = () => {
+    setMessages([]);
+  };
 
   const send = async () => {
     const text = input.trim();
@@ -173,12 +184,24 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
     <div className="flex-1 flex flex-col h-screen">
       {/* Header */}
       <div className="p-6 pb-3 border-b border-border">
-        <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-          <Bot size={24} className="text-primary" /> AI Assistant
-        </h2>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          Ask me to create tasks, projects, plan your day, or organize your life
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+              <Bot size={24} className="text-primary" /> AI Assistant
+            </h2>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              I remember our conversations · Ask me to create tasks, projects, or plan your day
+            </p>
+          </div>
+          {messages.length > 0 && (
+            <button
+              onClick={clearHistory}
+              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors px-2 py-1 rounded border border-border hover:border-destructive/30"
+            >
+              <Trash2 size={12} /> Clear History
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}
