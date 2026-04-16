@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { ViewMode, Task, Project, Reminder, LifePlanProject, ResearchNote } from "@/lib/types";
+import { ViewMode, Task, Project, Reminder, LifePlanProject, ResearchNote, CalendarEvent, DailyScheduleSlot } from "@/lib/types";
 import { store } from "@/lib/store";
 import Sidebar from "@/components/Sidebar";
 import TasksView from "@/components/TasksView";
-import ProjectsView from "@/components/ProjectsView";
 import LifePlanView from "@/components/LifePlanView";
 import RemindersView from "@/components/RemindersView";
 import ResearchView from "@/components/ResearchView";
+import CalendarView from "@/components/CalendarView";
 import AIChat from "@/components/AIChat";
 
 const LIFEPLAN_KEY = "serpent-lifeplan-v2";
@@ -28,12 +28,17 @@ export default function Index() {
   const [projects, setProjects] = useState<Project[]>(() => store.getProjects());
   const [reminders, setReminders] = useState<Reminder[]>(() => store.getReminders());
   const [research, setResearch] = useState<ResearchNote[]>(() => store.getResearch());
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => store.getCalendarEvents());
+  const [dailySchedule, setDailySchedule] = useState<DailyScheduleSlot[]>(() => store.getDailySchedule());
   const [lifePlanProjects, setLifePlanProjects] = useState<LifePlanProject[]>(loadLifePlanProjects);
+  const [taskFilterProject, setTaskFilterProject] = useState<string | undefined>();
 
   useEffect(() => { store.saveTasks(tasks); }, [tasks]);
   useEffect(() => { store.saveProjects(projects); }, [projects]);
   useEffect(() => { store.saveReminders(reminders); }, [reminders]);
   useEffect(() => { store.saveResearch(research); }, [research]);
+  useEffect(() => { store.saveCalendarEvents(calendarEvents); }, [calendarEvents]);
+  useEffect(() => { store.saveDailySchedule(dailySchedule); }, [dailySchedule]);
 
   useEffect(() => {
     setLifePlanProjects(loadLifePlanProjects());
@@ -49,13 +54,28 @@ export default function Index() {
     return [...projects, ...lpAsProjects];
   }, [projects, lifePlanProjects]);
 
+  const navigateToTasksForProject = (projectId: string) => {
+    setTaskFilterProject(projectId);
+    setView("tasks");
+  };
+
   return (
     <div className="flex min-h-screen bg-background">
       <Sidebar active={view} onChange={setView} taskCount={tasks.filter((t) => !t.completed).length} />
-      {view === "tasks" && <TasksView tasks={tasks} projects={allProjects} onSave={setTasks} />}
-      {view === "projects" && <ProjectsView projects={projects} tasks={tasks} onSaveProjects={setProjects} lifePlanProjects={lifePlanProjects} />}
+      {view === "tasks" && (
+        <TasksView
+          tasks={tasks}
+          projects={allProjects}
+          onSave={setTasks}
+          dailySchedule={dailySchedule}
+          onSaveDailySchedule={setDailySchedule}
+          filterProjectId={taskFilterProject}
+          onClearProjectFilter={() => setTaskFilterProject(undefined)}
+        />
+      )}
       {view === "research" && <ResearchView notes={research} projects={allProjects} onSave={setResearch} />}
-      {view === "lifeplan" && <LifePlanView />}
+      {view === "lifeplan" && <LifePlanView onNavigateToTasks={navigateToTasksForProject} />}
+      {view === "calendar" && <CalendarView events={calendarEvents} onSave={setCalendarEvents} />}
       {view === "reminders" && <RemindersView reminders={reminders} tasks={tasks} onSave={setReminders} />}
       {view === "ai" && <AIChat tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />}
     </div>
