@@ -34,6 +34,7 @@ export interface Task {
   projectId?: string;
   location?: string;
   hateMagnitude?: number; // 1-10 for F category
+  duration?: number; // duration in minutes
 }
 
 export interface Project {
@@ -53,7 +54,25 @@ export interface Reminder {
   completed: boolean;
 }
 
-export type ViewMode = "tasks" | "projects" | "lifeplan" | "reminders" | "research" | "ai";
+export type ViewMode = "tasks" | "projects" | "lifeplan" | "reminders" | "research" | "calendar" | "ai";
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  start: string;
+  end: string;
+  allDay?: boolean;
+  source?: "manual" | "ics";
+}
+
+export interface DailyScheduleSlot {
+  id: string;
+  startTime: string; // HH:mm
+  endTime: string; // HH:mm
+  taskId?: string;
+  label?: string;
+}
 
 export interface LifePlanProject {
   id: string;
