@@ -1,11 +1,11 @@
 import { ViewMode } from "@/lib/types";
-import { ListTodo, FolderKanban, Compass, Bell, Bot, BookOpen } from "lucide-react";
+import { ListTodo, Compass, Bell, Bot, BookOpen, CalendarDays } from "lucide-react";
 
 const NAV_ITEMS: { mode: ViewMode; icon: typeof ListTodo; label: string }[] = [
   { mode: "tasks", icon: ListTodo, label: "Tasks" },
-  { mode: "projects", icon: FolderKanban, label: "Projects" },
-  { mode: "research", icon: BookOpen, label: "Research" },
   { mode: "lifeplan", icon: Compass, label: "Life Plan" },
+  { mode: "research", icon: BookOpen, label: "Research" },
+  { mode: "calendar", icon: CalendarDays, label: "Calendar" },
   { mode: "reminders", icon: Bell, label: "Reminders" },
   { mode: "ai", icon: Bot, label: "AI Assistant" },
 ];
