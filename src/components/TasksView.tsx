@@ -1,53 +1,55 @@
 import { useState, useMemo } from "react";
-import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project } from "@/lib/types";
+import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project, DailyScheduleSlot } from "@/lib/types";
 import TaskCard from "@/components/TaskCard";
 import TaskForm from "@/components/TaskForm";
+import DailySchedule from "@/components/DailySchedule";
 import { CategoryBadgeFull } from "@/components/CategoryBadge";
-import { Plus, Filter, SortDesc, Eye, EyeOff } from "lucide-react";
+import { Plus, Filter, Eye, EyeOff, Clock, X } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 
 interface TasksViewProps {
   tasks: Task[];
   projects: Project[];
   onSave: (tasks: Task[]) => void;
+  dailySchedule: DailyScheduleSlot[];
+  onSaveDailySchedule: (slots: DailyScheduleSlot[]) => void;
+  filterProjectId?: string;
+  onClearProjectFilter?: () => void;
 }
 
 function sortTasks(tasks: Task[]): Task[] {
   return [...tasks].sort((a, b) => {
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
-    // A1 first
     const aHasA1 = a.categories.includes("A1");
     const bHasA1 = b.categories.includes("A1");
     if (aHasA1 !== bHasA1) return aHasA1 ? -1 : 1;
-    // B1 next
     const aHasB1 = a.categories.includes("B1");
     const bHasB1 = b.categories.includes("B1");
     if (aHasB1 !== bHasB1) return aHasB1 ? -1 : 1;
-    // Then by category count (more = higher priority)
     return b.categories.length - a.categories.length;
   });
 }
 
-export default function TasksView({ tasks, projects, onSave }: TasksViewProps) {
+export default function TasksView({ tasks, projects, onSave, dailySchedule, onSaveDailySchedule, filterProjectId, onClearProjectFilter }: TasksViewProps) {
   const [showForm, setShowForm] = useState(false);
   const [editTask, setEditTask] = useState<Task | undefined>();
   const [filterCat, setFilterCat] = useState<Category | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
 
   const filteredTasks = useMemo(() => {
     let list = tasks;
+    if (filterProjectId) list = list.filter((t) => t.projectId === filterProjectId);
     if (filterCat) list = list.filter((t) => t.categories.includes(filterCat));
     if (!showCompleted) list = list.filter((t) => !t.completed);
     return sortTasks(list);
-  }, [tasks, filterCat, showCompleted]);
+  }, [tasks, filterCat, showCompleted, filterProjectId]);
 
   const handleSubmit = (task: Task) => {
-    console.log("[TasksView] handleSubmit called with task:", task);
     const existing = tasks.findIndex((t) => t.id === task.id);
     const updated = existing >= 0
       ? tasks.map((t) => (t.id === task.id ? task : t))
       : [...tasks, task];
-    console.log("[TasksView] saving updated tasks, count:", updated.length);
     onSave(updated);
     setShowForm(false);
     setEditTask(undefined);
@@ -69,6 +71,7 @@ export default function TasksView({ tasks, projects, onSave }: TasksViewProps) {
 
   const todayCount = tasks.filter((t) => !t.completed && t.categories.includes("A1")).length;
   const activeCount = tasks.filter((t) => !t.completed).length;
+  const filterProject = filterProjectId ? projects.find(p => p.id === filterProjectId) : null;
 
   return (
     <div className="flex-1 p-6 overflow-y-auto scrollbar-thin">
@@ -78,18 +81,43 @@ export default function TasksView({ tasks, projects, onSave }: TasksViewProps) {
           <h2 className="text-2xl font-bold text-foreground">Tasks</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             {todayCount > 0 && (
-              <span className="text-cat-b font-medium">{todayCount} due today · </span>
+              <span className="text-destructive font-medium">{todayCount} due today · </span>
             )}
             {activeCount} active
           </p>
         </div>
-        <button
-          onClick={() => { setEditTask(undefined); setShowForm(true); }}
-          className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
-        >
-          <Plus size={16} /> Add Task
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowSchedule(!showSchedule)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm border transition-colors ${
+              showSchedule ? "bg-primary/10 text-primary border-primary/30" : "text-muted-foreground border-border hover:border-primary/20"
+            }`}
+          >
+            <Clock size={14} /> Schedule
+          </button>
+          <button
+            onClick={() => { setEditTask(undefined); setShowForm(true); }}
+            className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            <Plus size={16} /> Add Task
+          </button>
+        </div>
       </div>
+
+      {/* Project filter banner */}
+      {filterProject && (
+        <div className="mb-4 p-3 bg-primary/10 border border-primary/20 rounded-md flex items-center justify-between">
+          <span className="text-sm text-primary font-medium">Filtered: {filterProject.name}</span>
+          <button onClick={onClearProjectFilter} className="text-primary hover:opacity-80"><X size={16} /></button>
+        </div>
+      )}
+
+      {/* Daily Schedule */}
+      {showSchedule && (
+        <div className="mb-6">
+          <DailySchedule slots={dailySchedule} tasks={tasks} onSaveSlots={onSaveDailySchedule} />
+        </div>
+      )}
 
       {/* Filter bar */}
       <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 scrollbar-thin">
@@ -156,7 +184,7 @@ export default function TasksView({ tasks, projects, onSave }: TasksViewProps) {
       {filteredTasks.length === 0 && (
         <div className="text-center py-16">
           <p className="text-muted-foreground text-sm">
-            {filterCat ? `No tasks in ${filterCat}` : "No tasks yet"}
+            {filterCat ? `No tasks in ${filterCat}` : filterProjectId ? "No tasks linked to this project" : "No tasks yet"}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             Add your first task to start getting organized 🐍

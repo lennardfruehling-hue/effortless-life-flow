@@ -18,6 +18,7 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
   const [projectId, setProjectId] = useState(editTask?.projectId || "");
   const [location, setLocation] = useState(editTask?.location || "");
   const [hateMagnitude, setHateMagnitude] = useState(editTask?.hateMagnitude || 5);
+  const [duration, setDuration] = useState(editTask?.duration || 0);
 
   const toggleCat = (cat: Category) =>
     setCategories((prev) =>
@@ -38,6 +39,7 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
       projectId: projectId || undefined,
       location: location.trim() || undefined,
       hateMagnitude: categories.includes("F") ? hateMagnitude : undefined,
+      duration: duration > 0 ? duration : undefined,
     };
     onSubmit(task);
   };
@@ -77,6 +79,25 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
             className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary resize-none"
             placeholder="Any details..."
           />
+        </div>
+
+        <div>
+          <label className="text-sm text-muted-foreground mb-1 block">Duration (minutes)</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={0}
+              value={duration || ""}
+              onChange={(e) => setDuration(Number(e.target.value))}
+              className="w-32 bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder="0"
+            />
+            {duration > 0 && (
+              <span className="text-xs text-muted-foreground font-mono">
+                {duration >= 60 ? `${Math.floor(duration/60)}h ${duration%60 > 0 ? `${duration%60}m` : ""}` : `${duration}m`}
+              </span>
+            )}
+          </div>
         </div>
 
         <div>
