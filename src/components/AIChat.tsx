@@ -2,8 +2,9 @@ import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from 
 import { Task, Project, Category, ALL_CATEGORIES, CATEGORY_META } from "@/lib/types";
 import { store } from "@/lib/store";
 import { v4 as uuid } from "uuid";
-import { Send, Bot, User, Loader2, Trash2 } from "lucide-react";
+import { Send, Bot, User, Loader2, Trash2, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import ReactMarkdown from "react-markdown";
 
 interface AIChatProps {
   tasks: Task[];
@@ -14,7 +15,7 @@ interface AIChatProps {
 
 interface ChatMessage {
   role: "user" | "assistant";
-  content: string;
+  content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
 }
 
 const TASK_COMMAND_REGEX = /^(?:add|create|new)\s+task\s+(?:["\u201C\u201D](.+?)["\u201C\u201D]|(.+))$/i;
@@ -44,6 +45,11 @@ function extractProjectId(content: string, projects: Project[]) {
   return match && projects.some((project) => project.id === match) ? match : undefined;
 }
 
+function getTextContent(content: ChatMessage["content"]): string {
+  if (typeof content === "string") return content;
+  return content.filter(c => c.type === "text").map(c => c.text || "").join("");
+}
+
 function buildSystemPrompt(tasks: Task[], projects: Project[]): string {
   const activeTasks = tasks.filter((t) => !t.completed);
   const completedTasks = tasks.filter((t) => t.completed);
@@ -53,13 +59,14 @@ function buildSystemPrompt(tasks: Task[], projects: Project[]): string {
   ).join("\n");
 
   const taskList = activeTasks.map((t) =>
-    `- [${t.id.slice(0, 8)}] "${t.title}" (categories: ${t.categories.join(", ")}${t.projectId ? `, project: ${t.projectId}` : ""}${t.location ? `, location: ${t.location}` : ""}${t.hateMagnitude ? `, hate: ${t.hateMagnitude}/10` : ""})`
+    `- [${t.id.slice(0, 8)}] "${t.title}" (categories: ${t.categories.join(", ")}${t.projectId ? `, project: ${t.projectId}` : ""}${t.duration ? `, duration: ${t.duration}min` : ""})`
   ).join("\n");
 
   const projectList = projects.map((p) => `- [${p.id.slice(0, 8)}] "${p.name}"${p.description ? ` - ${p.description}` : ""}`).join("\n");
 
   return `You are the Serpent List AI assistant. You help manage tasks, projects, and life planning.
 You have MEMORY of all previous conversations. Use this context to give better, personalized advice.
+You can analyze images sent to you via OCR - describe what you see and extract text/data from images.
 
 ## Serpent List Categories
 ${categoryDescriptions}
@@ -73,13 +80,13 @@ ${taskList || "No active tasks"}
 ${projectList || "No projects"}
 
 ## Your Capabilities
-You can help users:
 1. Create new tasks - suggest categories, help prioritize
 2. Create new projects - organize long-term work
 3. Edit existing tasks - change categories, titles, descriptions
 4. Plan their day - recommend which tasks to do based on the Serpent system
 5. Manage projects - suggest new projects or organize existing ones
 6. Life planning advice - based on the Serpent prioritization system
+7. **Analyze images** - OCR, extract text, read documents, interpret screenshots
 
 ## Serpent System Rules
 - A1 tasks are done FIRST (today, urgent)
@@ -89,34 +96,57 @@ You can help users:
 - On hate days: batch all E+F tasks and clear them out
 - Every new task goes in ALL categories where it belongs
 
-When suggesting actions, be specific and reference the Serpent system. Be concise and actionable.`;
+When suggesting actions, be specific and reference the Serpent system. Be concise and actionable.
+Format your responses with markdown for readability.`;
 }
 
 export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }: AIChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(() => store.getChatHistory());
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  // Persist chat history
   useEffect(() => {
-    store.saveChatHistory(messages);
+    store.saveChatHistory(messages as any);
   }, [messages]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
-  const clearHistory = () => {
-    setMessages([]);
+  const clearHistory = () => { setMessages([]); };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setPendingImage(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
   };
 
   const send = async () => {
     const text = input.trim();
-    if (!text || isLoading) return;
+    if ((!text && !pendingImage) || isLoading) return;
 
-    const userMsg: ChatMessage = { role: "user", content: text };
+    let userContent: ChatMessage["content"];
+    if (pendingImage) {
+      const parts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+      if (text) parts.push({ type: "text", text });
+      else parts.push({ type: "text", text: "Please analyze this image. Extract any text (OCR) and describe what you see." });
+      parts.push({ type: "image_url", image_url: { url: pendingImage } });
+      userContent = parts;
+    } else {
+      userContent = text;
+    }
+
+    const userMsg: ChatMessage = { role: "user", content: userContent };
     setInput("");
+    setPendingImage(null);
     setMessages((prev) => [...prev, userMsg]);
     setIsLoading(true);
 
@@ -136,7 +166,8 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
       const assistantContent = data?.choices?.[0]?.message?.content || data?.content || "I couldn't process that. Please try again.";
 
       // Check for project creation command
-      const projectName = extractProjectName(text);
+      const textInput = typeof userContent === "string" ? userContent : getTextContent(userContent);
+      const projectName = extractProjectName(textInput);
       if (projectName) {
         const newProject: Project = {
           id: uuid(),
@@ -148,11 +179,10 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
       }
 
       // Check for task creation command
-      const taskTitle = extractTaskTitle(text);
+      const taskTitle = extractTaskTitle(textInput);
       if (taskTitle) {
         const categories = extractCategories(assistantContent);
         const projectId = extractProjectId(assistantContent, projects);
-
         onSaveTasks((currentTasks) => [
           ...currentTasks,
           {
@@ -190,15 +220,12 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
               <Bot size={24} className="text-primary" /> AI Assistant
             </h2>
             <p className="text-sm text-muted-foreground mt-0.5">
-              I remember our conversations · Ask me to create tasks, projects, or plan your day
+              I remember conversations · Send images for OCR · Create tasks & projects
             </p>
           </div>
           {messages.length > 0 && (
-            <button
-              onClick={clearHistory}
-              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors px-2 py-1 rounded border border-border hover:border-destructive/30"
-            >
-              <Trash2 size={12} /> Clear History
+            <button onClick={clearHistory} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors px-2 py-1 rounded border border-border hover:border-destructive/30">
+              <Trash2 size={12} /> Clear
             </button>
           )}
         </div>
@@ -217,11 +244,7 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
                 'Add project "Learn Spanish"',
                 "Suggest a hate day plan",
               ].map((q) => (
-                <button
-                  key={q}
-                  onClick={() => { setInput(q); }}
-                  className="text-xs px-3 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
-                >
+                <button key={q} onClick={() => setInput(q)} className="text-xs px-3 py-1.5 rounded-md border border-border text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors">
                   {q}
                 </button>
               ))}
@@ -229,29 +252,40 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
           </div>
         )}
 
-        {messages.map((msg, i) => (
-          <div key={i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
-            {msg.role === "assistant" && (
-              <div className="flex-shrink-0 w-7 h-7 rounded-md bg-primary/20 flex items-center justify-center">
-                <Bot size={14} className="text-primary" />
+        {messages.map((msg, i) => {
+          const textContent = getTextContent(msg.content);
+          const hasImage = Array.isArray(msg.content) && msg.content.some(c => c.type === "image_url");
+          const imageUrl = hasImage ? (msg.content as any[]).find(c => c.type === "image_url")?.image_url?.url : null;
+
+          return (
+            <div key={i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
+              {msg.role === "assistant" && (
+                <div className="flex-shrink-0 w-7 h-7 rounded-md bg-primary/20 flex items-center justify-center">
+                  <Bot size={14} className="text-primary" />
+                </div>
+              )}
+              <div className={`max-w-[75%] rounded-lg px-4 py-2.5 text-sm leading-relaxed ${
+                msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-card border border-border text-foreground"
+              }`}>
+                {imageUrl && (
+                  <img src={imageUrl} alt="Uploaded" className="max-w-full max-h-48 rounded mb-2" />
+                )}
+                {msg.role === "assistant" ? (
+                  <div className="prose prose-sm max-w-none prose-headings:text-foreground prose-p:text-foreground prose-li:text-foreground prose-strong:text-foreground prose-code:text-primary prose-code:bg-secondary prose-code:px-1 prose-code:rounded">
+                    <ReactMarkdown>{textContent}</ReactMarkdown>
+                  </div>
+                ) : (
+                  <p className="whitespace-pre-wrap">{textContent}</p>
+                )}
               </div>
-            )}
-            <div
-              className={`max-w-[75%] rounded-lg px-4 py-2.5 text-sm leading-relaxed ${
-                msg.role === "user"
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-card border border-border text-foreground"
-              }`}
-            >
-              <p className="whitespace-pre-wrap">{msg.content}</p>
+              {msg.role === "user" && (
+                <div className="flex-shrink-0 w-7 h-7 rounded-md bg-secondary flex items-center justify-center">
+                  <User size={14} className="text-muted-foreground" />
+                </div>
+              )}
             </div>
-            {msg.role === "user" && (
-              <div className="flex-shrink-0 w-7 h-7 rounded-md bg-secondary flex items-center justify-center">
-                <User size={14} className="text-muted-foreground" />
-              </div>
-            )}
-          </div>
-        ))}
+          );
+        })}
 
         {isLoading && (
           <div className="flex gap-3">
@@ -265,22 +299,33 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
         )}
       </div>
 
+      {/* Pending image preview */}
+      {pendingImage && (
+        <div className="px-4 py-2 border-t border-border bg-secondary/50">
+          <div className="flex items-center gap-2">
+            <img src={pendingImage} alt="Preview" className="h-12 w-12 object-cover rounded" />
+            <span className="text-xs text-muted-foreground">Image attached</span>
+            <button onClick={() => setPendingImage(null)} className="text-muted-foreground hover:text-destructive text-xs ml-auto">Remove</button>
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <div className="p-4 border-t border-border">
         <div className="flex gap-2">
+          <input ref={fileRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+          <button onClick={() => fileRef.current?.click()} className="text-muted-foreground hover:text-primary p-2.5 transition-colors" title="Upload image for OCR">
+            <ImageIcon size={18} />
+          </button>
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && send()}
-            placeholder="Ask about tasks, plan your day, add projects..."
+            placeholder="Ask about tasks, send images for OCR, plan your day..."
             className="flex-1 bg-secondary border border-border rounded-lg px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
             disabled={isLoading}
           />
-          <button
-            onClick={send}
-            disabled={!input.trim() || isLoading}
-            className="bg-primary text-primary-foreground px-4 py-2.5 rounded-lg hover:opacity-90 disabled:opacity-30 transition-opacity"
-          >
+          <button onClick={send} disabled={(!input.trim() && !pendingImage) || isLoading} className="bg-primary text-primary-foreground px-4 py-2.5 rounded-lg hover:opacity-90 disabled:opacity-30 transition-opacity">
             <Send size={16} />
           </button>
         </div>
