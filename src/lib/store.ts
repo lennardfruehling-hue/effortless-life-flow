@@ -1,4 +1,4 @@
-import { Task, Project, Reminder, ResearchNote } from "./types";
+import { Task, Project, Reminder, ResearchNote, CalendarEvent, DailyScheduleSlot } from "./types";
 
 const KEYS = {
   tasks: "serpent-tasks",
@@ -7,6 +7,8 @@ const KEYS = {
   lifeplan: "serpent-lifeplan",
   research: "serpent-research",
   chatHistory: "serpent-chat-history",
+  calendarEvents: "serpent-calendar-events",
+  dailySchedule: "serpent-daily-schedule",
 };
 
 function load<T>(key: string, fallback: T): T {
@@ -40,4 +42,10 @@ export const store = {
 
   getChatHistory: (): { role: "user" | "assistant"; content: string }[] => load(KEYS.chatHistory, []),
   saveChatHistory: (msgs: { role: "user" | "assistant"; content: string }[]) => save(KEYS.chatHistory, msgs),
+
+  getCalendarEvents: (): CalendarEvent[] => load(KEYS.calendarEvents, []),
+  saveCalendarEvents: (e: CalendarEvent[]) => save(KEYS.calendarEvents, e),
+
+  getDailySchedule: (): DailyScheduleSlot[] => load(KEYS.dailySchedule, []),
+  saveDailySchedule: (s: DailyScheduleSlot[]) => save(KEYS.dailySchedule, s),
 };
