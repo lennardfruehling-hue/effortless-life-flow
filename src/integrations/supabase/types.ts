@@ -14,7 +14,145 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      list_items: {
+        Row: {
+          checked: boolean
+          content: string
+          created_at: string
+          id: string
+          linked_task_id: string | null
+          list_id: string
+          position: number
+        }
+        Insert: {
+          checked?: boolean
+          content: string
+          created_at?: string
+          id?: string
+          linked_task_id?: string | null
+          list_id: string
+          position?: number
+        }
+        Update: {
+          checked?: boolean
+          content?: string
+          created_at?: string
+          id?: string
+          linked_task_id?: string | null
+          list_id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "list_items_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "task_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      note_blocks: {
+        Row: {
+          block_type: string
+          checked: boolean | null
+          content: string | null
+          created_at: string
+          file_name: string | null
+          file_type: string | null
+          file_url: string | null
+          id: string
+          note_id: string
+          position: number
+        }
+        Insert: {
+          block_type?: string
+          checked?: boolean | null
+          content?: string | null
+          created_at?: string
+          file_name?: string | null
+          file_type?: string | null
+          file_url?: string | null
+          id?: string
+          note_id: string
+          position?: number
+        }
+        Update: {
+          block_type?: string
+          checked?: boolean | null
+          content?: string | null
+          created_at?: string
+          file_name?: string | null
+          file_type?: string | null
+          file_url?: string | null
+          id?: string
+          note_id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_blocks_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "research_notes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_notes: {
+        Row: {
+          created_at: string
+          icon: string | null
+          id: string
+          project_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          project_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          project_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      task_lists: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

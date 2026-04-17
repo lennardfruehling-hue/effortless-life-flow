@@ -42,6 +42,8 @@ interface ChatMessage {
 
 const TASK_COMMAND_REGEX = /(?:add|create|new|save|make)\s+(?:a\s+|an\s+|the\s+)?task\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|(.+?))(?:[.!?]|$)/i;
 const PROJECT_COMMAND_REGEX = /(?:add|create|new|save|make|start)\s+(?:a\s+|an\s+|the\s+)?project\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|(.+?))(?:[.!?]|$)/i;
+const NOTE_COMMAND_REGEX = /(?:add|create|new|save|make|write)\s+(?:a\s+|an\s+|the\s+)?(?:research\s+)?note\s+(?:called\s+|named\s+|about\s+|on\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|(.+?))(?:[.!?]|$)/i;
+const LIST_COMMAND_REGEX = /(?:add|create|new|save|make|start|build)\s+(?:a\s+|an\s+|the\s+)?(?:packing\s+|shopping\s+|todo\s+|to-do\s+)?list\s+(?:called\s+|named\s+|for\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|(.+?))(?:[.!?]|$)/i;
 const CATEGORY_CODE_REGEX = /\b(A1|A2|A3|B1|B2|C|D|E|F|G|H|I|J)\b(?=\s*:|\b)/g;
 const LIFE_PLAN_PROJECT_REGEX = /\b(lp-[a-z0-9]+)\b/i;
 
@@ -53,6 +55,61 @@ function extractTaskTitle(input: string) {
 function extractProjectName(input: string) {
   const match = input.trim().match(PROJECT_COMMAND_REGEX);
   return match ? (match[1] || match[2] || "").trim() : "";
+}
+
+function extractNoteTopic(input: string) {
+  const match = input.trim().match(NOTE_COMMAND_REGEX);
+  return match ? (match[1] || match[2] || "").trim() : "";
+}
+
+function extractListName(input: string) {
+  const match = input.trim().match(LIST_COMMAND_REGEX);
+  return match ? (match[1] || match[2] || "").trim() : "";
+}
+
+async function createResearchNote(title: string, body: string) {
+  const { data } = await supabase
+    .from("research_notes")
+    .insert({ title })
+    .select().single();
+  if (!data) return null;
+  const blocks = body
+    .split(/\n+/)
+    .filter(Boolean)
+    .map((line, i) => ({
+      note_id: data.id,
+      position: i,
+      block_type: line.startsWith("# ") ? "heading1" : line.startsWith("## ") ? "heading2" : line.startsWith("- ") ? "bullet" : "text",
+      content: line.replace(/^(#+\s|-\s)/, ""),
+    }));
+  if (blocks.length > 0) {
+    await supabase.from("note_blocks").insert(blocks);
+  } else {
+    await supabase.from("note_blocks").insert({ note_id: data.id, position: 0, block_type: "text", content: "" });
+  }
+  window.dispatchEvent(new CustomEvent("research-updated"));
+  return data.id as string;
+}
+
+async function createListWithItems(name: string, items: string[]) {
+  const { data } = await supabase.from("task_lists").insert({ name }).select().single();
+  if (!data) return null;
+  if (items.length > 0) {
+    await supabase.from("list_items").insert(
+      items.map((content, i) => ({ list_id: data.id, position: i, content }))
+    );
+  }
+  window.dispatchEvent(new CustomEvent("lists-updated"));
+  return data.id as string;
+}
+
+// Pull a bullet-list out of an AI response, if any
+function extractBullets(text: string): string[] {
+  const lines = text.split("\n").map(l => l.trim());
+  return lines
+    .filter(l => /^([-*•]|\d+\.)\s+/.test(l))
+    .map(l => l.replace(/^([-*•]|\d+\.)\s+/, "").replace(/\*\*/g, "").trim())
+    .filter(Boolean);
 }
 
 function extractCategories(content: string): Category[] {
@@ -109,6 +166,8 @@ ${projectList || "No projects"}
 5. Manage projects - suggest new projects or organize existing ones
 6. Life planning advice - based on the Serpent prioritization system
 7. **Analyze images** - OCR, extract text, read documents, interpret screenshots
+8. **Save research notes** - when user says "save a note about X" or "write a note on X", produce a markdown body (use # for headings, - for bullets) that will become a Notion-style note
+9. **Build lists** - when user says "make a packing list for Tokyo", reply with a clear bulleted list (one item per line starting with "-"); items will be saved automatically
 
 ## Serpent System Rules
 - A1 tasks are done FIRST (today, urgent)
@@ -223,8 +282,29 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
         ]);
       }
 
-      const finalContent = createdProjectId
-        ? `${assistantContent}\n\n✅ Project **"${projectName}"** added to your Life Plan.`
+      // Check for note creation command — persist to Cloud
+      const noteTopic = extractNoteTopic(textInput);
+      let createdNoteTitle: string | null = null;
+      if (noteTopic) {
+        const id = await createResearchNote(noteTopic, assistantContent);
+        if (id) createdNoteTitle = noteTopic;
+      }
+
+      // Check for list creation command — persist to Cloud with bullets from AI reply
+      const listName = extractListName(textInput);
+      let createdListName: string | null = null;
+      if (listName) {
+        const items = extractBullets(assistantContent);
+        const id = await createListWithItems(listName, items);
+        if (id) createdListName = listName;
+      }
+
+      const confirmations: string[] = [];
+      if (createdProjectId) confirmations.push(`✅ Project **"${projectName}"** added to your Life Plan.`);
+      if (createdNoteTitle) confirmations.push(`✅ Research note **"${createdNoteTitle}"** saved.`);
+      if (createdListName) confirmations.push(`✅ List **"${createdListName}"** saved with all items.`);
+      const finalContent = confirmations.length > 0
+        ? `${assistantContent}\n\n${confirmations.join("\n")}`
         : assistantContent;
       setMessages((prev) => [...prev, { role: "assistant", content: finalContent }]);
     } catch (e: any) {
