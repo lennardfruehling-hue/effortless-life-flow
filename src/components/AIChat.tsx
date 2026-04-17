@@ -27,6 +27,7 @@ function addLifePlanProject(name: string) {
       { id, name, tasks: [], startDate: today, endDate: threeMonths },
     ];
     localStorage.setItem(LIFEPLAN_KEY, JSON.stringify(data));
+    window.dispatchEvent(new CustomEvent("lifeplan-updated"));
     return `lp-${id}`;
   } catch (e) {
     console.error("Failed to add life plan project:", e);
