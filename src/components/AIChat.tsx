@@ -222,7 +222,10 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
         ]);
       }
 
-      setMessages((prev) => [...prev, { role: "assistant", content: assistantContent }]);
+      const finalContent = createdProjectId
+        ? `${assistantContent}\n\n✅ Project **"${projectName}"** added to your Life Plan.`
+        : assistantContent;
+      setMessages((prev) => [...prev, { role: "assistant", content: finalContent }]);
     } catch (e: any) {
       console.error("AI error:", e);
       const errorMsg = e?.message?.includes("429")
