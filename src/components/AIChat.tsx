@@ -40,8 +40,8 @@ interface ChatMessage {
   content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
 }
 
-const TASK_COMMAND_REGEX = /^(?:add|create|new)\s+task\s+(?:["\u201C\u201D](.+?)["\u201C\u201D]|(.+))$/i;
-const PROJECT_COMMAND_REGEX = /^(?:add|create|new)\s+project\s+(?:["\u201C\u201D](.+?)["\u201C\u201D]|(.+))$/i;
+const TASK_COMMAND_REGEX = /(?:add|create|new|save|make)\s+(?:a\s+|an\s+|the\s+)?task\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|(.+?))(?:[.!?]|$)/i;
+const PROJECT_COMMAND_REGEX = /(?:add|create|new|save|make|start)\s+(?:a\s+|an\s+|the\s+)?project\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|(.+?))(?:[.!?]|$)/i;
 const CATEGORY_CODE_REGEX = /\b(A1|A2|A3|B1|B2|C|D|E|F|G|H|I|J)\b(?=\s*:|\b)/g;
 const LIFE_PLAN_PROJECT_REGEX = /\b(lp-[a-z0-9]+)\b/i;
 
