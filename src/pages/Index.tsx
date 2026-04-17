@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from "react";
-import { ViewMode, Task, Project, Reminder, LifePlanProject, ResearchNote, CalendarEvent, DailyScheduleSlot } from "@/lib/types";
+import { ViewMode, Task, Project, Reminder, LifePlanProject, CalendarEvent, DailyScheduleSlot } from "@/lib/types";
 import { store } from "@/lib/store";
 import Sidebar from "@/components/Sidebar";
 import TasksView from "@/components/TasksView";
 import LifePlanView from "@/components/LifePlanView";
 import RemindersView from "@/components/RemindersView";
 import ResearchView from "@/components/ResearchView";
+import ListsView from "@/components/ListsView";
 import CalendarView from "@/components/CalendarView";
 import AIChat from "@/components/AIChat";
 
@@ -27,7 +28,6 @@ export default function Index() {
   const [tasks, setTasks] = useState<Task[]>(() => store.getTasks());
   const [projects, setProjects] = useState<Project[]>(() => store.getProjects());
   const [reminders, setReminders] = useState<Reminder[]>(() => store.getReminders());
-  const [research, setResearch] = useState<ResearchNote[]>(() => store.getResearch());
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => store.getCalendarEvents());
   const [dailySchedule, setDailySchedule] = useState<DailyScheduleSlot[]>(() => store.getDailySchedule());
   const [lifePlanProjects, setLifePlanProjects] = useState<LifePlanProject[]>(loadLifePlanProjects);
@@ -36,7 +36,6 @@ export default function Index() {
   useEffect(() => { store.saveTasks(tasks); }, [tasks]);
   useEffect(() => { store.saveProjects(projects); }, [projects]);
   useEffect(() => { store.saveReminders(reminders); }, [reminders]);
-  useEffect(() => { store.saveResearch(research); }, [research]);
   useEffect(() => { store.saveCalendarEvents(calendarEvents); }, [calendarEvents]);
   useEffect(() => { store.saveDailySchedule(dailySchedule); }, [dailySchedule]);
 
@@ -73,7 +72,8 @@ export default function Index() {
           onClearProjectFilter={() => setTaskFilterProject(undefined)}
         />
       )}
-      {view === "research" && <ResearchView notes={research} projects={allProjects} onSave={setResearch} />}
+      {view === "research" && <ResearchView projects={allProjects} />}
+      {view === "lists" && <ListsView tasks={tasks} onSaveTasks={setTasks} />}
       {view === "lifeplan" && <LifePlanView onNavigateToTasks={navigateToTasksForProject} />}
       {view === "calendar" && <CalendarView events={calendarEvents} onSave={setCalendarEvents} />}
       {view === "reminders" && <RemindersView reminders={reminders} tasks={tasks} onSave={setReminders} />}
