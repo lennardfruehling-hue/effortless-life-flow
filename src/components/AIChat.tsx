@@ -13,6 +13,27 @@ interface AIChatProps {
   onSaveProjects: Dispatch<SetStateAction<Project[]>>;
 }
 
+const LIFEPLAN_KEY = "serpent-lifeplan-v2";
+
+function addLifePlanProject(name: string) {
+  try {
+    const raw = localStorage.getItem(LIFEPLAN_KEY);
+    const data = raw ? JSON.parse(raw) : { notes: "", planning: [], projects: [] };
+    const id = Math.random().toString(36).slice(2, 10);
+    const today = new Date().toISOString().slice(0, 10);
+    const threeMonths = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    data.projects = [
+      ...(data.projects || []),
+      { id, name, tasks: [], startDate: today, endDate: threeMonths },
+    ];
+    localStorage.setItem(LIFEPLAN_KEY, JSON.stringify(data));
+    return `lp-${id}`;
+  } catch (e) {
+    console.error("Failed to add life plan project:", e);
+    return null;
+  }
+}
+
 interface ChatMessage {
   role: "user" | "assistant";
   content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
@@ -165,17 +186,22 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
       const data = resp.data;
       const assistantContent = data?.choices?.[0]?.message?.content || data?.content || "I couldn't process that. Please try again.";
 
-      // Check for project creation command
+      // Check for project creation command — save to Life Plan
       const textInput = typeof userContent === "string" ? userContent : getTextContent(userContent);
       const projectName = extractProjectName(textInput);
+      let createdProjectId: string | null = null;
       if (projectName) {
-        const newProject: Project = {
-          id: uuid(),
-          name: projectName,
-          description: undefined,
-          createdAt: new Date().toISOString(),
-        };
-        onSaveProjects((currentProjects) => [...currentProjects, newProject]);
+        createdProjectId = addLifePlanProject(projectName);
+        // Also keep legacy state in sync so the AI sees it immediately
+        onSaveProjects((currentProjects) => [
+          ...currentProjects,
+          {
+            id: createdProjectId || uuid(),
+            name: `📋 ${projectName}`,
+            description: "Life Plan project",
+            createdAt: new Date().toISOString(),
+          },
+        ]);
       }
 
       // Check for task creation command
@@ -196,7 +222,10 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
         ]);
       }
 
-      setMessages((prev) => [...prev, { role: "assistant", content: assistantContent }]);
+      const finalContent = createdProjectId
+        ? `${assistantContent}\n\n✅ Project **"${projectName}"** added to your Life Plan.`
+        : assistantContent;
+      setMessages((prev) => [...prev, { role: "assistant", content: finalContent }]);
     } catch (e: any) {
       console.error("AI error:", e);
       const errorMsg = e?.message?.includes("429")
