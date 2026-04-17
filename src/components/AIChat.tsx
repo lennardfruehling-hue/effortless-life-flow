@@ -186,17 +186,22 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
       const data = resp.data;
       const assistantContent = data?.choices?.[0]?.message?.content || data?.content || "I couldn't process that. Please try again.";
 
-      // Check for project creation command
+      // Check for project creation command — save to Life Plan
       const textInput = typeof userContent === "string" ? userContent : getTextContent(userContent);
       const projectName = extractProjectName(textInput);
+      let createdProjectId: string | null = null;
       if (projectName) {
-        const newProject: Project = {
-          id: uuid(),
-          name: projectName,
-          description: undefined,
-          createdAt: new Date().toISOString(),
-        };
-        onSaveProjects((currentProjects) => [...currentProjects, newProject]);
+        createdProjectId = addLifePlanProject(projectName);
+        // Also keep legacy state in sync so the AI sees it immediately
+        onSaveProjects((currentProjects) => [
+          ...currentProjects,
+          {
+            id: createdProjectId || uuid(),
+            name: `📋 ${projectName}`,
+            description: "Life Plan project",
+            createdAt: new Date().toISOString(),
+          },
+        ]);
       }
 
       // Check for task creation command
