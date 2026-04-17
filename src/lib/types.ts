@@ -33,8 +33,8 @@ export interface Task {
   completedAt?: string;
   projectId?: string;
   location?: string;
-  hateMagnitude?: number; // 1-10 for F category
-  duration?: number; // duration in minutes
+  hateMagnitude?: number;
+  duration?: number;
 }
 
 export interface Project {
@@ -54,7 +54,7 @@ export interface Reminder {
   completed: boolean;
 }
 
-export type ViewMode = "tasks" | "projects" | "lifeplan" | "reminders" | "research" | "calendar" | "ai";
+export type ViewMode = "tasks" | "projects" | "lifeplan" | "reminders" | "research" | "lists" | "calendar" | "ai";
 
 export interface CalendarEvent {
   id: string;
@@ -68,8 +68,8 @@ export interface CalendarEvent {
 
 export interface DailyScheduleSlot {
   id: string;
-  startTime: string; // HH:mm
-  endTime: string; // HH:mm
+  startTime: string;
+  endTime: string;
   taskId?: string;
   label?: string;
 }
@@ -79,6 +79,7 @@ export interface LifePlanProject {
   name: string;
 }
 
+// Legacy local note type — still used by old store; new system uses Cloud-backed ResearchNoteRow.
 export interface ResearchNote {
   id: string;
   projectId?: string;
@@ -86,4 +87,60 @@ export interface ResearchNote {
   content: string;
   createdAt: string;
   updatedAt: string;
+}
+
+// ===== Cloud-backed Research (Notion-style) =====
+export type BlockType =
+  | "text"
+  | "heading1"
+  | "heading2"
+  | "heading3"
+  | "checklist"
+  | "bullet"
+  | "image"
+  | "file"
+  | "divider"
+  | "quote"
+  | "code";
+
+export interface ResearchNoteRow {
+  id: string;
+  title: string;
+  icon?: string | null;
+  project_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NoteBlock {
+  id: string;
+  note_id: string;
+  position: number;
+  block_type: BlockType;
+  content: string | null;
+  checked: boolean | null;
+  file_url: string | null;
+  file_name: string | null;
+  file_type: string | null;
+  created_at: string;
+}
+
+// ===== Lists =====
+export interface TaskList {
+  id: string;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ListItem {
+  id: string;
+  list_id: string;
+  position: number;
+  content: string;
+  checked: boolean;
+  linked_task_id?: string | null;
+  created_at: string;
 }
