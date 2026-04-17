@@ -13,6 +13,27 @@ interface AIChatProps {
   onSaveProjects: Dispatch<SetStateAction<Project[]>>;
 }
 
+const LIFEPLAN_KEY = "serpent-lifeplan-v2";
+
+function addLifePlanProject(name: string) {
+  try {
+    const raw = localStorage.getItem(LIFEPLAN_KEY);
+    const data = raw ? JSON.parse(raw) : { notes: "", planning: [], projects: [] };
+    const id = Math.random().toString(36).slice(2, 10);
+    const today = new Date().toISOString().slice(0, 10);
+    const threeMonths = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    data.projects = [
+      ...(data.projects || []),
+      { id, name, tasks: [], startDate: today, endDate: threeMonths },
+    ];
+    localStorage.setItem(LIFEPLAN_KEY, JSON.stringify(data));
+    return `lp-${id}`;
+  } catch (e) {
+    console.error("Failed to add life plan project:", e);
+    return null;
+  }
+}
+
 interface ChatMessage {
   role: "user" | "assistant";
   content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
