@@ -282,8 +282,29 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
         ]);
       }
 
-      const finalContent = createdProjectId
-        ? `${assistantContent}\n\n✅ Project **"${projectName}"** added to your Life Plan.`
+      // Check for note creation command — persist to Cloud
+      const noteTopic = extractNoteTopic(textInput);
+      let createdNoteTitle: string | null = null;
+      if (noteTopic) {
+        const id = await createResearchNote(noteTopic, assistantContent);
+        if (id) createdNoteTitle = noteTopic;
+      }
+
+      // Check for list creation command — persist to Cloud with bullets from AI reply
+      const listName = extractListName(textInput);
+      let createdListName: string | null = null;
+      if (listName) {
+        const items = extractBullets(assistantContent);
+        const id = await createListWithItems(listName, items);
+        if (id) createdListName = listName;
+      }
+
+      const confirmations: string[] = [];
+      if (createdProjectId) confirmations.push(`✅ Project **"${projectName}"** added to your Life Plan.`);
+      if (createdNoteTitle) confirmations.push(`✅ Research note **"${createdNoteTitle}"** saved.`);
+      if (createdListName) confirmations.push(`✅ List **"${createdListName}"** saved with all items.`);
+      const finalContent = confirmations.length > 0
+        ? `${assistantContent}\n\n${confirmations.join("\n")}`
         : assistantContent;
       setMessages((prev) => [...prev, { role: "assistant", content: finalContent }]);
     } catch (e: any) {
