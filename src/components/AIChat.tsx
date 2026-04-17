@@ -42,6 +42,8 @@ interface ChatMessage {
 
 const TASK_COMMAND_REGEX = /(?:add|create|new|save|make)\s+(?:a\s+|an\s+|the\s+)?task\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|(.+?))(?:[.!?]|$)/i;
 const PROJECT_COMMAND_REGEX = /(?:add|create|new|save|make|start)\s+(?:a\s+|an\s+|the\s+)?project\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|(.+?))(?:[.!?]|$)/i;
+const NOTE_COMMAND_REGEX = /(?:add|create|new|save|make|write)\s+(?:a\s+|an\s+|the\s+)?(?:research\s+)?note\s+(?:called\s+|named\s+|about\s+|on\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|(.+?))(?:[.!?]|$)/i;
+const LIST_COMMAND_REGEX = /(?:add|create|new|save|make|start|build)\s+(?:a\s+|an\s+|the\s+)?(?:packing\s+|shopping\s+|todo\s+|to-do\s+)?list\s+(?:called\s+|named\s+|for\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|(.+?))(?:[.!?]|$)/i;
 const CATEGORY_CODE_REGEX = /\b(A1|A2|A3|B1|B2|C|D|E|F|G|H|I|J)\b(?=\s*:|\b)/g;
 const LIFE_PLAN_PROJECT_REGEX = /\b(lp-[a-z0-9]+)\b/i;
 
@@ -53,6 +55,61 @@ function extractTaskTitle(input: string) {
 function extractProjectName(input: string) {
   const match = input.trim().match(PROJECT_COMMAND_REGEX);
   return match ? (match[1] || match[2] || "").trim() : "";
+}
+
+function extractNoteTopic(input: string) {
+  const match = input.trim().match(NOTE_COMMAND_REGEX);
+  return match ? (match[1] || match[2] || "").trim() : "";
+}
+
+function extractListName(input: string) {
+  const match = input.trim().match(LIST_COMMAND_REGEX);
+  return match ? (match[1] || match[2] || "").trim() : "";
+}
+
+async function createResearchNote(title: string, body: string) {
+  const { data } = await supabase
+    .from("research_notes")
+    .insert({ title })
+    .select().single();
+  if (!data) return null;
+  const blocks = body
+    .split(/\n+/)
+    .filter(Boolean)
+    .map((line, i) => ({
+      note_id: data.id,
+      position: i,
+      block_type: line.startsWith("# ") ? "heading1" : line.startsWith("## ") ? "heading2" : line.startsWith("- ") ? "bullet" : "text",
+      content: line.replace(/^(#+\s|-\s)/, ""),
+    }));
+  if (blocks.length > 0) {
+    await supabase.from("note_blocks").insert(blocks);
+  } else {
+    await supabase.from("note_blocks").insert({ note_id: data.id, position: 0, block_type: "text", content: "" });
+  }
+  window.dispatchEvent(new CustomEvent("research-updated"));
+  return data.id as string;
+}
+
+async function createListWithItems(name: string, items: string[]) {
+  const { data } = await supabase.from("task_lists").insert({ name }).select().single();
+  if (!data) return null;
+  if (items.length > 0) {
+    await supabase.from("list_items").insert(
+      items.map((content, i) => ({ list_id: data.id, position: i, content }))
+    );
+  }
+  window.dispatchEvent(new CustomEvent("lists-updated"));
+  return data.id as string;
+}
+
+// Pull a bullet-list out of an AI response, if any
+function extractBullets(text: string): string[] {
+  const lines = text.split("\n").map(l => l.trim());
+  return lines
+    .filter(l => /^([-*•]|\d+\.)\s+/.test(l))
+    .map(l => l.replace(/^([-*•]|\d+\.)\s+/, "").replace(/\*\*/g, "").trim())
+    .filter(Boolean);
 }
 
 function extractCategories(content: string): Category[] {
