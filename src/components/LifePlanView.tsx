@@ -171,6 +171,17 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
 
   useEffect(() => { saveData(data); }, [data]);
 
+  // Reload when external sources (e.g. AI chat) update the Life Plan
+  useEffect(() => {
+    const reload = () => setData(loadData());
+    window.addEventListener("lifeplan-updated", reload);
+    window.addEventListener("storage", reload);
+    return () => {
+      window.removeEventListener("lifeplan-updated", reload);
+      window.removeEventListener("storage", reload);
+    };
+  }, []);
+
   const toggleCollapse = (id: string) => {
     setCollapsedGroups((prev) => {
       const next = new Set(prev);
