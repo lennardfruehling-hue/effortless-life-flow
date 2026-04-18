@@ -424,11 +424,14 @@ function BlockEditor({
       </div>;
     default:
       return <div className={wrap}>
-        <textarea value={block.content || ""} onChange={(e) => onUpdate({ content: e.target.value })} onKeyDown={onKey}
-          placeholder="Type something, or '/' for blocks..."
-          rows={1}
-          className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none py-1 resize-none"
-          style={{ minHeight: "1.75rem" }} />
+        <AutoTextarea
+          value={block.content || ""}
+          onChange={(v) => onUpdate({ content: v })}
+          onKeyDown={onKey}
+          placeholder="Type something… (Shift+Enter for new line, Enter for new block)"
+          className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none py-1 leading-relaxed"
+          minRows={2}
+        />
         {handle}
       </div>;
   }
