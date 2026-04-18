@@ -195,7 +195,7 @@ export default function ResearchView({ projects }: Props) {
             <p className="text-xs text-muted-foreground mt-1">Notion-style blocks · images · file attachments</p>
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto p-8 space-y-1">
+          <div className="max-w-5xl mx-auto px-12 py-8 space-y-1">
             {/* Header: icon + title + project link */}
             <div className="flex items-center gap-3 mb-2">
               <button
