@@ -5,7 +5,7 @@ import Sidebar from "@/components/Sidebar";
 import TasksView from "@/components/TasksView";
 import LifePlanView from "@/components/LifePlanView";
 import RemindersView from "@/components/RemindersView";
-import ResearchView from "@/components/ResearchView";
+import ResearchTabs from "@/components/ResearchTabs";
 import ListsView from "@/components/ListsView";
 import CalendarView from "@/components/CalendarView";
 import AIChat from "@/components/AIChat";
@@ -72,7 +72,7 @@ export default function Index() {
           onClearProjectFilter={() => setTaskFilterProject(undefined)}
         />
       )}
-      {view === "research" && <ResearchView projects={allProjects} />}
+      {view === "research" && <ResearchTabs projects={allProjects} />}
       {view === "lists" && <ListsView tasks={tasks} onSaveTasks={setTasks} />}
       {view === "lifeplan" && <LifePlanView onNavigateToTasks={navigateToTasksForProject} />}
       {view === "calendar" && <CalendarView events={calendarEvents} onSave={setCalendarEvents} />}
