@@ -159,9 +159,9 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
           </div>
         )}
 
-        {categories.includes("J") && projects.length > 0 && (
+        {projects.length > 0 && (
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Project</label>
+            <label className="text-sm text-muted-foreground mb-1 block">Project (optional)</label>
             <select
               value={projectId}
               onChange={(e) => setProjectId(e.target.value)}
@@ -172,6 +172,7 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
+            <p className="text-xs text-muted-foreground mt-1">Assign this task to a Life Plan project.</p>
           </div>
         )}
 
