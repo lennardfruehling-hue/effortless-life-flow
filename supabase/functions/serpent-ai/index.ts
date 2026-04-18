@@ -18,7 +18,7 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Use gemini-2.5-flash for vision support (handles text + images)
+    // Switched to OpenAI GPT-5 per user preference (Claude isn't available via Lovable AI Gateway)
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -26,7 +26,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "openai/gpt-5",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages,

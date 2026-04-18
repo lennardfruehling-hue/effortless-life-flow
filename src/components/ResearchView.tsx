@@ -345,23 +345,23 @@ function BlockEditor({
   switch (block.block_type) {
     case "heading1":
       return <div className={wrap}>
-        <input value={block.content || ""} onChange={(e) => onUpdate({ content: e.target.value })} onKeyDown={onKey}
+        <AutoTextarea value={block.content || ""} onChange={(v) => onUpdate({ content: v })} onKeyDown={onKey}
           placeholder="Heading 1"
-          className="flex-1 bg-transparent text-3xl font-bold text-foreground placeholder:text-muted-foreground focus:outline-none py-1" />
+          className="flex-1 bg-transparent text-3xl font-bold text-foreground placeholder:text-muted-foreground focus:outline-none py-1 leading-tight" />
         {handle}
       </div>;
     case "heading2":
       return <div className={wrap}>
-        <input value={block.content || ""} onChange={(e) => onUpdate({ content: e.target.value })} onKeyDown={onKey}
+        <AutoTextarea value={block.content || ""} onChange={(v) => onUpdate({ content: v })} onKeyDown={onKey}
           placeholder="Heading 2"
-          className="flex-1 bg-transparent text-2xl font-bold text-foreground placeholder:text-muted-foreground focus:outline-none py-1" />
+          className="flex-1 bg-transparent text-2xl font-bold text-foreground placeholder:text-muted-foreground focus:outline-none py-1 leading-tight" />
         {handle}
       </div>;
     case "heading3":
       return <div className={wrap}>
-        <input value={block.content || ""} onChange={(e) => onUpdate({ content: e.target.value })} onKeyDown={onKey}
+        <AutoTextarea value={block.content || ""} onChange={(v) => onUpdate({ content: v })} onKeyDown={onKey}
           placeholder="Heading 3"
-          className="flex-1 bg-transparent text-xl font-semibold text-foreground placeholder:text-muted-foreground focus:outline-none py-1" />
+          className="flex-1 bg-transparent text-xl font-semibold text-foreground placeholder:text-muted-foreground focus:outline-none py-1 leading-tight" />
         {handle}
       </div>;
     case "checklist":
@@ -369,7 +369,7 @@ function BlockEditor({
         <button onClick={() => onUpdate({ checked: !block.checked })} className="mt-1 text-primary">
           {block.checked ? <CheckSquare size={16} /> : <Square size={16} />}
         </button>
-        <input value={block.content || ""} onChange={(e) => onUpdate({ content: e.target.value })} onKeyDown={onKey}
+        <AutoTextarea value={block.content || ""} onChange={(v) => onUpdate({ content: v })} onKeyDown={onKey}
           placeholder="To-do"
           className={`flex-1 bg-transparent text-sm focus:outline-none py-0.5 ${block.checked ? "line-through text-muted-foreground" : "text-foreground"}`} />
         {handle}
@@ -377,7 +377,7 @@ function BlockEditor({
     case "bullet":
       return <div className={wrap}>
         <span className="text-foreground mt-1.5">•</span>
-        <input value={block.content || ""} onChange={(e) => onUpdate({ content: e.target.value })} onKeyDown={onKey}
+        <AutoTextarea value={block.content || ""} onChange={(v) => onUpdate({ content: v })} onKeyDown={onKey}
           placeholder="List item"
           className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none py-0.5" />
         {handle}
