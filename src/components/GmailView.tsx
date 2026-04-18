@@ -84,10 +84,11 @@ export default function GmailView() {
         {!loading && notConnected && (
           <div className="flex flex-col items-center justify-center h-full text-center p-8 max-w-md mx-auto">
             <Inbox size={48} className="text-primary/30 mb-3" />
-            <h3 className="text-lg font-semibold text-foreground mb-1">Connect your Gmail account</h3>
+            <h3 className="text-lg font-semibold text-foreground mb-1">Gmail can't be embedded</h3>
             <p className="text-sm text-muted-foreground mb-5">
-              Gmail can't be embedded as an iframe (Google blocks it for security).
-              Link your Gmail account to read messages inside this app, or open Gmail in a new browser tab.
+              Google blocks Gmail from being shown inside another app for security
+              (X-Frame-Options). Click below to open Gmail in a real browser tab —
+              you'll stay signed in and can come right back.
             </p>
             <div className="flex gap-2">
               <button
@@ -98,7 +99,7 @@ export default function GmailView() {
               </button>
             </div>
             <p className="text-[11px] text-muted-foreground mt-4">
-              To enable the in-app inbox, ask the AI assistant to "connect Gmail".
+              Native in-app Gmail (read inbox here) isn't available — Gmail isn't a supported Lovable connector yet.
             </p>
           </div>
         )}
