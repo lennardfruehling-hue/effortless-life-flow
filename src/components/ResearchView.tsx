@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { ResearchNoteRow, NoteBlock, BlockType, Project } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -6,6 +6,38 @@ import {
   CheckSquare, Square, Type, Heading1, Heading2, Heading3, List as ListIcon,
   Minus, Quote, Code, Loader2, Link2, X
 } from "lucide-react";
+
+// Auto-growing textarea: expands to fit content, no scrollbars.
+function AutoTextarea({
+  value, onChange, onKeyDown, placeholder, className, minRows = 1,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  placeholder?: string;
+  className?: string;
+  minRows?: number;
+}) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={onKeyDown}
+      placeholder={placeholder}
+      rows={minRows}
+      className={className}
+      style={{ resize: "none", overflow: "hidden" }}
+    />
+  );
+}
 
 interface Props {
   projects: Project[];
