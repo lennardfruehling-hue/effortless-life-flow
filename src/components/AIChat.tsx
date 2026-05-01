@@ -323,19 +323,14 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
   return (
     <div className="flex-1 flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="p-6 pb-3 border-b border-border">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-              <Bot size={24} className="text-primary" /> AI Assistant
-            </h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              I remember conversations · Send images for OCR · Create tasks & projects
-            </p>
-          </div>
+      <div className="px-3 py-2 border-b border-border">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-[11px] text-muted-foreground truncate">
+            Memory · OCR · Tasks · Notes · Lists
+          </p>
           {messages.length > 0 && (
-            <button onClick={clearHistory} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-destructive transition-colors px-2 py-1 rounded border border-border hover:border-destructive/30">
-              <Trash2 size={12} /> Clear
+            <button onClick={clearHistory} className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-destructive transition-colors px-1.5 py-0.5 rounded border border-border hover:border-destructive/30">
+              <Trash2 size={10} /> Clear
             </button>
           )}
         </div>
