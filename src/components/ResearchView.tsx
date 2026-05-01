@@ -63,7 +63,7 @@ export default function ResearchView({ projects }: Props) {
   const [filterProject, setFilterProject] = useState<string | "all">("all");
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const titleRef = useRef<HTMLInputElement>(null);
+  const titleRef = useRef<HTMLTextAreaElement>(null);
 
   const loadNotes = useCallback(async () => {
     const { data } = await supabase.from("research_notes").select("*").order("updated_at", { ascending: false });
@@ -239,12 +239,11 @@ export default function ResearchView({ projects }: Props) {
               >
                 {activeNote.icon || "📄"}
               </button>
-              <input
-                ref={titleRef}
+              <AutoTextarea
                 value={activeNote.title}
-                onChange={(e) => updateNote({ title: e.target.value })}
+                onChange={(v) => updateNote({ title: v })}
                 placeholder="Untitled"
-                className="flex-1 bg-transparent text-3xl font-bold text-foreground placeholder:text-muted-foreground focus:outline-none"
+                className="flex-1 bg-transparent text-3xl font-bold text-foreground placeholder:text-muted-foreground focus:outline-none leading-tight"
               />
             </div>
             <div className="flex items-center gap-2 mb-6 ml-1">
