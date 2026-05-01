@@ -311,9 +311,3 @@ function LinkPicker({
     </div>
   );
 }
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
