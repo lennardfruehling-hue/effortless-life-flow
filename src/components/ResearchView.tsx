@@ -168,7 +168,7 @@ export default function ResearchView({ projects }: Props) {
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-              <BookOpen size={18} className="text-primary" /> Research
+              <BookOpen size={18} className="text-primary" /> Notes
             </h2>
             <button onClick={createNote} className="bg-primary text-primary-foreground p-1.5 rounded hover:opacity-90" title="New note">
               <Plus size={14} />
