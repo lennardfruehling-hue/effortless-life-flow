@@ -219,42 +219,98 @@ export default function ListsView({ tasks, onSaveTasks }: Props) {
                 );
               })}
 
-              {/* Link picker */}
+              {/* Link picker (search) */}
               {linkPickerFor && (
-                <div className="bg-card border border-border rounded p-2 max-h-48 overflow-y-auto">
-                  <div className="text-[10px] text-muted-foreground mb-1 px-1">Pick a task to link</div>
-                  {tasks.filter(t => !t.completed).length === 0 ? (
-                    <p className="text-xs text-muted-foreground p-2">No active tasks</p>
-                  ) : tasks.filter(t => !t.completed).map(t => (
-                    <button
-                      key={t.id}
-                      onClick={() => linkToTask(linkPickerFor, t.id)}
-                      className="w-full text-left text-xs text-foreground hover:bg-secondary rounded px-2 py-1"
-                    >
-                      {t.title}
-                    </button>
-                  ))}
-                </div>
+                <LinkPicker
+                  tasks={tasks}
+                  onPick={(taskId) => linkToTask(linkPickerFor, taskId)}
+                  onClose={() => setLinkPickerFor(null)}
+                />
               )}
             </div>
 
-            {/* Add item */}
+            {/* Add item — also offers "Add as task" */}
             <div className="flex gap-2 pt-2">
               <input
                 value={newItem}
                 onChange={(e) => setNewItem(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addItem()}
-                placeholder="Add an item..."
+                onKeyDown={(e) => e.key === "Enter" && addItem(false)}
+                placeholder="Add an item…  (Shift-click ✓ to also create a task)"
                 className="flex-1 bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               />
               <button
-                onClick={addItem}
+                onClick={() => addItem(false)}
                 disabled={!newItem.trim()}
+                title="Add list item"
                 className="bg-primary text-primary-foreground px-3 rounded hover:opacity-90 disabled:opacity-30"
               >
                 <Plus size={16} />
               </button>
+              <button
+                onClick={() => addItem(true)}
+                disabled={!newItem.trim()}
+                title="Add list item AND create a task"
+                className="bg-secondary text-foreground border border-border px-3 rounded hover:bg-primary/10 disabled:opacity-30 flex items-center gap-1 text-xs"
+              >
+                <ListTodo size={14} /> + Task
+              </button>
             </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LinkPicker({
+  tasks,
+  onPick,
+  onClose,
+}: {
+  tasks: Task[];
+  onPick: (id: string) => void;
+  onClose: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const filtered = useMemo(() => {
+    const active = tasks.filter((t) => !t.completed);
+    if (!q.trim()) return active.slice(0, 50);
+    const needle = q.toLowerCase();
+    return active.filter((t) => t.title.toLowerCase().includes(needle)).slice(0, 50);
+  }, [tasks, q]);
+  return (
+    <div className="bg-card border border-border rounded p-2 space-y-2">
+      <div className="flex items-center gap-2">
+        <Search size={12} className="text-muted-foreground" />
+        <input
+          autoFocus
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search tasks to link…"
+          className="flex-1 bg-secondary border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        />
+        <button onClick={onClose} className="text-muted-foreground hover:text-destructive p-1">
+          <X size={12} />
+        </button>
+      </div>
+      <div className="max-h-48 overflow-y-auto scrollbar-thin">
+        {filtered.length === 0 ? (
+          <p className="text-xs text-muted-foreground p-2">No matching tasks</p>
+        ) : (
+          filtered.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => onPick(t.id)}
+              className="w-full text-left text-xs text-foreground hover:bg-secondary rounded px-2 py-1"
+            >
+              {t.title}
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
           </div>
         )}
       </div>
