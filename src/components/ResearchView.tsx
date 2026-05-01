@@ -100,7 +100,6 @@ export default function ResearchView({ projects }: Props) {
       await supabase.from("note_blocks").insert({ note_id: data.id, position: 0, block_type: "text", content: "" });
       await loadNotes();
       setActiveNoteId(data.id);
-      setTimeout(() => titleRef.current?.focus(), 50);
     }
   };
 
