@@ -63,7 +63,7 @@ export default function ResearchView({ projects }: Props) {
   const [filterProject, setFilterProject] = useState<string | "all">("all");
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const titleRef = useRef<HTMLInputElement>(null);
+  
 
   const loadNotes = useCallback(async () => {
     const { data } = await supabase.from("research_notes").select("*").order("updated_at", { ascending: false });
@@ -100,7 +100,6 @@ export default function ResearchView({ projects }: Props) {
       await supabase.from("note_blocks").insert({ note_id: data.id, position: 0, block_type: "text", content: "" });
       await loadNotes();
       setActiveNoteId(data.id);
-      setTimeout(() => titleRef.current?.focus(), 50);
     }
   };
 
@@ -168,7 +167,7 @@ export default function ResearchView({ projects }: Props) {
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-              <BookOpen size={18} className="text-primary" /> Research
+              <BookOpen size={18} className="text-primary" /> Notes
             </h2>
             <button onClick={createNote} className="bg-primary text-primary-foreground p-1.5 rounded hover:opacity-90" title="New note">
               <Plus size={14} />
@@ -239,12 +238,11 @@ export default function ResearchView({ projects }: Props) {
               >
                 {activeNote.icon || "📄"}
               </button>
-              <input
-                ref={titleRef}
+              <AutoTextarea
                 value={activeNote.title}
-                onChange={(e) => updateNote({ title: e.target.value })}
+                onChange={(v) => updateNote({ title: v })}
                 placeholder="Untitled"
-                className="flex-1 bg-transparent text-3xl font-bold text-foreground placeholder:text-muted-foreground focus:outline-none"
+                className="flex-1 bg-transparent text-3xl font-bold text-foreground placeholder:text-muted-foreground focus:outline-none leading-tight"
               />
             </div>
             <div className="flex items-center gap-2 mb-6 ml-1">

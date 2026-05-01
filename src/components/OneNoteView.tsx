@@ -8,6 +8,8 @@ interface OneNotePage {
   createdDateTime: string;
   lastModifiedDateTime: string;
   links?: { oneNoteWebUrl?: { href: string } };
+  notebookName?: string | null;
+  sectionName?: string | null;
 }
 
 export default function OneNoteView() {
@@ -120,7 +122,10 @@ export default function OneNoteView() {
                 <div className="flex items-baseline justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-foreground truncate">{p.title || "Untitled"}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                    <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                      {p.notebookName ? <span className="text-primary/80">{p.notebookName}</span> : null}
+                      {p.sectionName ? <> · {p.sectionName}</> : null}
+                      {(p.notebookName || p.sectionName) && " · "}
                       Updated {new Date(p.lastModifiedDateTime).toLocaleString()}
                     </p>
                   </div>

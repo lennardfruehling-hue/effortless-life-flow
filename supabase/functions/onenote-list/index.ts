@@ -1,5 +1,4 @@
-// Lists recent OneNote pages via the connector gateway.
-// Returns { notConnected: true } when the Microsoft OneNote connector hasn't been linked yet.
+// Lists recent OneNote pages across ALL notebooks/sections via the connector gateway.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
 const corsHeaders = {
@@ -22,28 +21,45 @@ serve(async (req) => {
     });
   }
 
+  const headers = {
+    Authorization: `Bearer ${LOVABLE_API_KEY}`,
+    "X-Connection-Api-Key": ONENOTE_API_KEY,
+  };
+
   try {
-    const resp = await fetch(
-      `${GATEWAY_URL}/me/onenote/pages?$top=25&$orderby=lastModifiedDateTime desc`,
-      {
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "X-Connection-Api-Key": ONENOTE_API_KEY,
-        },
-      },
-    );
+    // Fetch the most recently modified pages across ALL notebooks the user has
+    // access to, expanding parent notebook + section so the UI can group/label.
+    // $select trims response size.
+    const url =
+      `${GATEWAY_URL}/me/onenote/pages` +
+      `?$top=50` +
+      `&$orderby=lastModifiedDateTime%20desc` +
+      `&$expand=parentNotebook($select=id,displayName),parentSection($select=id,displayName)` +
+      `&$select=id,title,createdDateTime,lastModifiedDateTime,links`;
+
+    const resp = await fetch(url, { headers });
 
     if (!resp.ok) {
       const text = await resp.text();
       console.error("OneNote list error:", resp.status, text);
       return new Response(
-        JSON.stringify({ error: `OneNote API ${resp.status}: ${text.slice(0, 200)}` }),
+        JSON.stringify({ error: `OneNote API ${resp.status}: ${text.slice(0, 300)}` }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     const data = await resp.json();
-    return new Response(JSON.stringify({ pages: data.value || [] }), {
+    const pages = (data.value || []).map((p: any) => ({
+      id: p.id,
+      title: p.title,
+      createdDateTime: p.createdDateTime,
+      lastModifiedDateTime: p.lastModifiedDateTime,
+      links: p.links,
+      notebookName: p.parentNotebook?.displayName ?? null,
+      sectionName: p.parentSection?.displayName ?? null,
+    }));
+
+    return new Response(JSON.stringify({ pages }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
