@@ -63,7 +63,7 @@ export default function ResearchView({ projects }: Props) {
   const [filterProject, setFilterProject] = useState<string | "all">("all");
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  const titleRef = useRef<HTMLTextAreaElement>(null);
+  
 
   const loadNotes = useCallback(async () => {
     const { data } = await supabase.from("research_notes").select("*").order("updated_at", { ascending: false });
