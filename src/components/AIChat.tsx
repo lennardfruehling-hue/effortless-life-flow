@@ -321,7 +321,7 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
   };
 
   return (
-    <div className="flex-1 flex flex-col h-screen">
+    <div className="flex-1 flex flex-col h-full min-h-0">
       {/* Header */}
       <div className="p-6 pb-3 border-b border-border">
         <div className="flex items-center justify-between">
