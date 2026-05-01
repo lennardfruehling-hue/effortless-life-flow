@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { TaskList, ListItem, Task } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, Trash2, ListChecks, CheckSquare, Square, Link2, Loader2, X } from "lucide-react";
+import { v4 as uuid } from "uuid";
+import { Plus, Trash2, ListChecks, CheckSquare, Square, Link2, Loader2, X, Search, ListTodo } from "lucide-react";
 
 interface Props {
   tasks: Task[];
