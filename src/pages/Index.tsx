@@ -9,6 +9,7 @@ import ResearchTabs from "@/components/ResearchTabs";
 import ListsView from "@/components/ListsView";
 import CalendarView from "@/components/CalendarView";
 import AIChat from "@/components/AIChat";
+import AISidebar from "@/components/AISidebar";
 
 const LIFEPLAN_KEY = "serpent-lifeplan-v2";
 
@@ -59,25 +60,28 @@ export default function Index() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-background w-full">
       <Sidebar active={view} onChange={setView} taskCount={tasks.filter((t) => !t.completed).length} />
-      {view === "tasks" && (
-        <TasksView
-          tasks={tasks}
-          projects={allProjects}
-          onSave={setTasks}
-          dailySchedule={dailySchedule}
-          onSaveDailySchedule={setDailySchedule}
-          filterProjectId={taskFilterProject}
-          onClearProjectFilter={() => setTaskFilterProject(undefined)}
-        />
-      )}
-      {view === "research" && <ResearchTabs projects={allProjects} />}
-      {view === "lists" && <ListsView tasks={tasks} onSaveTasks={setTasks} />}
-      {view === "lifeplan" && <LifePlanView onNavigateToTasks={navigateToTasksForProject} />}
-      {view === "calendar" && <CalendarView events={calendarEvents} onSave={setCalendarEvents} />}
-      {view === "reminders" && <RemindersView reminders={reminders} tasks={tasks} onSave={setReminders} />}
-      {view === "ai" && <AIChat tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />}
+      <main className="flex-1 min-w-0 overflow-x-hidden">
+        {view === "tasks" && (
+          <TasksView
+            tasks={tasks}
+            projects={allProjects}
+            onSave={setTasks}
+            dailySchedule={dailySchedule}
+            onSaveDailySchedule={setDailySchedule}
+            filterProjectId={taskFilterProject}
+            onClearProjectFilter={() => setTaskFilterProject(undefined)}
+          />
+        )}
+        {view === "research" && <ResearchTabs projects={allProjects} />}
+        {view === "lists" && <ListsView tasks={tasks} onSaveTasks={setTasks} />}
+        {view === "lifeplan" && <LifePlanView onNavigateToTasks={navigateToTasksForProject} />}
+        {view === "calendar" && <CalendarView events={calendarEvents} onSave={setCalendarEvents} />}
+        {view === "reminders" && <RemindersView reminders={reminders} tasks={tasks} onSave={setReminders} />}
+        {view === "ai" && <AIChat tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />}
+      </main>
+      <AISidebar tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />
     </div>
   );
 }
