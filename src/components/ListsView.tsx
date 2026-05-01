@@ -55,12 +55,26 @@ export default function ListsView({ tasks, onSaveTasks }: Props) {
     loadLists();
   };
 
-  const addItem = async () => {
+  const addItem = async (alsoCreateTask = false) => {
     if (!activeId || !newItem.trim()) return;
+    const content = newItem.trim();
+    let linkedTaskId: string | null = null;
+    if (alsoCreateTask) {
+      const newTask: Task = {
+        id: uuid(),
+        title: content,
+        categories: ["A3"],
+        completed: false,
+        createdAt: new Date().toISOString(),
+      };
+      onSaveTasks(prev => [...prev, newTask]);
+      linkedTaskId = newTask.id;
+    }
     await supabase.from("list_items").insert({
       list_id: activeId,
-      content: newItem.trim(),
+      content,
       position: items.length,
+      linked_task_id: linkedTaskId,
     });
     setNewItem("");
     loadItems(activeId);
