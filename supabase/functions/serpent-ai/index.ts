@@ -12,7 +12,50 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, systemPrompt } = await req.json();
+    // Basic abuse protection: cap request body size before parsing
+    const contentLength = Number(req.headers.get("content-length") || "0");
+    const MAX_BYTES = 32 * 1024; // 32KB
+    if (contentLength > MAX_BYTES) {
+      return new Response(JSON.stringify({ error: "Payload too large" }), {
+        status: 413,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const body = await req.json();
+    const messages = Array.isArray(body?.messages) ? body.messages : [];
+    const systemPrompt = typeof body?.systemPrompt === "string" ? body.systemPrompt : "";
+
+    // Validate shape & caps to prevent prompt-injection / credit abuse
+    const MAX_MESSAGES = 40;
+    const MAX_MSG_CHARS = 8000;
+    const MAX_SYSTEM_CHARS = 12000;
+    if (messages.length === 0 || messages.length > MAX_MESSAGES) {
+      return new Response(JSON.stringify({ error: "Invalid message count" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (systemPrompt.length > MAX_SYSTEM_CHARS) {
+      return new Response(JSON.stringify({ error: "System prompt too long" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    for (const m of messages) {
+      if (
+        !m || typeof m !== "object" ||
+        (m.role !== "user" && m.role !== "assistant" && m.role !== "system") ||
+        typeof m.content !== "string" ||
+        m.content.length > MAX_MSG_CHARS
+      ) {
+        return new Response(JSON.stringify({ error: "Invalid message format" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
