@@ -14,7 +14,7 @@ serve(async (req) => {
   try {
     // Basic abuse protection: cap request body size before parsing
     const contentLength = Number(req.headers.get("content-length") || "0");
-    const MAX_BYTES = 32 * 1024; // 32KB
+    const MAX_BYTES = 12 * 1024 * 1024; // 12MB to allow image attachments
     if (contentLength > MAX_BYTES) {
       return new Response(JSON.stringify({ error: "Payload too large" }), {
         status: 413,
