@@ -14,7 +14,7 @@ serve(async (req) => {
   try {
     // Basic abuse protection: cap request body size before parsing
     const contentLength = Number(req.headers.get("content-length") || "0");
-    const MAX_BYTES = 32 * 1024; // 32KB
+    const MAX_BYTES = 12 * 1024 * 1024; // 12MB to allow image attachments
     if (contentLength > MAX_BYTES) {
       return new Response(JSON.stringify({ error: "Payload too large" }), {
         status: 413,
@@ -42,14 +42,57 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    const MAX_IMAGE_BYTES = 8 * 1024 * 1024; // 8MB per image data URL
     for (const m of messages) {
       if (
         !m || typeof m !== "object" ||
-        (m.role !== "user" && m.role !== "assistant" && m.role !== "system") ||
-        typeof m.content !== "string" ||
-        m.content.length > MAX_MSG_CHARS
+        (m.role !== "user" && m.role !== "assistant" && m.role !== "system")
       ) {
         return new Response(JSON.stringify({ error: "Invalid message format" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (typeof m.content === "string") {
+        if (m.content.length > MAX_MSG_CHARS) {
+          return new Response(JSON.stringify({ error: "Message too long" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      } else if (Array.isArray(m.content)) {
+        // Multimodal content: validate each part
+        for (const part of m.content) {
+          if (!part || typeof part !== "object") {
+            return new Response(JSON.stringify({ error: "Invalid content part" }), {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+          if (part.type === "text") {
+            if (typeof part.text !== "string" || part.text.length > MAX_MSG_CHARS) {
+              return new Response(JSON.stringify({ error: "Invalid text part" }), {
+                status: 400,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+          } else if (part.type === "image_url") {
+            const url = part.image_url?.url;
+            if (typeof url !== "string" || url.length > MAX_IMAGE_BYTES) {
+              return new Response(JSON.stringify({ error: "Invalid image part" }), {
+                status: 400,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
+          } else {
+            return new Response(JSON.stringify({ error: "Unknown content part type" }), {
+              status: 400,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        }
+      } else {
+        return new Response(JSON.stringify({ error: "Invalid message content" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
