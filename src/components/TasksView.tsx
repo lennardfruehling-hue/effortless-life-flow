@@ -74,10 +74,10 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
   const filterProject = filterProjectId ? projects.find(p => p.id === filterProjectId) : null;
 
   return (
-    <div className="flex-1 p-6 overflow-y-auto scrollbar-thin">
+    <div className="flex-1 p-4 md:p-6 overflow-y-auto scrollbar-thin min-w-0">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      <div className="flex items-start justify-between gap-2 mb-6 flex-wrap">
+        <div className="min-w-0">
           <h2 className="text-2xl font-bold text-foreground">Tasks</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             {todayCount > 0 && (
@@ -86,20 +86,21 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
             {activeCount} active
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-shrink-0">
           <button
             onClick={() => setShowSchedule(!showSchedule)}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-md text-sm border transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 md:px-3 py-2 rounded-md text-sm border transition-colors whitespace-nowrap ${
               showSchedule ? "bg-primary/10 text-primary border-primary/30" : "text-muted-foreground border-border hover:border-primary/20"
             }`}
+            title="Schedule"
           >
-            <Clock size={14} /> Schedule
+            <Clock size={14} /> <span className="hidden sm:inline">Schedule</span>
           </button>
           <button
             onClick={() => { setEditTask(undefined); setShowForm(true); }}
-            className="flex items-center gap-1.5 bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity"
+            className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 md:px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap"
           >
-            <Plus size={16} /> Add Task
+            <Plus size={16} /> <span className="hidden sm:inline">Add Task</span><span className="sm:hidden">Add</span>
           </button>
         </div>
       </div>
