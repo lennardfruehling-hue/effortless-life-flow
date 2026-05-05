@@ -1,5 +1,6 @@
 import { ViewMode } from "@/lib/types";
-import { ListTodo, Compass, Bell, BookOpen, CalendarDays, ListChecks } from "lucide-react";
+import { ListTodo, Compass, Bell, BookOpen, CalendarDays, ListChecks, LogOut } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 const NAV_ITEMS: { mode: ViewMode; icon: typeof ListTodo; label: string }[] = [
   { mode: "tasks", icon: ListTodo, label: "Tasks" },
@@ -19,6 +20,7 @@ export default function Sidebar({
   onChange: (v: ViewMode) => void;
   taskCount: number;
 }) {
+  const { user, signOut } = useAuth();
   return (
     <aside className="w-14 md:w-56 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0">
       <div className="p-3 md:p-5 md:pb-3">
@@ -47,10 +49,20 @@ export default function Sidebar({
         ))}
       </nav>
 
-      <div className="hidden md:block p-4 border-t border-sidebar-border">
-        <p className="text-[10px] text-muted-foreground font-mono leading-relaxed">
-          Do A1 first → then highest category count → batch D together → hate day for E+F
-        </p>
+      <div className="p-2 md:p-3 border-t border-sidebar-border space-y-1">
+        {user && (
+          <p className="hidden md:block text-[10px] text-muted-foreground font-mono truncate" title={user.email ?? ""}>
+            {user.email}
+          </p>
+        )}
+        <button
+          onClick={signOut}
+          title="Sign out"
+          className="w-full flex items-center justify-center md:justify-start gap-2 px-2 md:px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent/50"
+        >
+          <LogOut size={16} />
+          <span className="hidden md:inline">Sign out</span>
+        </button>
       </div>
     </aside>
   );
