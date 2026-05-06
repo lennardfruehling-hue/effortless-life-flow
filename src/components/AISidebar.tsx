@@ -15,7 +15,7 @@ export default function AISidebar({ tasks, projects, onSaveTasks, onSaveProjects
 
   if (!open) {
     return (
-      <div className="hidden md:flex flex-col items-center border-l border-border bg-sidebar w-12 flex-shrink-0">
+      <div className="flex flex-col items-center border-l border-border bg-sidebar w-12 flex-shrink-0">
         <button
           onClick={() => setOpen(true)}
           className="mt-4 p-2 text-muted-foreground hover:text-primary"
@@ -29,7 +29,7 @@ export default function AISidebar({ tasks, projects, onSaveTasks, onSaveProjects
   }
 
   return (
-    <aside className="hidden md:flex flex-col border-l border-border bg-sidebar w-[360px] flex-shrink-0 h-screen sticky top-0">
+    <aside className="flex flex-col border-l border-border bg-sidebar w-[320px] flex-shrink-0 h-screen sticky top-0">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
           <Bot size={16} className="text-primary" /> AI Assistant
