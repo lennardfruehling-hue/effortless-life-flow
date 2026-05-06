@@ -22,45 +22,50 @@ export default function Sidebar({
 }) {
   const { user, signOut } = useAuth();
   return (
-    <aside className="w-14 md:w-56 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0">
-      <div className="p-3 md:p-5 md:pb-3">
-        <h1 className="text-lg font-bold text-foreground tracking-tight flex items-center gap-2">
-          <span className="text-primary">🐍</span>
+    <aside className="w-16 md:w-60 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0">
+      <div className="px-4 pt-5 pb-4">
+        <h1 className="text-base font-semibold text-sidebar-foreground tracking-tight flex items-center gap-2">
+          <span className="text-sidebar-primary text-lg">🐍</span>
           <span className="hidden md:inline">Serpent List</span>
         </h1>
-        <p className="hidden md:block text-xs text-muted-foreground mt-1 font-mono">{taskCount} tasks</p>
+        <p className="hidden md:block text-[11px] text-muted-foreground mt-1 font-mono tracking-wide">
+          {taskCount} open tasks
+        </p>
       </div>
 
-      <nav className="flex-1 px-2 md:px-3 space-y-0.5">
-        {NAV_ITEMS.map(({ mode, icon: Icon, label }) => (
-          <button
-            key={mode}
-            onClick={() => onChange(mode)}
-            title={label}
-            className={`w-full flex items-center justify-center md:justify-start gap-2.5 px-2 md:px-3 py-2 rounded-md text-sm transition-colors ${
-              active === mode
-                ? "bg-sidebar-accent text-primary font-medium"
-                : "text-sidebar-foreground hover:bg-sidebar-accent/50"
-            }`}
-          >
-            <Icon size={16} />
-            <span className="hidden md:inline">{label}</span>
-          </button>
-        ))}
+      <nav className="flex-1 px-2 md:px-3 space-y-1">
+        {NAV_ITEMS.map(({ mode, icon: Icon, label }) => {
+          const isActive = active === mode;
+          return (
+            <button
+              key={mode}
+              onClick={() => onChange(mode)}
+              title={label}
+              className={`group w-full flex items-center justify-center md:justify-start gap-3 px-2.5 md:px-3 py-2 rounded-lg text-sm transition-all ${
+                isActive
+                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-sm"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+              }`}
+            >
+              <Icon size={17} strokeWidth={isActive ? 2.25 : 1.75} />
+              <span className="hidden md:inline">{label}</span>
+            </button>
+          );
+        })}
       </nav>
 
-      <div className="p-2 md:p-3 border-t border-sidebar-border space-y-1">
+      <div className="p-3 border-t border-sidebar-border">
         {user && (
-          <p className="hidden md:block text-[10px] text-muted-foreground font-mono truncate" title={user.email ?? ""}>
+          <p className="hidden md:block text-[10px] text-muted-foreground font-mono truncate mb-1.5 px-1" title={user.email ?? ""}>
             {user.email}
           </p>
         )}
         <button
           onClick={signOut}
           title="Sign out"
-          className="w-full flex items-center justify-center md:justify-start gap-2 px-2 md:px-3 py-2 rounded-md text-sm text-sidebar-foreground hover:bg-sidebar-accent/50"
+          className="w-full flex items-center justify-center md:justify-start gap-2.5 px-2.5 md:px-3 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors"
         >
-          <LogOut size={16} />
+          <LogOut size={16} strokeWidth={1.75} />
           <span className="hidden md:inline">Sign out</span>
         </button>
       </div>
