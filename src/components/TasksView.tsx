@@ -193,6 +193,36 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
         </div>
       )}
 
+      {/* Daily / Weekly recurring groups */}
+      {(dailyTasks.length > 0 || weeklyTasks.length > 0) && (
+        <div className="mb-6 space-y-4">
+          {dailyTasks.length > 0 && (
+            <section>
+              <h3 className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground mb-2 font-mono">
+                <Repeat size={12} /> Daily ({dailyTasks.filter((t) => t.completed).length}/{dailyTasks.length})
+              </h3>
+              <div className="space-y-2">
+                {dailyTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} onDelete={handleDelete} />
+                ))}
+              </div>
+            </section>
+          )}
+          {weeklyTasks.length > 0 && (
+            <section>
+              <h3 className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground mb-2 font-mono">
+                <Repeat size={12} /> Weekly ({weeklyTasks.filter((t) => t.completed).length}/{weeklyTasks.length})
+              </h3>
+              <div className="space-y-2">
+                {weeklyTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} onDelete={handleDelete} />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      )}
+
       {/* Task list */}
       <div className="space-y-2">
         <AnimatePresence mode="popLayout">
