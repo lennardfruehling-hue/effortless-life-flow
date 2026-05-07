@@ -1,11 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project, DailyScheduleSlot } from "@/lib/types";
 import TaskCard from "@/components/TaskCard";
 import TaskForm from "@/components/TaskForm";
 import DailySchedule from "@/components/DailySchedule";
 import { CategoryBadgeFull } from "@/components/CategoryBadge";
-import { Plus, Filter, Eye, EyeOff, Clock, X } from "lucide-react";
+import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
+import { applyRecurrenceReset, todayKey, weekKey, totalPride, prideThisWeek } from "@/lib/pride";
 
 interface TasksViewProps {
   tasks: Task[];
