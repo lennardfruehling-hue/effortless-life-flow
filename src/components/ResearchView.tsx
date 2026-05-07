@@ -77,10 +77,37 @@ export default function ResearchView({ projects }: Props) {
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [blocks, setBlocks] = useState<NoteBlock[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterProject, setFilterProject] = useState<string | "all">("all");
+  const [groupBy, setGroupBy] = useState<"project" | "tag">("project");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [allTags, setAllTags] = useState<{ id: string; name: string; color: string }[]>([]);
+  const [noteTagMap, setNoteTagMap] = useState<Record<string, string[]>>({});
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const debounce = useDebouncedSaver();
+
+  const loadTagsAndLinks = useCallback(async () => {
+    const [{ data: tags }, { data: links }] = await Promise.all([
+      supabase.from("tags").select("*").order("name"),
+      supabase.from("note_tags").select("note_id, tag_id"),
+    ]);
+    if (tags) setAllTags(tags as any);
+    if (links) {
+      const map: Record<string, string[]> = {};
+      (links as any[]).forEach((l) => {
+        (map[l.note_id] = map[l.note_id] || []).push(l.tag_id);
+      });
+      setNoteTagMap(map);
+    }
+  }, []);
+  useEffect(() => { loadTagsAndLinks(); }, [loadTagsAndLinks]);
+
+  const toggleGroup = (key: string) =>
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
 
   const loadNotes = useCallback(async () => {
     const { data } = await supabase.from("research_notes").select("*").order("updated_at", { ascending: false });
