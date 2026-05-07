@@ -27,7 +27,7 @@ function patchLocalStorage() {
   const origSet = localStorage.setItem.bind(localStorage);
   const origRemove = localStorage.removeItem.bind(localStorage);
   localStorage.setItem = (k: string, v: string) => {
-    origSet(k, v);
+    try { origSet(k, v); } catch (e) { console.warn(`[sync] setItem failed for ${k}`, e); }
     if (activeUserId && KEYS.includes(k as any)) pushDebounced(activeUserId, k, v);
   };
   localStorage.removeItem = (k: string) => {
