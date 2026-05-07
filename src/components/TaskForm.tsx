@@ -5,6 +5,7 @@ import { v4 as uuid } from "uuid";
 import { X, Sparkles } from "lucide-react";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import AssigneePicker from "./AssigneePicker";
+import LocationPicker from "./LocationPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { pridePointsForTask } from "@/lib/pride";
 

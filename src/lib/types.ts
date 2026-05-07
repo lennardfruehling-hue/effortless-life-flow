@@ -34,6 +34,9 @@ export interface Task {
   completedAt?: string;
   projectId?: string;
   location?: string;
+  /** Optional geocoded coordinates for the location (from OSM/Nominatim). */
+  locationLat?: number;
+  locationLon?: number;
   hateMagnitude?: number;
   duration?: number;
   dueDate?: string;
