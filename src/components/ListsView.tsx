@@ -50,7 +50,8 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
   const createList = async () => {
     const name = prompt("List name", "New List");
     if (!name) return;
-    const { data } = await supabase.from("task_lists").insert({ name }).select().single();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data } = await supabase.from("task_lists").insert({ name, created_by: user?.id ?? null }).select().single();
     if (data) { await loadLists(); setActiveId(data.id); }
   };
 
@@ -59,6 +60,13 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
     await supabase.from("task_lists").delete().eq("id", id);
     if (activeId === id) setActiveId(null);
     loadLists();
+  };
+
+  const togglePrivate = async () => {
+    if (!active) return;
+    const next = !active.is_private;
+    setLists(prev => prev.map(l => l.id === active.id ? { ...l, is_private: next } : l));
+    await supabase.from("task_lists").update({ is_private: next }).eq("id", active.id);
   };
 
   const addItem = async (alsoCreateTask = false) => {
