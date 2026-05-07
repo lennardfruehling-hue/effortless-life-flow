@@ -132,6 +132,7 @@ export interface TaskList {
   name: string;
   description?: string | null;
   icon?: string | null;
+  project_id?: string | null;
   created_at: string;
   updated_at: string;
 }

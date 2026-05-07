@@ -143,6 +143,36 @@ export type Database = {
           },
         ]
       }
+      list_tags: {
+        Row: {
+          list_id: string
+          tag_id: string
+        }
+        Insert: {
+          list_id: string
+          tag_id: string
+        }
+        Update: {
+          list_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "list_tags_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "task_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "list_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       note_blocks: {
         Row: {
           block_type: string
@@ -190,6 +220,36 @@ export type Database = {
           },
         ]
       }
+      note_tags: {
+        Row: {
+          note_id: string
+          tag_id: string
+        }
+        Insert: {
+          note_id: string
+          tag_id: string
+        }
+        Update: {
+          note_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "note_tags_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "research_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "note_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       research_notes: {
         Row: {
           created_at: string
@@ -217,6 +277,27 @@ export type Database = {
         }
         Relationships: []
       }
+      tags: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       task_lists: {
         Row: {
           created_at: string
@@ -224,6 +305,7 @@ export type Database = {
           icon: string | null
           id: string
           name: string
+          project_id: string | null
           updated_at: string
         }
         Insert: {
@@ -232,6 +314,7 @@ export type Database = {
           icon?: string | null
           id?: string
           name?: string
+          project_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -240,6 +323,7 @@ export type Database = {
           icon?: string | null
           id?: string
           name?: string
+          project_id?: string | null
           updated_at?: string
         }
         Relationships: []
