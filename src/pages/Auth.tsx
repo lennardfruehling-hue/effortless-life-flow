@@ -17,9 +17,20 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const inviteToken = new URLSearchParams(window.location.search).get("invite");
+
   useEffect(() => {
-    if (!loading && user) navigate("/", { replace: true });
-  }, [user, loading, navigate]);
+    if (loading || !user) return;
+    (async () => {
+      if (inviteToken) {
+        const { data, error } = await supabase.rpc("accept_invite_token", { _token: inviteToken });
+        if (error) toast.error(error.message);
+        else if ((data as any)?.ok) toast.success("Joined household!");
+        else toast.error("Invite invalid or expired");
+      }
+      navigate("/", { replace: true });
+    })();
+  }, [user, loading, navigate, inviteToken]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
