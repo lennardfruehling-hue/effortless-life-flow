@@ -3,12 +3,24 @@ import { CLOUD_KEYS, cloudGet, cloudGetShared, cloudSet, isPersonalKey } from ".
 
 const KEYS = Object.values(CLOUD_KEYS);
 const debounceTimers: Record<string, number> = {};
+const suppressUntil: Record<string, number> = {};
+const lastPushedHash: Record<string, string> = {};
 let patched = false;
 let activeUserId: string | null = null;
+
+// Mark a key as "just received from cloud" so we don't immediately echo it back.
+function suppressPush(key: string, ms = 3000) {
+  suppressUntil[key] = Date.now() + ms;
+}
 
 function pushDebounced(userId: string, key: string, raw: string | null) {
   if (debounceTimers[key]) window.clearTimeout(debounceTimers[key]);
   debounceTimers[key] = window.setTimeout(() => {
+    // Drop pushes that are echoes of a value we just hydrated from cloud.
+    if (Date.now() < (suppressUntil[key] ?? 0)) {
+      const hash = raw ?? "null";
+      if (lastPushedHash[key] === hash) return;
+    }
     let value: any = null;
     if (raw !== null) {
       try {
@@ -17,6 +29,7 @@ function pushDebounced(userId: string, key: string, raw: string | null) {
         value = raw;
       }
     }
+    lastPushedHash[key] = raw ?? "null";
     cloudSet(userId, key, value);
   }, 500) as unknown as number;
 }
