@@ -542,6 +542,8 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
         const bullets = extractBullets(sourceText);
 
         if (bullets.length > 0) {
+          const { data: userData } = await supabase.auth.getUser();
+          const myId = userData.user?.id;
           const newTasks: Task[] = [];
           for (const line of bullets) {
             const catsMatch = line.match(/categor(?:y|ies)\s*:?\s*([A-K0-9,\s]+)/i);
@@ -574,6 +576,7 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
               dueDate,
               dueTime,
               assigneeId: null,
+              createdBy: myId,
             });
           }
           if (newTasks.length > 0) {
@@ -586,6 +589,7 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
       if (taskTitle && !isMultiTaskIntent) {
         const categories = extractCategories(assistantContent);
         const projectId = extractProjectId(assistantContent, projects);
+        const { data: userData } = await supabase.auth.getUser();
         onSaveTasks((currentTasks) => [
           ...currentTasks,
           {
@@ -595,6 +599,7 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
             completed: false,
             createdAt: new Date().toISOString(),
             projectId,
+            createdBy: userData.user?.id,
           },
         ]);
         createdTaskTitle = taskTitle;
