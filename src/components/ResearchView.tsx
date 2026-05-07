@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   Plus, Trash2, BookOpen, FileText, Image as ImageIcon, Paperclip,
   CheckSquare, Square, Type, Heading1, Heading2, Heading3, List as ListIcon,
-  Minus, Quote, Code, Loader2, Link2, X, Lock, Unlock
+  Minus, Quote, Code, Loader2, Link2, X, Lock, Unlock, ChevronRight, ChevronDown, FolderOpen, Tag as TagIcon
 } from "lucide-react";
 import TagPicker, { TagChips } from "./TagPicker";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
@@ -77,10 +77,37 @@ export default function ResearchView({ projects }: Props) {
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [blocks, setBlocks] = useState<NoteBlock[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterProject, setFilterProject] = useState<string | "all">("all");
+  const [groupBy, setGroupBy] = useState<"project" | "tag">("project");
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [allTags, setAllTags] = useState<{ id: string; name: string; color: string }[]>([]);
+  const [noteTagMap, setNoteTagMap] = useState<Record<string, string[]>>({});
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const debounce = useDebouncedSaver();
+
+  const loadTagsAndLinks = useCallback(async () => {
+    const [{ data: tags }, { data: links }] = await Promise.all([
+      supabase.from("tags").select("*").order("name"),
+      supabase.from("note_tags").select("note_id, tag_id"),
+    ]);
+    if (tags) setAllTags(tags as any);
+    if (links) {
+      const map: Record<string, string[]> = {};
+      (links as any[]).forEach((l) => {
+        (map[l.note_id] = map[l.note_id] || []).push(l.tag_id);
+      });
+      setNoteTagMap(map);
+    }
+  }, []);
+  useEffect(() => { loadTagsAndLinks(); }, [loadTagsAndLinks]);
+
+  const toggleGroup = (key: string) =>
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
 
   const loadNotes = useCallback(async () => {
     const { data } = await supabase.from("research_notes").select("*").order("updated_at", { ascending: false });
@@ -95,10 +122,10 @@ export default function ResearchView({ projects }: Props) {
 
   useEffect(() => { loadNotes(); }, [loadNotes]);
   useEffect(() => {
-    const handler = () => { loadNotes(); if (activeNoteId) loadBlocks(activeNoteId); };
+    const handler = () => { loadNotes(); loadTagsAndLinks(); if (activeNoteId) loadBlocks(activeNoteId); };
     window.addEventListener("research-updated", handler);
     return () => window.removeEventListener("research-updated", handler);
-  }, [loadNotes, loadBlocks, activeNoteId]);
+  }, [loadNotes, loadBlocks, loadTagsAndLinks, activeNoteId]);
 
   useEffect(() => {
     if (activeNoteId) loadBlocks(activeNoteId);
@@ -106,13 +133,39 @@ export default function ResearchView({ projects }: Props) {
   }, [activeNoteId, loadBlocks]);
 
   const activeNote = notes.find(n => n.id === activeNoteId);
-  const filteredNotes = filterProject === "all" ? notes : notes.filter(n => n.project_id === filterProject);
+
+  // Build groups
+  const UNCATEGORIZED = "__none__";
+  const groups: { key: string; label: string; color?: string; notes: ResearchNoteRow[] }[] = (() => {
+    if (groupBy === "project") {
+      const map = new Map<string, ResearchNoteRow[]>();
+      notes.forEach(n => {
+        const key = n.project_id || UNCATEGORIZED;
+        (map.get(key) || map.set(key, []).get(key)!).push(n);
+      });
+      const result: { key: string; label: string; notes: ResearchNoteRow[] }[] = [];
+      projects.forEach(p => {
+        if (map.has(p.id)) result.push({ key: p.id, label: p.name, notes: map.get(p.id)! });
+      });
+      if (map.has(UNCATEGORIZED)) result.push({ key: UNCATEGORIZED, label: "No project", notes: map.get(UNCATEGORIZED)! });
+      return result;
+    } else {
+      const result: { key: string; label: string; color?: string; notes: ResearchNoteRow[] }[] = [];
+      allTags.forEach(t => {
+        const inTag = notes.filter(n => (noteTagMap[n.id] || []).includes(t.id));
+        if (inTag.length > 0) result.push({ key: t.id, label: t.name, color: t.color, notes: inTag });
+      });
+      const untagged = notes.filter(n => !(noteTagMap[n.id] && noteTagMap[n.id].length > 0));
+      if (untagged.length > 0) result.push({ key: UNCATEGORIZED, label: "Untagged", notes: untagged });
+      return result;
+    }
+  })();
 
   const createNote = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     const { data } = await supabase
       .from("research_notes")
-      .insert({ title: "Untitled", project_id: filterProject === "all" ? null : filterProject, created_by: user?.id ?? null })
+      .insert({ title: "Untitled", project_id: null, created_by: user?.id ?? null })
       .select().single();
     if (data) {
       await supabase.from("note_blocks").insert({ note_id: data.id, position: 0, block_type: "text", content: "" });
@@ -187,61 +240,120 @@ export default function ResearchView({ projects }: Props) {
   return (
     <div className="flex-1 flex h-screen overflow-hidden">
       {/* Notes sidebar */}
+      {sidebarCollapsed ? (
+        <div className="w-10 flex-shrink-0 border-r border-border bg-card/50 flex flex-col items-center pt-3 gap-2">
+          <button
+            onClick={() => setSidebarCollapsed(false)}
+            className="p-1.5 text-muted-foreground hover:text-foreground"
+            title="Expand notes sidebar"
+          >
+            <ChevronRight size={16} />
+          </button>
+          <button onClick={createNote} className="bg-primary text-primary-foreground p-1.5 rounded hover:opacity-90" title="New note">
+            <Plus size={14} />
+          </button>
+        </div>
+      ) : (
       <div className="w-56 lg:w-72 flex-shrink-0 border-r border-border bg-card/50 flex flex-col">
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-              <BookOpen size={18} className="text-primary" /> Notes
+        <div className="p-3 border-b border-border space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <BookOpen size={16} className="text-primary" /> Notes
             </h2>
-            <button onClick={createNote} className="bg-primary text-primary-foreground p-1.5 rounded hover:opacity-90" title="New note">
-              <Plus size={14} />
+            <div className="flex items-center gap-1">
+              <button onClick={createNote} className="bg-primary text-primary-foreground p-1.5 rounded hover:opacity-90" title="New note">
+                <Plus size={12} />
+              </button>
+              <button
+                onClick={() => setSidebarCollapsed(true)}
+                className="text-muted-foreground hover:text-foreground p-1"
+                title="Collapse sidebar"
+              >
+                <ChevronDown size={12} className="rotate-90" />
+              </button>
+            </div>
+          </div>
+          {/* Group-by submenu */}
+          <div className="flex items-center bg-secondary/60 rounded-md p-0.5 text-[11px] font-medium">
+            <button
+              onClick={() => setGroupBy("project")}
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded transition-colors ${
+                groupBy === "project" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <FolderOpen size={11} /> By Project
+            </button>
+            <button
+              onClick={() => setGroupBy("tag")}
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded transition-colors ${
+                groupBy === "tag" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <TagIcon size={11} /> By Tag
             </button>
           </div>
-          <select
-            value={filterProject}
-            onChange={(e) => setFilterProject(e.target.value as any)}
-            className="w-full bg-secondary border border-border rounded px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            <option value="all">All projects</option>
-            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
         </div>
         <div className="flex-1 overflow-y-auto scrollbar-thin p-2 space-y-1">
           {loading ? (
             <div className="flex justify-center p-4"><Loader2 size={16} className="animate-spin text-muted-foreground" /></div>
-          ) : filteredNotes.length === 0 ? (
+          ) : groups.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-8">No notes yet. Click + to start.</p>
-          ) : filteredNotes.map(note => {
-            const proj = projects.find(p => p.id === note.project_id);
+          ) : groups.map(group => {
+            const isCollapsed = collapsedGroups.has(`${groupBy}:${group.key}`);
             return (
-              <button
-                key={note.id}
-                onClick={() => setActiveNoteId(note.id)}
-                className={`w-full text-left px-3 py-2 rounded text-sm group transition-colors ${
-                  activeNoteId === note.id ? "bg-primary/15 text-primary" : "text-foreground hover:bg-secondary"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span>{note.icon || "📄"}</span>
-                  <span className="truncate flex-1">{note.title || "Untitled"}</span>
-                  {note.assignee_id && <AssigneeAvatar member={byId(note.assignee_id)} />}
-                  <Trash2
-                    size={12}
-                    onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }}
-                    className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
-                  />
-                </div>
-                {proj && (
-                  <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1 ml-6">
-                    <Link2 size={9} /> {proj.name}
+              <div key={group.key} className="space-y-0.5">
+                <button
+                  onClick={() => toggleGroup(`${groupBy}:${group.key}`)}
+                  className="w-full flex items-center gap-1.5 px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground rounded transition-colors"
+                >
+                  {isCollapsed ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
+                  {group.color && (
+                    <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ backgroundColor: group.color }} />
+                  )}
+                  <span className="truncate flex-1 text-left">{group.label}</span>
+                  <span className="text-[10px] font-mono opacity-70">{group.notes.length}</span>
+                </button>
+                {!isCollapsed && (
+                  <div className="ml-2 pl-2 border-l border-border/60 space-y-0.5">
+                    {group.notes.map(note => {
+                      const proj = projects.find(p => p.id === note.project_id);
+                      return (
+                        <button
+                          key={note.id}
+                          onClick={() => setActiveNoteId(note.id)}
+                          className={`w-full text-left px-2 py-1.5 rounded text-sm group transition-colors ${
+                            activeNoteId === note.id ? "bg-primary/15 text-primary" : "text-foreground hover:bg-secondary"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs">{note.icon || "📄"}</span>
+                            <span className="truncate flex-1 text-xs">{note.title || "Untitled"}</span>
+                            {note.assignee_id && <AssigneeAvatar member={byId(note.assignee_id)} />}
+                            <Trash2
+                              size={11}
+                              onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }}
+                              className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
+                            />
+                          </div>
+                          {groupBy === "tag" && proj && (
+                            <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1 ml-5">
+                              <Link2 size={9} /> {proj.name}
+                            </div>
+                          )}
+                          {groupBy === "project" && (
+                            <div className="ml-5 mt-0.5"><TagChips kind="note" ownerId={note.id} /></div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
-                <div className="ml-6 mt-0.5"><TagChips kind="note" ownerId={note.id} /></div>
-              </button>
+              </div>
             );
           })}
         </div>
       </div>
+      )}
 
       {/* Editor */}
       <div className="flex-1 overflow-y-auto scrollbar-thin">
