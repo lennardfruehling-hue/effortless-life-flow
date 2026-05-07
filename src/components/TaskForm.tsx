@@ -66,7 +66,7 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
     onSubmit(task);
   };
 
-  const projectedPride = pridePointsForTask({ ...((editTask || {}) as Task), duration, makesProud, completed: true } as Task);
+  const projectedPride = pridePointsForTask({ ...((editTask || {}) as Task), duration, makesProud: categories.includes("H"), completed: true } as Task);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
