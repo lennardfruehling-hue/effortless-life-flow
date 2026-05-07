@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Task } from "@/lib/types";
 import { computeConsistency, ionianProgress, IONIAN_GOAL } from "@/lib/pride";
-import { Flame, Trophy, Sparkles, Compass } from "lucide-react";
+import { Flame, Trophy, Compass } from "lucide-react";
 
 interface Props {
   tasks: Task[];
