@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronRight } from "lucide-react";
 
@@ -7,30 +7,32 @@ type FlowKind = "start" | "midday" | "evening";
 interface Step {
   title: string;
   body: string;
+  /** CSS selector of the element this step targets. */
+  target?: string;
 }
 
 const FLOWS: Record<FlowKind, { label: string; steps: Step[] }> = {
   start: {
     label: "Start Serpent 🐍",
     steps: [
-      { title: "Tasks · Add Daily Tasks", body: "Open Tasks and add today's daily tasks." },
-      { title: "Check Tasks", body: "Review urgency of existing tasks (A1/B1)." },
-      { title: "Add Tasks", body: "Add any additional tasks for today." },
-      { title: "Produce Schedule", body: "Open the 24h Schedule and place tasks with realistic time + buffer." },
-      { title: "Complete Schedule", body: "Sanity-check: is the day actually doable?" },
-      { title: "Send task list per email", body: "Use the Email schedule button in the Schedule panel." },
+      { title: "Open Tasks", body: "Go to the Tasks view to plan your day.", target: '[data-tour="nav-tasks"]' },
+      { title: "Add Daily Tasks", body: "Use Add Task to drop in today's daily items.", target: '[data-tour="add-task"]' },
+      { title: "Check Tasks", body: "Review urgency on existing tasks (A1/B1).", target: '[data-tour="add-task"]' },
+      { title: "Open Schedule", body: "Open the 24h Schedule panel.", target: '[data-tour="schedule-toggle"]' },
+      { title: "Produce & Complete Schedule", body: "Drag tasks in, set realistic time + buffer, sanity-check it's doable.", target: '[data-tour="schedule-panel"]' },
+      { title: "Email schedule", body: "Send the schedule to yourself by email.", target: '[data-tour="email-schedule"]' },
     ],
   },
   midday: {
     label: "Midday Check 🐍",
     steps: [
-      { title: "Daily Serpent list · A1", body: "Check daily serpent list for progress on A1 items." },
+      { title: "Daily Serpent list · A1", body: "Check progress on A1 daily items.", target: '[data-tour="nav-consistency"]' },
     ],
   },
   evening: {
     label: "Evening Check 🐍",
     steps: [
-      { title: "Daily Serpent list · A1", body: "Review daily serpent list and check non-negotiable (Célida · K) items." },
+      { title: "Daily Serpent list · A1", body: "Review and check non-negotiable (Célida · K) items.", target: '[data-tour="nav-consistency"]' },
     ],
   },
 };
@@ -63,6 +65,54 @@ function saveState(s: FlowState) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
 }
 
+interface Rect {
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+}
+
+function useTargetRect(selector: string | undefined): Rect | null {
+  const [rect, setRect] = useState<Rect | null>(null);
+
+  useLayoutEffect(() => {
+    if (!selector) {
+      setRect(null);
+      return;
+    }
+    let raf = 0;
+    const measure = () => {
+      const el = document.querySelector(selector) as HTMLElement | null;
+      if (!el) {
+        setRect(null);
+      } else {
+        const r = el.getBoundingClientRect();
+        setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+        // ensure it's in view
+        if (r.top < 0 || r.bottom > window.innerHeight) {
+          el.scrollIntoView({ block: "center", behavior: "smooth" });
+        }
+      }
+    };
+    measure();
+    const onChange = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(measure);
+    };
+    window.addEventListener("resize", onChange);
+    window.addEventListener("scroll", onChange, true);
+    const interval = window.setInterval(measure, 500);
+    return () => {
+      window.removeEventListener("resize", onChange);
+      window.removeEventListener("scroll", onChange, true);
+      clearInterval(interval);
+      cancelAnimationFrame(raf);
+    };
+  }, [selector]);
+
+  return rect;
+}
+
 export default function SerpentFlow() {
   const [state, setState] = useState<FlowState>(loadState);
   const [active, setActive] = useState<FlowKind | null>(null);
@@ -79,7 +129,6 @@ export default function SerpentFlow() {
     if (!active) return;
     const flow = FLOWS[active];
     if (stepIdx + 1 >= flow.steps.length) {
-      // complete
       setState((s) => ({
         ...s,
         startCompleted: active === "start" ? true : s.startCompleted,
@@ -98,9 +147,31 @@ export default function SerpentFlow() {
   const showMidday = state.startCompleted && !state.middayCompleted && hour >= 11 && hour < 17;
   const showEvening = !state.eveningCompleted && hour >= 17;
 
+  const currentStep = active ? FLOWS[active].steps[stepIdx] : undefined;
+  const targetRect = useTargetRect(currentStep?.target);
+
+  // Compute popover position: prefer right side; fall back below; clamp to viewport.
+  const popover = (() => {
+    if (!targetRect) return { top: 24, left: window.innerWidth / 2 - 180 };
+    const W = 320;
+    const margin = 12;
+    let left = targetRect.left + targetRect.width + margin;
+    let top = targetRect.top;
+    if (left + W > window.innerWidth - 8) {
+      // place below or above
+      left = Math.max(8, Math.min(window.innerWidth - W - 8, targetRect.left));
+      top = targetRect.top + targetRect.height + margin;
+      if (top + 180 > window.innerHeight) {
+        top = Math.max(8, targetRect.top - 180 - margin);
+      }
+    }
+    top = Math.max(8, Math.min(window.innerHeight - 180, top));
+    return { top, left };
+  })();
+
   return (
     <>
-      {/* Floating Start Serpent button — center of screen on first show */}
+      {/* Floating Start Serpent button */}
       <AnimatePresence>
         {showStart && !active && (
           <motion.button
@@ -116,7 +187,7 @@ export default function SerpentFlow() {
         )}
       </AnimatePresence>
 
-      {/* Midday & Evening prompts as small bottom-right tooltips */}
+      {/* Midday & Evening prompts */}
       <div className="fixed bottom-4 right-4 z-40 flex flex-col gap-2 items-end">
         {showMidday && !active && (
           <button
@@ -136,38 +207,56 @@ export default function SerpentFlow() {
         )}
       </div>
 
-      {/* Step tooltip overlay */}
+      {/* Highlight ring + anchored tooltip */}
       <AnimatePresence>
-        {active && (
-          <motion.div
-            key="step"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[calc(100%-2rem)] bg-card border-2 border-primary rounded-lg shadow-2xl p-4"
-          >
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">🐍</span>
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">
-                    {FLOWS[active].label} · Step {stepIdx + 1} of {FLOWS[active].steps.length}
-                  </div>
-                  <div className="text-sm font-semibold text-foreground">{FLOWS[active].steps[stepIdx].title}</div>
-                </div>
-              </div>
-              <button onClick={() => setActive(null)} className="text-muted-foreground hover:text-foreground">
-                <X size={16} />
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground mb-3">{FLOWS[active].steps[stepIdx].body}</p>
-            <button
-              onClick={next}
-              className="w-full flex items-center justify-center gap-1 bg-primary text-primary-foreground rounded px-3 py-2 text-xs font-medium hover:opacity-90"
+        {active && currentStep && (
+          <>
+            {targetRect && (
+              <motion.div
+                key="ring"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed pointer-events-none z-40 rounded-lg ring-4 ring-primary ring-offset-2 ring-offset-background animate-pulse-glow"
+                style={{
+                  top: targetRect.top - 4,
+                  left: targetRect.left - 4,
+                  width: targetRect.width + 8,
+                  height: targetRect.height + 8,
+                }}
+              />
+            )}
+            <motion.div
+              key="step"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed z-50 w-[320px] bg-card border-2 border-primary rounded-lg shadow-2xl p-4"
+              style={{ top: popover.top, left: popover.left }}
             >
-              {stepIdx + 1 >= FLOWS[active].steps.length ? "Complete" : "Next"} <ChevronRight size={14} />
-            </button>
-          </motion.div>
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🐍</span>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">
+                      {FLOWS[active].label} · Step {stepIdx + 1} of {FLOWS[active].steps.length}
+                    </div>
+                    <div className="text-sm font-semibold text-foreground">{currentStep.title}</div>
+                  </div>
+                </div>
+                <button onClick={() => setActive(null)} className="text-muted-foreground hover:text-foreground">
+                  <X size={16} />
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mb-3">{currentStep.body}</p>
+              <button
+                onClick={next}
+                className="w-full flex items-center justify-center gap-1 bg-primary text-primary-foreground rounded px-3 py-2 text-xs font-medium hover:opacity-90"
+              >
+                {stepIdx + 1 >= FLOWS[active].steps.length ? "Complete" : "Next"} <ChevronRight size={14} />
+              </button>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </>

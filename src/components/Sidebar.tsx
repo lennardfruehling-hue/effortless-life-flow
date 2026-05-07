@@ -71,6 +71,7 @@ export default function Sidebar({
           return (
             <button
               key={mode}
+              data-tour={`nav-${mode}`}
               onClick={() => onChange(mode)}
               title={label}
               
