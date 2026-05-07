@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronRight } from "lucide-react";
+import { X, ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
 import {
   loadFlowState,
   saveFlowState,
@@ -238,44 +238,19 @@ export default function SerpentFlow() {
         )}
       </AnimatePresence>
 
-      {/* Permanent trio at bottom center */}
+      {/* Permanent trio at bottom center — collapsible to a thin tab */}
       {!active && (
-        <div className="fixed bottom-3 left-1/2 -translate-x-1/2 z-40 flex items-end gap-4 px-4 py-2 rounded-2xl bg-sidebar/85 backdrop-blur border border-amber-300/30 shadow-xl">
-          {TRIO.map(({ kind, img, label, done }) => (
-            <button
-              key={kind}
-              onClick={() => startFlow(kind)}
-              title={label + (done ? " — completed" : "")}
-              className="group relative flex flex-col items-center gap-1 w-16"
-            >
-              <div className={`relative w-12 h-12 rounded-full overflow-hidden border-2 transition-all ${done ? "border-emerald-400" : "border-amber-300/50 group-hover:border-amber-300"} group-hover:scale-110`}>
-                <img src={img} alt={label} className="w-full h-full object-contain bg-sidebar" />
-              </div>
-              {done && (
-                <span
-                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border border-emerald-200 flex items-center justify-center text-[10px] text-white font-bold shadow"
-                  aria-label="completed"
-                >
-                  ✓
-                </span>
-              )}
-              <span className="text-[9px] text-white/90 text-center leading-tight font-medium whitespace-nowrap">{label}</span>
-            </button>
-          ))}
-          <button
-            onClick={() => {
-              if (!confirm("Reset today's Serpent flow? Start, Midday and Evening will be marked uncompleted and the phase cleared.")) return;
-              setState((s) => ({ ...s, startCompleted: false, middayCompleted: false, eveningCompleted: false }));
-              setManualPhase(null);
-              setActive(null);
-              setStepIdx(0);
-            }}
-            title="Reset today's Serpent status"
-            className="ml-2 self-center w-8 h-8 rounded-full bg-white/5 border border-white/15 text-white/70 hover:text-white hover:border-white/40 transition flex items-center justify-center text-sm"
-          >
-            ↻
-          </button>
-        </div>
+        <FlowTrioDock
+          trio={TRIO}
+          onStart={startFlow}
+          onReset={() => {
+            if (!confirm("Reset today's Serpent flow? Start, Midday and Evening will be marked uncompleted and the phase cleared.")) return;
+            setState((s) => ({ ...s, startCompleted: false, middayCompleted: false, eveningCompleted: false }));
+            setManualPhase(null);
+            setActive(null);
+            setStepIdx(0);
+          }}
+        />
       )}
 
       {/* Highlight ring + anchored tooltip */}
@@ -339,5 +314,85 @@ export default function SerpentFlow() {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+// ============================================================================
+// FlowTrioDock — permanent bottom-center trio with a collapse-to-tab affordance.
+// Persists collapsed state per-browser so the user's choice sticks.
+// ============================================================================
+type TrioItem = { kind: FlowKind; img: string; label: string; done: boolean };
+
+function FlowTrioDock({
+  trio,
+  onStart,
+  onReset,
+}: {
+  trio: TrioItem[];
+  onStart: (k: FlowKind) => void;
+  onReset: () => void;
+}) {
+  const KEY = "serpent-trio-collapsed";
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try { return localStorage.getItem(KEY) === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(KEY, collapsed ? "1" : "0"); } catch {}
+  }, [collapsed]);
+
+  if (collapsed) {
+    const doneCount = trio.filter(t => t.done).length;
+    return (
+      <button
+        onClick={() => setCollapsed(false)}
+        title="Show Serpent flow"
+        className="fixed bottom-0 left-1/2 -translate-x-1/2 z-40 px-4 py-1 rounded-t-lg bg-sidebar/90 backdrop-blur border border-b-0 border-amber-300/30 shadow-lg flex items-center gap-2 text-white/90 hover:text-white hover:bg-sidebar transition"
+      >
+        <span className="text-xs font-mono uppercase tracking-wider">🐍 Flow {doneCount}/3</span>
+        <ChevronUp size={14} />
+      </button>
+    );
+  }
+
+  return (
+    <div className="fixed bottom-3 left-1/2 -translate-x-1/2 z-40 flex items-end gap-4 px-4 py-2 rounded-2xl bg-sidebar/85 backdrop-blur border border-amber-300/30 shadow-xl">
+      {trio.map(({ kind, img, label, done }) => (
+        <button
+          key={kind}
+          onClick={() => onStart(kind)}
+          title={label + (done ? " — completed" : "")}
+          className="group relative flex flex-col items-center gap-1 w-16"
+        >
+          <div className={`relative w-12 h-12 rounded-full overflow-hidden border-2 transition-all ${done ? "border-emerald-400" : "border-amber-300/50 group-hover:border-amber-300"} group-hover:scale-110`}>
+            <img src={img} alt={label} className="w-full h-full object-contain bg-sidebar" />
+          </div>
+          {done && (
+            <span
+              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border border-emerald-200 flex items-center justify-center text-[10px] text-white font-bold shadow"
+              aria-label="completed"
+            >
+              ✓
+            </span>
+          )}
+          <span className="text-[9px] text-white/90 text-center leading-tight font-medium whitespace-nowrap">{label}</span>
+        </button>
+      ))}
+      {/* Reset button — solid black so it's visible against the dock backdrop */}
+      <button
+        onClick={onReset}
+        title="Reset today's Serpent status"
+        className="ml-2 self-center w-8 h-8 rounded-full bg-black text-white border border-white/30 hover:bg-neutral-900 hover:border-white/60 transition flex items-center justify-center text-sm shadow"
+      >
+        ↻
+      </button>
+      {/* Collapse toggle */}
+      <button
+        onClick={() => setCollapsed(true)}
+        title="Collapse Serpent flow"
+        className="self-center w-7 h-7 rounded-full bg-white/5 text-white/70 border border-white/15 hover:text-white hover:border-white/40 transition flex items-center justify-center"
+      >
+        <ChevronDown size={14} />
+      </button>
+    </div>
   );
 }
