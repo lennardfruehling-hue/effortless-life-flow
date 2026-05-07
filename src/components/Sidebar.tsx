@@ -42,14 +42,9 @@ export default function Sidebar({
         className="pointer-events-none absolute inset-0 bg-sidebar/40"
       />
       <div className="relative flex flex-col h-full">
-      <div className="px-4 pt-6 pb-4 flex flex-col items-center text-center">
-        <img
-          src={serpentLogo}
-          alt="Serpent List logo"
-          className="w-12 h-12 md:w-16 md:h-16 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
-        />
+      <div className="px-4 pt-3 pb-3 flex flex-col items-center text-center">
         <h1
-          className="hidden md:block mt-2 text-white leading-none"
+          className="hidden md:block text-white leading-none"
           style={{ fontFamily: "'Great Vibes', 'Allura', cursive", fontSize: "2.5rem", textShadow: "0 2px 10px rgba(0,0,0,0.7)" }}
         >
           Serpent List
