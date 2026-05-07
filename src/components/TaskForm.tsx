@@ -10,12 +10,20 @@ import { pridePointsForTask } from "@/lib/pride";
 
 interface TaskFormProps {
   projects: Project[];
+  tasks?: Task[];
   onSubmit: (task: Task) => void;
   onClose: () => void;
   editTask?: Task;
 }
 
-export default function TaskForm({ projects, onSubmit, onClose, editTask }: TaskFormProps) {
+export default function TaskForm({ projects, tasks = [], onSubmit, onClose, editTask }: TaskFormProps) {
+  const knownLocations = Array.from(
+    new Set(
+      tasks
+        .map((t) => (t.location || "").trim())
+        .filter((l) => l.length > 0)
+    )
+  ).sort((a, b) => a.localeCompare(b));
   const [title, setTitle] = useState(editTask?.title || "");
   const [description, setDescription] = useState(editTask?.description || "");
   const [categories, setCategories] = useState<Category[]>(editTask?.categories || []);
@@ -195,17 +203,46 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
           </div>
         )}
 
-        {categories.includes("D") && (
-          <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Location</label>
-            <input
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-              placeholder="Where is this?"
-            />
-          </div>
-        )}
+        <div>
+          <label className="text-sm text-muted-foreground mb-1 block">
+            Location {categories.includes("D") ? <span className="text-destructive">*</span> : <span className="text-muted-foreground/60">(optional)</span>}
+          </label>
+          <input
+            list="task-known-locations"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            placeholder={categories.includes("D") ? "Where is this? (e.g. Downtown, Home, Office)" : "Pick or type a place"}
+          />
+          {knownLocations.length > 0 && (
+            <datalist id="task-known-locations">
+              {knownLocations.map((loc) => (
+                <option key={loc} value={loc} />
+              ))}
+            </datalist>
+          )}
+          {knownLocations.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {knownLocations.slice(0, 8).map((loc) => (
+                <button
+                  key={loc}
+                  type="button"
+                  onClick={() => setLocation(loc)}
+                  className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+                    location === loc
+                      ? "bg-cat-d/20 text-cat-d border-cat-d/40"
+                      : "text-muted-foreground border-border hover:border-cat-d/40 hover:text-cat-d"
+                  }`}
+                >
+                  {loc}
+                </button>
+              ))}
+            </div>
+          )}
+          {categories.includes("D") && (
+            <p className="text-[10px] text-muted-foreground mt-1">Category D · Nearby — group with other tasks at the same place.</p>
+          )}
+        </div>
 
         {projects.length > 0 && (
           <div>
