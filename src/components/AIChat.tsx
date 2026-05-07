@@ -64,7 +64,23 @@ function extractNoteTopic(input: string) {
 
 function extractListName(input: string) {
   const match = input.trim().match(LIST_COMMAND_REGEX);
-  return match ? (match[1] || match[2] || "").trim() : "";
+  if (match) return (match[1] || match[2] || "").trim();
+  // Fallback: any "list" mention + quoted name (e.g. save in "Lists", under collection "X")
+  if (/\blists?\b/i.test(input)) {
+    const q = input.match(/["\u201C\u201D']([^"\u201C\u201D'\n]{1,60})["\u201C\u201D']/);
+    if (q) return q[1].trim();
+  }
+  return "";
+}
+
+function extractListItemsFromUser(input: string, listName: string): string[] {
+  // Strip quoted segments (likely the list name itself) before scanning lines
+  const stripped = input.replace(/["\u201C\u201D']([^"\u201C\u201D'\n]{1,60})["\u201C\u201D']/g, " ");
+  const skipPattern = /^(save|add|create|new|make|put|start|build|try|again|ry|the|a|an|with|entries?|following|in|to|on|into|for|list|lists)\b/i;
+  return stripped
+    .split(/\n+/)
+    .map(l => l.trim().replace(/^([-*•]|\d+[.)])\s+/, "").replace(/[,;:.]+$/, "").trim())
+    .filter(l => l.length > 0 && l.length <= 120 && !skipPattern.test(l) && l.toLowerCase() !== listName.toLowerCase());
 }
 
 async function createResearchNote(title: string, body: string) {
