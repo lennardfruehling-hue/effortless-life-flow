@@ -278,8 +278,10 @@ export type Database = {
         Row: {
           assignee_id: string | null
           created_at: string
+          created_by: string | null
           icon: string | null
           id: string
+          is_private: boolean
           project_id: string | null
           title: string
           updated_at: string
@@ -287,8 +289,10 @@ export type Database = {
         Insert: {
           assignee_id?: string | null
           created_at?: string
+          created_by?: string | null
           icon?: string | null
           id?: string
+          is_private?: boolean
           project_id?: string | null
           title?: string
           updated_at?: string
@@ -296,8 +300,10 @@ export type Database = {
         Update: {
           assignee_id?: string | null
           created_at?: string
+          created_by?: string | null
           icon?: string | null
           id?: string
+          is_private?: boolean
           project_id?: string | null
           title?: string
           updated_at?: string
@@ -329,9 +335,11 @@ export type Database = {
         Row: {
           assignee_id: string | null
           created_at: string
+          created_by: string | null
           description: string | null
           icon: string | null
           id: string
+          is_private: boolean
           name: string
           project_id: string | null
           updated_at: string
@@ -339,9 +347,11 @@ export type Database = {
         Insert: {
           assignee_id?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           icon?: string | null
           id?: string
+          is_private?: boolean
           name?: string
           project_id?: string | null
           updated_at?: string
@@ -349,9 +359,11 @@ export type Database = {
         Update: {
           assignee_id?: string | null
           created_at?: string
+          created_by?: string | null
           description?: string | null
           icon?: string | null
           id?: string
+          is_private?: boolean
           name?: string
           project_id?: string | null
           updated_at?: string

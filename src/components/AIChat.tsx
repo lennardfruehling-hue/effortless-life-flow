@@ -44,6 +44,7 @@ const TASK_COMMAND_REGEX = /(?:add|create|new|save|make|put)\s+(?:(?:a|an|the)[.
 const PROJECT_COMMAND_REGEX = /(?:add|create|new|save|make|start|put)\s+(?:a\s+|an\s+|the\s+)?project\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into|on)\s+(?:the\s+|my\s+)?(?:projects?|life[- ]?plan|plan))?(?:[.!?]|$)/i;
 const NOTE_COMMAND_REGEX = /(?:add|create|new|save|make|write|put)\s+(?:a\s+|an\s+|the\s+)?(?:research\s+)?note\s+(?:called\s+|named\s+|about\s+|on\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into)\s+(?:the\s+|my\s+)?(?:notes?|research))?(?:[.!?]|$)/i;
 const LIST_COMMAND_REGEX = /(?:add|create|new|save|make|start|build|put)\s+(?:a\s+|an\s+|the\s+)?(?:packing\s+|shopping\s+|todo\s+|to-do\s+)?list\s+(?:called\s+|named\s+|for\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^,;:.!?\n]+?))(?:\s+(?:with|having|containing|to|in|into|on)\b|[,;:.!?\n]|$)/i;
+const EVENT_COMMAND_REGEX = /(?:add|create|new|schedule|put|book)\s+(?:a\s+|an\s+|the\s+)?(?:calendar\s+)?(?:event|meeting|appointment|reminder)\s+(?:called\s+|named\s+|for\s+|titled\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^,;:.!?\n]+?))(?:\s+(?:on|at|for)\s+|[,;:.!?\n]|$)/i;
 const CATEGORY_CODE_REGEX = /\b(A1|A2|A3|B1|B2|C|D|E|F|G|H|I|J)\b(?=\s*:|\b)/g;
 const LIFE_PLAN_PROJECT_REGEX = /\b(lp-[a-z0-9]+)\b/i;
 
@@ -84,9 +85,10 @@ function extractListItemsFromUser(input: string, listName: string): string[] {
 }
 
 async function createResearchNote(title: string, body: string) {
+  const { data: { user } } = await supabase.auth.getUser();
   const { data } = await supabase
     .from("research_notes")
-    .insert({ title })
+    .insert({ title, created_by: user?.id ?? null })
     .select().single();
   if (!data) return null;
   const blocks = body
@@ -108,7 +110,8 @@ async function createResearchNote(title: string, body: string) {
 }
 
 async function createListWithItems(name: string, items: string[]) {
-  const { data } = await supabase.from("task_lists").insert({ name }).select().single();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data } = await supabase.from("task_lists").insert({ name, created_by: user?.id ?? null }).select().single();
   if (!data) return null;
   if (items.length > 0) {
     await supabase.from("list_items").insert(
@@ -117,6 +120,111 @@ async function createListWithItems(name: string, items: string[]) {
   }
   window.dispatchEvent(new CustomEvent("lists-updated"));
   return data.id as string;
+}
+
+// ===== Calendar event parsing =====
+const MONTHS_MAP: Record<string, number> = {
+  jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,may:4,jun:5,june:5,
+  jul:6,july:6,aug:7,august:7,sep:8,sept:8,september:8,oct:9,october:9,nov:10,november:10,dec:11,december:11,
+};
+
+function parseEventDateTime(input: string, ref = new Date()): { start: string; end: string; allDay: boolean } | null {
+  const lower = input.toLowerCase();
+  let date: Date | null = null;
+
+  // today / tomorrow
+  if (/\btoday\b/.test(lower)) date = new Date(ref);
+  else if (/\btomorrow\b/.test(lower)) { date = new Date(ref); date.setDate(date.getDate() + 1); }
+
+  // ISO date YYYY-MM-DD
+  if (!date) {
+    const iso = lower.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) date = new Date(+iso[1], +iso[2]-1, +iso[3]);
+  }
+
+  // "Month D" or "D Month" optionally with year
+  if (!date) {
+    const md = lower.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\s+(\d{1,2})(?:[,\s]+(\d{4}))?/);
+    if (md) {
+      const m = MONTHS_MAP[md[1]];
+      const d = +md[2];
+      const y = md[3] ? +md[3] : ref.getFullYear();
+      date = new Date(y, m, d);
+    }
+  }
+  if (!date) {
+    const dm = lower.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*(?:[,\s]+(\d{4}))?/);
+    if (dm) {
+      const d = +dm[1];
+      const m = MONTHS_MAP[dm[2]];
+      const y = dm[3] ? +dm[3] : ref.getFullYear();
+      date = new Date(y, m, d);
+    }
+  }
+
+  // weekday — next occurrence
+  if (!date) {
+    const days = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+    for (let i = 0; i < days.length; i++) {
+      if (new RegExp(`\\b${days[i]}\\b`).test(lower)) {
+        date = new Date(ref);
+        const diff = (i - date.getDay() + 7) % 7 || 7;
+        date.setDate(date.getDate() + diff);
+        break;
+      }
+    }
+  }
+
+  if (!date) return null;
+
+  // time: "at 3pm", "at 14:30", "at 3:30 pm"
+  const tm = lower.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/) || lower.match(/\b(\d{1,2}):(\d{2})\s*(am|pm)?\b/);
+  let allDay = true;
+  if (tm) {
+    let h = +tm[1];
+    const min = tm[2] ? +tm[2] : 0;
+    const ampm = tm[3];
+    if (ampm === "pm" && h < 12) h += 12;
+    if (ampm === "am" && h === 12) h = 0;
+    date.setHours(h, min, 0, 0);
+    allDay = false;
+  }
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const fmtDate = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+  if (allDay) return { start: `${fmtDate}T00:00`, end: `${fmtDate}T23:59`, allDay: true };
+  const startStr = `${fmtDate}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  const end = new Date(date); end.setHours(end.getHours() + 1);
+  const endStr = `${fmtDate}T${pad(end.getHours())}:${pad(end.getMinutes())}`;
+  return { start: startStr, end: endStr, allDay: false };
+}
+
+function extractEventTitle(input: string) {
+  const m = input.trim().match(EVENT_COMMAND_REGEX);
+  return m ? (m[1] || m[2] || "").trim().replace(/\s+(on|at|for)\s+.*$/i, "") : "";
+}
+
+function addCalendarEvent(title: string, dt: { start: string; end: string; allDay: boolean }) {
+  try {
+    const KEY = "serpent-calendar-events";
+    const raw = localStorage.getItem(KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    const ev = {
+      id: uuid(),
+      title,
+      start: dt.start,
+      end: dt.end,
+      allDay: dt.allDay,
+      source: "ai",
+    };
+    arr.push(ev);
+    localStorage.setItem(KEY, JSON.stringify(arr));
+    window.dispatchEvent(new StorageEvent("storage", { key: KEY }));
+    return ev.id;
+  } catch (e) {
+    console.error("Failed to add calendar event:", e);
+    return null;
+  }
 }
 
 // Pull a bullet-list out of an AI response, if any
@@ -332,11 +440,23 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
         if (id) createdListName = listName;
       }
 
+      // Check for calendar event command
+      let createdEventTitle: string | null = null;
+      const eventTitle = extractEventTitle(textInput);
+      if (eventTitle) {
+        const dt = parseEventDateTime(textInput);
+        if (dt) {
+          const id = addCalendarEvent(eventTitle, dt);
+          if (id) createdEventTitle = `${eventTitle} (${dt.allDay ? dt.start.slice(0,10) : dt.start.replace("T", " ")})`;
+        }
+      }
+
       const confirmations: string[] = [];
       if (createdProjectId) confirmations.push(`✅ Project **"${projectName}"** added to your Life Plan.`);
       if (createdTaskTitle) confirmations.push(`✅ Task **"${createdTaskTitle}"** added.`);
       if (createdNoteTitle) confirmations.push(`✅ Research note **"${createdNoteTitle}"** saved.`);
       if (createdListName) confirmations.push(`✅ List **"${createdListName}"** saved with all items.`);
+      if (createdEventTitle) confirmations.push(`📅 Calendar event **"${createdEventTitle}"** added.`);
       const finalContent = confirmations.length > 0
         ? `${assistantContent}\n\n${confirmations.join("\n")}`
         : assistantContent;

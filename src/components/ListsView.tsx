@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { TaskList, ListItem, Task, Project } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuid } from "uuid";
-import { Plus, Trash2, ListChecks, CheckSquare, Square, Link2, Loader2, X, Search, ListTodo } from "lucide-react";
+import { Plus, Trash2, ListChecks, CheckSquare, Square, Link2, Loader2, X, Search, ListTodo, Lock, Unlock } from "lucide-react";
 import TagPicker, { TagChips } from "./TagPicker";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { AssigneeAvatar } from "./AssigneePicker";
@@ -50,7 +50,8 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
   const createList = async () => {
     const name = prompt("List name", "New List");
     if (!name) return;
-    const { data } = await supabase.from("task_lists").insert({ name }).select().single();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data } = await supabase.from("task_lists").insert({ name, created_by: user?.id ?? null }).select().single();
     if (data) { await loadLists(); setActiveId(data.id); }
   };
 
@@ -59,6 +60,13 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
     await supabase.from("task_lists").delete().eq("id", id);
     if (activeId === id) setActiveId(null);
     loadLists();
+  };
+
+  const togglePrivate = async () => {
+    if (!active) return;
+    const next = !active.is_private;
+    setLists(prev => prev.map(l => l.id === active.id ? { ...l, is_private: next } : l));
+    await supabase.from("task_lists").update({ is_private: next }).eq("id", active.id);
   };
 
   const addItem = async (alsoCreateTask = false) => {
@@ -203,6 +211,14 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
                 </select>
               </div>
               <TagPicker kind="list" ownerId={active.id} />
+              <button
+                onClick={togglePrivate}
+                title={active.is_private ? "Private to you — click to share with household" : "Shared with household — click to make private"}
+                className={`flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors ${active.is_private ? "border-primary/40 text-primary bg-primary/10" : "border-border text-muted-foreground hover:text-foreground"}`}
+              >
+                {active.is_private ? <Lock size={11} /> : <Unlock size={11} />}
+                {active.is_private ? "Private" : "Shared"}
+              </button>
               {members.length >= 1 && (
                 <div className="flex items-center gap-1 ml-auto">
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Assignee</span>

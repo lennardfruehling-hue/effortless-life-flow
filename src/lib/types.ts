@@ -37,6 +37,7 @@ export interface Task {
   duration?: number;
   dueDate?: string;
   assigneeId?: string | null;
+  isPrivate?: boolean;
 }
 
 export interface Project {
@@ -65,7 +66,8 @@ export interface CalendarEvent {
   start: string;
   end: string;
   allDay?: boolean;
-  source?: "manual" | "ics";
+  source?: "manual" | "ics" | "ai";
+  isPrivate?: boolean;
 }
 
 export interface DailyScheduleSlot {
@@ -113,6 +115,8 @@ export interface ResearchNoteRow {
   created_at: string;
   updated_at: string;
   assignee_id?: string | null;
+  created_by?: string | null;
+  is_private?: boolean;
 }
 
 export interface NoteBlock {
@@ -138,6 +142,8 @@ export interface TaskList {
   created_at: string;
   updated_at: string;
   assignee_id?: string | null;
+  created_by?: string | null;
+  is_private?: boolean;
 }
 
 export interface ListItem {
