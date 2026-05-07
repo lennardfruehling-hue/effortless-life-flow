@@ -401,7 +401,7 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
                         <div key={task.id} className="flex items-center gap-2 px-4 py-2 border-b border-border/50 last:border-b-0">
                           <input type="checkbox" checked={task.done} onChange={(e) => updateTask(project.id, task.id, "done", e.target.checked)} className="accent-primary flex-shrink-0" />
                           <input value={task.task} onChange={(e) => updateTask(project.id, task.id, "task", e.target.value)} className={`flex-1 bg-transparent text-sm focus:outline-none ${task.done ? "line-through text-muted-foreground" : "text-foreground"}`} placeholder="Task description" />
-                          {members.length > 1 && (
+                          {members.length >= 1 && (
                             <div className="relative flex-shrink-0">
                               <AssigneeAvatar member={byId(task.assigneeId)} />
                               <select

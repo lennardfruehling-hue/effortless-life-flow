@@ -283,7 +283,7 @@ export default function ResearchView({ projects }: Props) {
                 </select>
               </div>
               <TagPicker kind="note" ownerId={activeNote.id} />
-              {members.length > 1 && (
+              {members.length >= 1 && (
                 <div className="flex items-center gap-1 ml-auto">
                   <AssigneeAvatar member={byId(activeNote.assignee_id)} size="md" />
                   <select
