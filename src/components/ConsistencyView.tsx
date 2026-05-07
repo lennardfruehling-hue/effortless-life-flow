@@ -10,8 +10,6 @@ interface Props {
 export default function ConsistencyView({ tasks }: Props) {
   const stats = useMemo(() => computeConsistency(tasks), [tasks]);
   const progress = ionianProgress(stats);
-  const prideTotal = totalPride(tasks);
-  const prideWeek = prideThisWeek(tasks);
   const dailyTasks = tasks.filter((t) => t.recurrence === "daily");
   const weeklyTasks = tasks.filter((t) => t.recurrence === "weekly");
 
