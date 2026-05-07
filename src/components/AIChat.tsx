@@ -44,7 +44,8 @@ const TASK_COMMAND_REGEX = /(?:add|create|new|save|make|put)\s+(?:(?:a|an|the)[.
 const PROJECT_COMMAND_REGEX = /(?:add|create|new|save|make|start|put)\s+(?:a\s+|an\s+|the\s+)?project\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into|on)\s+(?:the\s+|my\s+)?(?:projects?|life[- ]?plan|plan))?(?:[.!?]|$)/i;
 const NOTE_COMMAND_REGEX = /(?:add|create|new|save|make|write|put)\s+(?:a\s+|an\s+|the\s+)?(?:research\s+)?note\s+(?:called\s+|named\s+|about\s+|on\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into)\s+(?:the\s+|my\s+)?(?:notes?|research))?(?:[.!?]|$)/i;
 const LIST_COMMAND_REGEX = /(?:add|create|new|save|make|start|build|put)\s+(?:a\s+|an\s+|the\s+)?(?:packing\s+|shopping\s+|todo\s+|to-do\s+)?list\s+(?:called\s+|named\s+|for\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^,;:.!?\n]+?))(?:\s+(?:with|having|containing|to|in|into|on)\b|[,;:.!?\n]|$)/i;
-const EVENT_COMMAND_REGEX = /(?:add|create|new|schedule|put|book)\s+(?:a\s+|an\s+|the\s+)?(?:calendar\s+)?(?:event|meeting|appointment|reminder)\s+(?:called\s+|named\s+|for\s+|titled\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^,;:.!?\n]+?))(?:\s+(?:on|at|for)\s+|[,;:.!?\n]|$)/i;
+const EVENT_COMMAND_REGEX = /(?:add|create|new|schedule|put|book|set)\s+(?:a\s+|an\s+|the\s+)?(?:calendar\s+)?(?:event|entry|item|meeting|appointment|reminder|date)\b/i;
+const EVENT_TITLE_REGEX = /(?:called|named|titled|for)\s+(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([A-Z][^.!?\n,;:]{0,60}))/;
 const CATEGORY_CODE_REGEX = /\b(A1|A2|A3|B1|B2|C|D|E|F|G|H|I|J)\b(?=\s*:|\b)/g;
 const LIFE_PLAN_PROJECT_REGEX = /\b(lp-[a-z0-9]+)\b/i;
 
@@ -200,8 +201,13 @@ function parseEventDateTime(input: string, ref = new Date()): { start: string; e
 }
 
 function extractEventTitle(input: string) {
-  const m = input.trim().match(EVENT_COMMAND_REGEX);
-  return m ? (m[1] || m[2] || "").trim().replace(/\s+(on|at|for)\s+.*$/i, "") : "";
+  if (!EVENT_COMMAND_REGEX.test(input)) return "";
+  const q = input.match(/["\u201C\u201D'](.+?)["\u201C\u201D']/);
+  if (q) return q[1].trim();
+  const m = input.match(EVENT_TITLE_REGEX);
+  if (m) return (m[1] || m[2] || "").trim();
+  // fallback: last capitalized word group, or generic title
+  return "Event";
 }
 
 function addCalendarEvent(title: string, dt: { start: string; end: string; allDay: boolean }) {
@@ -357,6 +363,7 @@ ${projectList || "No projects"}
 7. **Analyze images** - OCR, extract text, read documents, interpret screenshots
 8. **Save research notes** - when user says "save a note about X" or "write a note on X", produce a markdown body (use # for headings, - for bullets) that will become a Notion-style note
 9. **Build lists** - when user says "make a packing list for Tokyo", reply with a clear bulleted list (one item per line starting with "-"); items will be saved automatically
+10. **Add calendar entries** - when user says "add a calendar entry/event/item today at 7:30pm called 'Datenight'", the app saves it directly to the in-app calendar. Confirm naturally — DO NOT tell the user you can't, and DO NOT offer Google Calendar links or .ics files. Just confirm what was added (title + date/time).
 
 ## Serpent System Rules
 - A1 tasks are done FIRST (today, urgent)
