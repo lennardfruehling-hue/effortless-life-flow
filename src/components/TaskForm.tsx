@@ -25,7 +25,17 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
   const [duration, setDuration] = useState(editTask?.duration || 0);
   const [dueDate, setDueDate] = useState(editTask?.dueDate || "");
   const [assigneeId, setAssigneeId] = useState<string | null>(editTask?.assigneeId ?? null);
+  const [makesProud, setMakesProud] = useState<boolean>(editTask?.makesProud ?? false);
+  const [recurrence, setRecurrence] = useState<"none" | "daily" | "weekly">(editTask?.recurrence ?? "none");
+  const [linkedListId, setLinkedListId] = useState<string>(editTask?.linkedListId ?? "");
+  const [lists, setLists] = useState<{ id: string; name: string }[]>([]);
   const { members } = useHouseholdMembers();
+
+  useEffect(() => {
+    supabase.from("task_lists").select("id,name").order("updated_at", { ascending: false }).then(({ data }) => {
+      if (data) setLists(data as any);
+    });
+  }, []);
 
   const toggleCat = (cat: Category) =>
     setCategories((prev) =>
@@ -49,9 +59,14 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
       duration: duration > 0 ? duration : undefined,
       dueDate: dueDate || undefined,
       assigneeId: assigneeId || null,
+      makesProud,
+      recurrence: recurrence === "none" ? undefined : recurrence,
+      linkedListId: linkedListId || undefined,
     };
     onSubmit(task);
   };
+
+  const projectedPride = pridePointsForTask({ ...((editTask || {}) as Task), duration, makesProud, completed: true } as Task);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
