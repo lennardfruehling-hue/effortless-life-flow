@@ -314,11 +314,19 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
         if (id) createdNoteTitle = noteTopic;
       }
 
-      // Check for list creation command — persist to Cloud with bullets from AI reply
-      const listName = extractListName(textInput);
+      // Check for list creation command — persist to Cloud
+      let listName = extractListName(textInput);
+      if (listName && /^lists?$/i.test(listName)) {
+        for (let i = messages.length - 1; i >= 0; i--) {
+          const prev = getTextContent(messages[i].content);
+          const named = extractListName(prev);
+          if (named && !/^lists?$/i.test(named)) { listName = named; break; }
+        }
+      }
       let createdListName: string | null = null;
       if (listName) {
         let items = extractBullets(textInput);
+        if (items.length === 0) items = extractListItemsFromUser(textInput, listName);
         if (items.length === 0) items = extractBullets(assistantContent);
         const id = await createListWithItems(listName, items);
         if (id) createdListName = listName;
