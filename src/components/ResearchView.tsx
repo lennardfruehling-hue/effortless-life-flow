@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   Plus, Trash2, BookOpen, FileText, Image as ImageIcon, Paperclip,
   CheckSquare, Square, Type, Heading1, Heading2, Heading3, List as ListIcon,
-  Minus, Quote, Code, Loader2, Link2, X, Lock, Unlock
+  Minus, Quote, Code, Loader2, Link2, X, Lock, Unlock, ChevronRight, ChevronDown, FolderOpen, Tag as TagIcon
 } from "lucide-react";
 import TagPicker, { TagChips } from "./TagPicker";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
