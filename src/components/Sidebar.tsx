@@ -29,14 +29,15 @@ export default function Sidebar({
     <>
     <aside className="relative w-16 md:w-60 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0 overflow-hidden">
       {/* Mythic serpent background */}
-      <div
+      <img
+        src={serpentBg}
+        alt=""
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-no-repeat bg-cover bg-center opacity-25 mix-blend-screen"
-        style={{ backgroundImage: `url(${serpentBg})`, backgroundPosition: "center top", backgroundSize: "cover" }}
+        className="pointer-events-none absolute inset-0 w-full h-full object-cover object-center opacity-70"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-r from-sidebar/40 via-sidebar/70 to-sidebar"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-sidebar/30 via-sidebar/50 to-sidebar/80"
       />
       <div className="relative flex flex-col h-full">
       <div className="px-4 pt-5 pb-4">
