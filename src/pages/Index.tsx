@@ -34,7 +34,7 @@ function loadLifePlanProjects(): LifePlanProject[] {
 export default function Index() {
   const { user } = useAuth();
   const [view, setView] = useState<ViewMode>("tasks");
-  const [tasks, setTasks] = useState<Task[]>(() => store.getTasks());
+  const [tasks, setTasks] = useCloudState<Task[]>(CLOUD_KEYS.tasks, []);
   const [projects, setProjects] = useState<Project[]>(() => store.getProjects());
   const [reminders, setReminders] = useState<Reminder[]>(() => store.getReminders());
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => store.getCalendarEvents());
