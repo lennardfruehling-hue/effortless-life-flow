@@ -7,6 +7,8 @@ const suppressUntil: Record<string, number> = {};
 const lastPushedHash: Record<string, string> = {};
 let patched = false;
 let activeUserId: string | null = null;
+/** Keys that were modified locally before sync was active — flush them once a user is set. */
+const pendingKeys = new Set<string>();
 
 // Mark a key as "just received from cloud" so we don't immediately echo it back.
 function suppressPush(key: string, ms = 3000) {
@@ -48,11 +50,22 @@ function patchLocalStorage() {
   const origRemove = localStorage.removeItem.bind(localStorage);
   localStorage.setItem = (k: string, v: string) => {
     try { origSet(k, v); } catch (e) { console.warn(`[sync] setItem failed for ${k}`, e); }
-    if (activeUserId && KEYS.includes(k as any)) pushDebounced(activeUserId, k, v);
+    if (!KEYS.includes(k as any)) return;
+    if (activeUserId) {
+      pushDebounced(activeUserId, k, v);
+    } else {
+      // No active user yet — remember this key so we can flush after hydrate.
+      pendingKeys.add(k);
+    }
   };
   localStorage.removeItem = (k: string) => {
     origRemove(k);
-    if (activeUserId && KEYS.includes(k as any)) pushDebounced(activeUserId, k, null);
+    if (!KEYS.includes(k as any)) return;
+    if (activeUserId) {
+      pushDebounced(activeUserId, k, null);
+    } else {
+      pendingKeys.add(k);
+    }
   };
 }
 
@@ -65,6 +78,20 @@ function safeSetItem(key: string, value: string) {
     try { localStorage.removeItem(key); } catch {}
     return false;
   }
+}
+
+/** Merge two arrays of objects by `id`, keeping the union (no destruction). */
+function mergeArraysById(a: any[], b: any[]): any[] {
+  const out: any[] = [];
+  const seen = new Set<string>();
+  for (const item of [...a, ...b]) {
+    if (!item || typeof item !== "object") { out.push(item); continue; }
+    const id = "id" in item ? String((item as any).id) : JSON.stringify(item);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(item);
+  }
+  return out;
 }
 
 async function refreshKey(userId: string, key: string) {
@@ -114,6 +141,15 @@ export async function hydrateFromCloud(userId: string) {
       p.then((v) => { clearTimeout(t); resolve(v); }).catch((e) => { clearTimeout(t); console.warn("[sync] hydrate err", e); resolve(null); });
     });
 
+  // Snapshot local BEFORE we touch anything so we can merge instead of overwrite.
+  const localSnapshot: Record<string, string | null> = {};
+  for (const key of KEYS) localSnapshot[key] = localStorage.getItem(key);
+
+  // Track keys whose merged value differs from cloud, so we re-push after we
+  // set activeUserId. Without this, local-only items added while signed out
+  // (or while a session was expired) would be silently destroyed by hydrate.
+  const needsPush: string[] = [];
+
   await Promise.all(KEYS.map(async (key) => {
     try {
       const cloudVal = await withTimeout(
@@ -122,13 +158,40 @@ export async function hydrateFromCloud(userId: string) {
           : cloudGetShared<unknown>(key, null as any),
         8000
       );
-      if (cloudVal !== null && cloudVal !== undefined) {
-        safeSetItem(key, JSON.stringify(cloudVal));
+
+      const localRaw = localSnapshot[key];
+      let localParsed: any = null;
+      if (localRaw) {
+        try { localParsed = JSON.parse(localRaw); } catch { localParsed = null; }
+      }
+
+      // Decide the merged value.
+      let merged: any = null;
+      if (Array.isArray(cloudVal) || Array.isArray(localParsed)) {
+        const a = Array.isArray(cloudVal) ? cloudVal as any[] : [];
+        const b = Array.isArray(localParsed) ? localParsed as any[] : [];
+        merged = mergeArraysById(a, b);
+      } else if (cloudVal !== null && cloudVal !== undefined) {
+        merged = cloudVal;
+      } else if (localParsed !== null && localParsed !== undefined) {
+        merged = localParsed;
+      }
+
+      if (merged === null || merged === undefined) return;
+
+      const serialized = JSON.stringify(merged);
+      if (serialized !== localRaw) {
+        safeSetItem(key, serialized);
+      }
+      // If merged differs from cloud (i.e. we contributed local-only items, or
+      // cloud was empty), push the merged value back so it persists.
+      const cloudSerialized = cloudVal === null || cloudVal === undefined ? null : JSON.stringify(cloudVal);
+      if (cloudSerialized !== serialized) {
+        needsPush.push(key);
+        lastPushedHash[key] = ""; // force a real push
       } else {
-        const local = localStorage.getItem(key);
-        if (local) {
-          try { await cloudSet(userId, key, JSON.parse(local)); } catch {}
-        }
+        lastPushedHash[key] = serialized;
+        suppressPush(key);
       }
     } catch (err) {
       console.warn(`[sync] failed to hydrate ${key}`, err);
@@ -136,6 +199,20 @@ export async function hydrateFromCloud(userId: string) {
   }));
 
   activeUserId = userId;
+
+  // Push merged values for any key whose local copy contributed extras.
+  for (const key of needsPush) {
+    const raw = localStorage.getItem(key);
+    pushDebounced(userId, key, raw);
+  }
+
+  // Flush any keys that were written before we had a user set.
+  for (const key of Array.from(pendingKeys)) {
+    if (needsPush.includes(key)) { pendingKeys.delete(key); continue; }
+    const raw = localStorage.getItem(key);
+    pushDebounced(userId, key, raw);
+    pendingKeys.delete(key);
+  }
 
   // Realtime updates from any household member (RLS restricts visibility to the household).
   supabase
@@ -166,5 +243,10 @@ export async function hydrateFromCloud(userId: string) {
 
 export function clearCloudSync() {
   activeUserId = null;
-  for (const key of KEYS) localStorage.removeItem(key);
+  // IMPORTANT: do NOT wipe localStorage here. If the auth session expires
+  // briefly (token refresh, tab focus, etc.) and this runs, we previously
+  // destroyed all the user's local data — and on re-hydrate the (possibly
+  // stale) cloud value would overwrite anything they'd added in the meantime.
+  // Local data is harmless to leave behind; merge-on-hydrate handles it.
 }
+
