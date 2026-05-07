@@ -34,7 +34,7 @@ function loadLifePlanProjects(): LifePlanProject[] {
 export default function Index() {
   const { user } = useAuth();
   const [view, setView] = useState<ViewMode>("tasks");
-  const [tasks, setTasks] = useState<Task[]>(() => store.getTasks());
+  const [tasks, setTasks] = useCloudState<Task[]>(CLOUD_KEYS.tasks, []);
   const [projects, setProjects] = useState<Project[]>(() => store.getProjects());
   const [reminders, setReminders] = useState<Reminder[]>(() => store.getReminders());
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(() => store.getCalendarEvents());
@@ -87,7 +87,7 @@ export default function Index() {
   };
   const visibleTasks = tasks;
 
-  useEffect(() => { store.saveTasks(tasks); }, [tasks]);
+  // tasks persist via useCloudState (per-user cloud row)
   useEffect(() => { store.saveProjects(projects); }, [projects]);
   useEffect(() => { store.saveReminders(reminders); }, [reminders]);
   useEffect(() => { store.saveCalendarEvents(calendarEvents); }, [calendarEvents]);
@@ -101,7 +101,7 @@ export default function Index() {
   useEffect(() => {
     const handler = (e: StorageEvent) => {
       switch (e.key) {
-        case "serpent-tasks": setTasks(store.getTasks()); break;
+        // tasks are cloud-synced per user; do not refill from cross-user localStorage
         case "serpent-projects": setProjects(store.getProjects()); break;
         case "serpent-reminders": setReminders(store.getReminders()); break;
         case "serpent-calendar-events": setCalendarEvents(store.getCalendarEvents()); break;
