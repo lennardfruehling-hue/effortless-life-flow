@@ -10,6 +10,7 @@ import ListsView from "@/components/ListsView";
 import CalendarView from "@/components/CalendarView";
 import AIChat from "@/components/AIChat";
 import AISidebar from "@/components/AISidebar";
+import ConsistencyView from "@/components/ConsistencyView";
 
 const LIFEPLAN_KEY = "serpent-lifeplan-v2";
 
