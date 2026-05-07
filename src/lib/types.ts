@@ -14,7 +14,7 @@ export const CATEGORY_META: Record<Category, { label: string; description: strin
   B1: { label: "B1 · Critical", description: "Highest consequence if not done", color: "cat-b" },
   B2: { label: "B2 · Important", description: "Will have consequences if not done", color: "cat-b" },
   C: { label: "C · Quick Win", description: "Very fast and easy, within minutes", color: "cat-c" },
-  D: { label: "D · Nearby", description: "Geographically close together", color: "cat-d" },
+  D: { label: "D · Near geographic location of other tasks", description: "Geographically close together", color: "cat-d" },
   E: { label: "E · Hate It", description: "Things I hate doing", color: "cat-e" },
   F: { label: "F · Despise It", description: "Hate doing, magnitude 1 to ballistic", color: "cat-f" },
   G: { label: "G · Enjoy It", description: "Things I like doing, rewarding", color: "cat-g" },
@@ -34,6 +34,9 @@ export interface Task {
   completedAt?: string;
   projectId?: string;
   location?: string;
+  /** Optional geocoded coordinates for the location (from OSM/Nominatim). */
+  locationLat?: number;
+  locationLon?: number;
   hateMagnitude?: number;
   duration?: number;
   dueDate?: string;
