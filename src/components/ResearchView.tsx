@@ -240,61 +240,120 @@ export default function ResearchView({ projects }: Props) {
   return (
     <div className="flex-1 flex h-screen overflow-hidden">
       {/* Notes sidebar */}
+      {sidebarCollapsed ? (
+        <div className="w-10 flex-shrink-0 border-r border-border bg-card/50 flex flex-col items-center pt-3 gap-2">
+          <button
+            onClick={() => setSidebarCollapsed(false)}
+            className="p-1.5 text-muted-foreground hover:text-foreground"
+            title="Expand notes sidebar"
+          >
+            <ChevronRight size={16} />
+          </button>
+          <button onClick={createNote} className="bg-primary text-primary-foreground p-1.5 rounded hover:opacity-90" title="New note">
+            <Plus size={14} />
+          </button>
+        </div>
+      ) : (
       <div className="w-56 lg:w-72 flex-shrink-0 border-r border-border bg-card/50 flex flex-col">
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
-              <BookOpen size={18} className="text-primary" /> Notes
+        <div className="p-3 border-b border-border space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-foreground flex items-center gap-2">
+              <BookOpen size={16} className="text-primary" /> Notes
             </h2>
-            <button onClick={createNote} className="bg-primary text-primary-foreground p-1.5 rounded hover:opacity-90" title="New note">
-              <Plus size={14} />
+            <div className="flex items-center gap-1">
+              <button onClick={createNote} className="bg-primary text-primary-foreground p-1.5 rounded hover:opacity-90" title="New note">
+                <Plus size={12} />
+              </button>
+              <button
+                onClick={() => setSidebarCollapsed(true)}
+                className="text-muted-foreground hover:text-foreground p-1"
+                title="Collapse sidebar"
+              >
+                <ChevronDown size={12} className="rotate-90" />
+              </button>
+            </div>
+          </div>
+          {/* Group-by submenu */}
+          <div className="flex items-center bg-secondary/60 rounded-md p-0.5 text-[11px] font-medium">
+            <button
+              onClick={() => setGroupBy("project")}
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded transition-colors ${
+                groupBy === "project" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <FolderOpen size={11} /> By Project
+            </button>
+            <button
+              onClick={() => setGroupBy("tag")}
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded transition-colors ${
+                groupBy === "tag" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <TagIcon size={11} /> By Tag
             </button>
           </div>
-          <select
-            value={filterProject}
-            onChange={(e) => setFilterProject(e.target.value as any)}
-            className="w-full bg-secondary border border-border rounded px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          >
-            <option value="all">All projects</option>
-            {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
         </div>
         <div className="flex-1 overflow-y-auto scrollbar-thin p-2 space-y-1">
           {loading ? (
             <div className="flex justify-center p-4"><Loader2 size={16} className="animate-spin text-muted-foreground" /></div>
-          ) : filteredNotes.length === 0 ? (
+          ) : groups.length === 0 ? (
             <p className="text-xs text-muted-foreground text-center py-8">No notes yet. Click + to start.</p>
-          ) : filteredNotes.map(note => {
-            const proj = projects.find(p => p.id === note.project_id);
+          ) : groups.map(group => {
+            const isCollapsed = collapsedGroups.has(`${groupBy}:${group.key}`);
             return (
-              <button
-                key={note.id}
-                onClick={() => setActiveNoteId(note.id)}
-                className={`w-full text-left px-3 py-2 rounded text-sm group transition-colors ${
-                  activeNoteId === note.id ? "bg-primary/15 text-primary" : "text-foreground hover:bg-secondary"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <span>{note.icon || "📄"}</span>
-                  <span className="truncate flex-1">{note.title || "Untitled"}</span>
-                  {note.assignee_id && <AssigneeAvatar member={byId(note.assignee_id)} />}
-                  <Trash2
-                    size={12}
-                    onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }}
-                    className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
-                  />
-                </div>
-                {proj && (
-                  <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1 ml-6">
-                    <Link2 size={9} /> {proj.name}
+              <div key={group.key} className="space-y-0.5">
+                <button
+                  onClick={() => toggleGroup(`${groupBy}:${group.key}`)}
+                  className="w-full flex items-center gap-1.5 px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground rounded transition-colors"
+                >
+                  {isCollapsed ? <ChevronRight size={11} /> : <ChevronDown size={11} />}
+                  {group.color && (
+                    <span className="w-2 h-2 rounded-sm flex-shrink-0" style={{ backgroundColor: group.color }} />
+                  )}
+                  <span className="truncate flex-1 text-left">{group.label}</span>
+                  <span className="text-[10px] font-mono opacity-70">{group.notes.length}</span>
+                </button>
+                {!isCollapsed && (
+                  <div className="ml-2 pl-2 border-l border-border/60 space-y-0.5">
+                    {group.notes.map(note => {
+                      const proj = projects.find(p => p.id === note.project_id);
+                      return (
+                        <button
+                          key={note.id}
+                          onClick={() => setActiveNoteId(note.id)}
+                          className={`w-full text-left px-2 py-1.5 rounded text-sm group transition-colors ${
+                            activeNoteId === note.id ? "bg-primary/15 text-primary" : "text-foreground hover:bg-secondary"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs">{note.icon || "📄"}</span>
+                            <span className="truncate flex-1 text-xs">{note.title || "Untitled"}</span>
+                            {note.assignee_id && <AssigneeAvatar member={byId(note.assignee_id)} />}
+                            <Trash2
+                              size={11}
+                              onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }}
+                              className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
+                            />
+                          </div>
+                          {groupBy === "tag" && proj && (
+                            <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1 ml-5">
+                              <Link2 size={9} /> {proj.name}
+                            </div>
+                          )}
+                          {groupBy === "project" && (
+                            <div className="ml-5 mt-0.5"><TagChips kind="note" ownerId={note.id} /></div>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
-                <div className="ml-6 mt-0.5"><TagChips kind="note" ownerId={note.id} /></div>
-              </button>
+              </div>
             );
           })}
         </div>
       </div>
+      )}
 
       {/* Editor */}
       <div className="flex-1 overflow-y-auto scrollbar-thin">
