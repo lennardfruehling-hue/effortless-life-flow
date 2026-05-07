@@ -105,6 +105,13 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
             {activeCount} active
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-cat-h/10 border border-cat-h/30 text-cat-h text-xs font-mono" title="Pride score (proud-flagged tasks)">
+            <Sparkles size={13} />
+            <span>{prideTotal}</span>
+            <span className="opacity-60">· +{prideWeek} wk</span>
+          </div>
+        </div>
         <div className="flex gap-2 flex-shrink-0">
           <button
             onClick={() => setShowSchedule(!showSchedule)}
