@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { v4 as uuid } from "uuid";
 import { Mic, MicOff, X, Volume2, ChevronRight } from "lucide-react";
 import { Task, Category, ALL_CATEGORIES, CATEGORY_META } from "@/lib/types";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   onClose: () => void;
