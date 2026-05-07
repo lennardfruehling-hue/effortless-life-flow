@@ -522,10 +522,68 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
         ]);
       }
 
-      // Check for task creation command
+      // Check for task creation command(s)
       const taskTitle = extractTaskTitle(textInput);
       let createdTaskTitle: string | null = null;
-      if (taskTitle) {
+      let createdTaskCount = 0;
+
+      // MULTI-TASK: phrases like "save them to the tasks", "create tasks out of this".
+      const MULTI_TASK_INTENT = /\b(save|add|create|make|turn)\b[^.\n]{0,40}\b(them|these|those|all)\b[^.\n]{0,40}\btasks?\b|\b(create|add|make|save)\s+(?:these\s+)?tasks?\s+(?:out\s+of\s+)?(?:this|these|that)\b|\bsave\s+(?:them|these|those)\s+to\s+(?:the\s+|my\s+)?tasks?\b/i;
+      const isMultiTaskIntent = MULTI_TASK_INTENT.test(textInput);
+
+      if (isMultiTaskIntent) {
+        let sourceText = "";
+        for (let i = messages.length - 1; i >= 0; i--) {
+          if (messages[i].role !== "assistant") continue;
+          const t = getTextContent(messages[i].content);
+          if (t && extractBullets(t).length >= 2) { sourceText = t; break; }
+        }
+        if (!sourceText) sourceText = assistantContent;
+        const bullets = extractBullets(sourceText);
+
+        if (bullets.length > 0) {
+          const newTasks: Task[] = [];
+          for (const line of bullets) {
+            const catsMatch = line.match(/categor(?:y|ies)\s*:?\s*([A-K0-9,\s]+)/i);
+            const cats: Category[] = catsMatch
+              ? Array.from(new Set(
+                  (catsMatch[1].match(/A1|A2|A3|B1|B2|[CDEFGHIJK]/g) || [])
+                    .filter((c): c is Category => ALL_CATEGORIES.includes(c as Category))
+                )) as Category[]
+              : extractCategories(line);
+            const durMatch = line.match(/duration\s*:?\s*(\d+)\s*(?:min|m)?/i);
+            const duration = durMatch ? parseInt(durMatch[1]) : undefined;
+            const dt = parseEventDateTime(line);
+            const dueDate = dt ? dt.start.slice(0, 10) : undefined;
+            const dueTime = dt && !dt.allDay ? dt.start.slice(11, 16) : undefined;
+            let title = line
+              .replace(/\s*\((?:categories|category|duration)[^)]*\)\s*/gi, "")
+              .replace(/\s*[—\-]\s*(?:categor|duration)[\s\S]*$/i, "")
+              .replace(/\s*[—\-]\s*(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun)[a-z]*\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\s\S]*$/i, "")
+              .replace(/\s*[—\-]\s*\d{1,2}(?::\d{2})?\s*(?:am|pm).*$/i, "")
+              .trim()
+              .replace(/[.,;:]+$/, "");
+            if (!title) continue;
+            newTasks.push({
+              id: uuid(),
+              title,
+              categories: cats.length > 0 ? cats : ["A3"],
+              completed: false,
+              createdAt: new Date().toISOString(),
+              duration,
+              dueDate,
+              dueTime,
+              assigneeId: null,
+            });
+          }
+          if (newTasks.length > 0) {
+            onSaveTasks((current) => [...newTasks, ...current]);
+            createdTaskCount = newTasks.length;
+          }
+        }
+      }
+
+      if (taskTitle && !isMultiTaskIntent) {
         const categories = extractCategories(assistantContent);
         const projectId = extractProjectId(assistantContent, projects);
         onSaveTasks((currentTasks) => [
