@@ -122,10 +122,10 @@ export default function ResearchView({ projects }: Props) {
 
   useEffect(() => { loadNotes(); }, [loadNotes]);
   useEffect(() => {
-    const handler = () => { loadNotes(); if (activeNoteId) loadBlocks(activeNoteId); };
+    const handler = () => { loadNotes(); loadTagsAndLinks(); if (activeNoteId) loadBlocks(activeNoteId); };
     window.addEventListener("research-updated", handler);
     return () => window.removeEventListener("research-updated", handler);
-  }, [loadNotes, loadBlocks, activeNoteId]);
+  }, [loadNotes, loadBlocks, loadTagsAndLinks, activeNoteId]);
 
   useEffect(() => {
     if (activeNoteId) loadBlocks(activeNoteId);
