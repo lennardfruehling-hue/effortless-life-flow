@@ -112,6 +112,7 @@ export interface ResearchNoteRow {
   project_id?: string | null;
   created_at: string;
   updated_at: string;
+  assignee_id?: string | null;
 }
 
 export interface NoteBlock {
