@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, ChevronDown, ChevronRight, Calendar, ExternalLink, Archive, ArchiveRestore } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Calendar, ExternalLink, Archive, ArchiveRestore, X, Search } from "lucide-react";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { AssigneeAvatar } from "./AssigneePicker";
+import MultiAssigneePicker from "./MultiAssigneePicker";
 import GanttChart from "./GanttChart";
+import { Task } from "@/lib/types";
 
 interface PlanningItem {
   id: string;
@@ -17,7 +19,11 @@ interface ProjectTask {
   deadline: string;
   done: boolean;
   startDate?: string;
+  /** Legacy single-assignee. Prefer `assigneeIds`. */
   assigneeId?: string | null;
+  assigneeIds?: string[];
+  /** If sourced from a saved task, link back so we can sync completion. */
+  linkedTaskId?: string;
 }
 
 interface ProjectGroup {
@@ -38,6 +44,8 @@ interface LifePlanData {
 
 interface LifePlanViewProps {
   onNavigateToTasks?: (projectId: string) => void;
+  tasks?: Task[];
+  onSaveTasks?: (tasks: Task[]) => void;
 }
 
 const STORAGE_KEY = "serpent-lifeplan-v2";
@@ -195,12 +203,14 @@ function GanttBar({ project, globalStart, globalEnd }: { project: ProjectGroup; 
   );
 }
 
-export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
+export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTasks }: LifePlanViewProps) {
   const { members, byId } = useHouseholdMembers();
   const [data, setData] = useState<LifePlanData>(loadData);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [newProjectName, setNewProjectName] = useState("");
   const [showArchive, setShowArchive] = useState(false);
+  const [pickerProjectId, setPickerProjectId] = useState<string | null>(null);
+  const [pickerQuery, setPickerQuery] = useState("");
 
   useEffect(() => { saveData(data); }, [data]);
 
@@ -278,6 +288,56 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
         p.id === projectId ? { ...p, tasks: [...p.tasks, { id: uid(), task: "", deadline: "", done: false }] } : p
       ),
     }));
+  };
+
+  const addTaskFromExisting = (projectId: string, t: Task) => {
+    const lpProjectId = `lp-${projectId}`;
+    setData((d) => ({
+      ...d,
+      projects: d.projects.map((p) =>
+        p.id === projectId
+          ? {
+              ...p,
+              tasks: [
+                ...p.tasks,
+                {
+                  id: uid(),
+                  task: t.title,
+                  deadline: t.dueDate || "",
+                  done: !!t.completed,
+                  startDate: t.createdAt ? t.createdAt.slice(0, 10) : undefined,
+                  assigneeId: t.assigneeId ?? null,
+                  assigneeIds:
+                    t.assigneeIds && t.assigneeIds.length > 0
+                      ? t.assigneeIds
+                      : t.assigneeId
+                        ? [t.assigneeId]
+                        : undefined,
+                  linkedTaskId: t.id,
+                },
+              ],
+            }
+          : p
+      ),
+    }));
+    // Also link the saved task to this Life Plan project so they show under "linked tasks"
+    if (onSaveTasks && (!t.projectId || t.projectId !== lpProjectId)) {
+      onSaveTasks(tasks.map((x) => (x.id === t.id ? { ...x, projectId: lpProjectId } : x)));
+    }
+    setPickerProjectId(null);
+    setPickerQuery("");
+  };
+
+  /** Tasks not already linked to this project. */
+  const availableTasksFor = (projectId: string): Task[] => {
+    const lpId = `lp-${projectId}`;
+    const proj = data.projects.find((p) => p.id === projectId);
+    const linked = new Set((proj?.tasks || []).map((t) => t.linkedTaskId).filter(Boolean) as string[]);
+    return tasks.filter(
+      (t) =>
+        !linked.has(t.id) &&
+        (t.projectId === lpId || !t.projectId || t.projectId === undefined)
+    );
   };
 
   const updateTask = (projectId: string, taskId: string, field: keyof ProjectTask, value: string | boolean) => {
@@ -450,17 +510,34 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
                           <input type="checkbox" checked={task.done} onChange={(e) => updateTask(project.id, task.id, "done", e.target.checked)} className="accent-primary flex-shrink-0" />
                           <input value={task.task} onChange={(e) => updateTask(project.id, task.id, "task", e.target.value)} className={`flex-1 bg-transparent text-sm focus:outline-none ${task.done ? "line-through text-muted-foreground" : "text-foreground"}`} placeholder="Task description" />
                           {members.length >= 1 && (
-                            <div className="relative flex-shrink-0">
-                              <AssigneeAvatar member={byId(task.assigneeId)} />
-                              <select
-                                value={task.assigneeId || ""}
-                                onChange={(e) => updateTask(project.id, task.id, "assigneeId" as any, e.target.value || null as any)}
-                                className="absolute inset-0 opacity-0 cursor-pointer"
-                                title="Assign"
-                              >
-                                <option value="">Unassigned</option>
-                                {members.map(m => <option key={m.user_id} value={m.user_id}>{m.display_name || "Member"}</option>)}
-                              </select>
+                            <div className="flex-shrink-0">
+                              <MultiAssigneePicker
+                                members={members}
+                                value={
+                                  task.assigneeIds && task.assigneeIds.length > 0
+                                    ? task.assigneeIds
+                                    : task.assigneeId
+                                      ? [task.assigneeId]
+                                      : []
+                                }
+                                onChange={(ids) => {
+                                  setData((d) => ({
+                                    ...d,
+                                    projects: d.projects.map((p) =>
+                                      p.id === project.id
+                                        ? {
+                                            ...p,
+                                            tasks: p.tasks.map((t) =>
+                                              t.id === task.id
+                                                ? { ...t, assigneeIds: ids, assigneeId: ids[0] ?? null }
+                                                : t
+                                            ),
+                                          }
+                                        : p
+                                    ),
+                                  }));
+                                }}
+                              />
                             </div>
                           )}
                           <div className="flex items-center gap-1 flex-shrink-0">
@@ -471,7 +548,23 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
                         </div>
                       );
                     })}
-                    <button onClick={() => addTask(project.id)} className="w-full px-4 py-2 text-xs text-muted-foreground hover:text-primary hover:bg-secondary/50 transition-colors text-left">+ Add task</button>
+                    <div className="flex items-center gap-1 px-2 py-1 border-t border-border/30">
+                      <button
+                        onClick={() => addTask(project.id)}
+                        className="flex-1 px-3 py-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-secondary/50 transition-colors text-left rounded"
+                      >
+                        + Add task (new)
+                      </button>
+                      {tasks.length > 0 && (
+                        <button
+                          onClick={() => { setPickerProjectId(project.id); setPickerQuery(""); }}
+                          className="px-3 py-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-secondary/50 transition-colors rounded inline-flex items-center gap-1"
+                          title="Add an existing saved task to this project"
+                        >
+                          <Search size={11} /> From saved tasks…
+                        </button>
+                      )}
+                    </div>
 
                     {project.tasks.length > 0 && (() => {
                       const projStart = project.startDate ? new Date(project.startDate) : globalStart;
@@ -568,6 +661,59 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
           className="w-full bg-card border border-border rounded-lg p-4 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary resize-none scrollbar-thin leading-relaxed"
         />
       </section>
+      {/* Saved-tasks picker modal */}
+      {pickerProjectId && (() => {
+        const proj = data.projects.find((p) => p.id === pickerProjectId);
+        const available = availableTasksFor(pickerProjectId);
+        const q = pickerQuery.trim().toLowerCase();
+        const filtered = q
+          ? available.filter((t) => t.title.toLowerCase().includes(q) || (t.description || "").toLowerCase().includes(q))
+          : available;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+            <div className="bg-card border border-border rounded-lg w-full max-w-lg max-h-[80vh] flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Add saved task to "{proj?.name}"</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Pick an existing task to link into this Life Plan project.</p>
+                </div>
+                <button onClick={() => setPickerProjectId(null)} className="text-muted-foreground hover:text-foreground"><X size={18} /></button>
+              </div>
+              <div className="p-3 border-b border-border">
+                <div className="flex items-center gap-2 bg-secondary border border-border rounded px-2.5 py-1.5">
+                  <Search size={12} className="text-muted-foreground" />
+                  <input
+                    autoFocus
+                    value={pickerQuery}
+                    onChange={(e) => setPickerQuery(e.target.value)}
+                    placeholder="Search saved tasks…"
+                    className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto scrollbar-thin">
+                {filtered.length === 0 && (
+                  <div className="p-6 text-center text-xs text-muted-foreground">No matching saved tasks.</div>
+                )}
+                {filtered.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => addTaskFromExisting(pickerProjectId, t)}
+                    className="w-full text-left px-4 py-2.5 border-b border-border/50 hover:bg-secondary/60 transition-colors"
+                  >
+                    <div className="text-sm text-foreground line-clamp-1">{t.title}</div>
+                    <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground font-mono">
+                      {t.dueDate && <span>📅 {t.dueDate}</span>}
+                      {t.categories.length > 0 && <span>{t.categories.join(", ")}</span>}
+                      {t.completed && <span className="text-primary">done</span>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

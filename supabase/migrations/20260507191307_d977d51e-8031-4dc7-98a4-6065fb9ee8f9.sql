@@ -1,0 +1,2 @@
+ALTER TABLE public.research_notes ADD COLUMN IF NOT EXISTS assignee_ids jsonb NOT NULL DEFAULT '[]'::jsonb;
+ALTER TABLE public.task_lists ADD COLUMN IF NOT EXISTS assignee_ids jsonb NOT NULL DEFAULT '[]'::jsonb;

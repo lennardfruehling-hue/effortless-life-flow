@@ -5,6 +5,7 @@ import { v4 as uuid } from "uuid";
 import { X, Sparkles } from "lucide-react";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import AssigneePicker from "./AssigneePicker";
+import MultiAssigneePicker from "./MultiAssigneePicker";
 import LocationPicker from "./LocationPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { pridePointsForTask } from "@/lib/pride";
@@ -39,7 +40,13 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
   const [duration, setDuration] = useState(editTask?.duration || 0);
   const [dueDate, setDueDate] = useState(editTask?.dueDate || "");
   const [dueTime, setDueTime] = useState(editTask?.dueTime || "");
-  const [assigneeId, setAssigneeId] = useState<string | null>(editTask?.assigneeId ?? null);
+  const [assigneeIds, setAssigneeIds] = useState<string[]>(
+    editTask?.assigneeIds && editTask.assigneeIds.length > 0
+      ? editTask.assigneeIds
+      : editTask?.assigneeId
+        ? [editTask.assigneeId]
+        : []
+  );
   const [makesProud, setMakesProud] = useState<boolean>(editTask?.makesProud ?? false);
   const [recurrence, setRecurrence] = useState<"none" | "daily" | "weekly">(editTask?.recurrence ?? "none");
   const [linkedListId, setLinkedListId] = useState<string>(editTask?.linkedListId ?? "");
@@ -76,7 +83,8 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
       duration: duration > 0 ? duration : undefined,
       dueDate: dueDate || undefined,
       dueTime: dueTime || undefined,
-      assigneeId: assigneeId || null,
+      assigneeId: assigneeIds[0] ?? null,
+      assigneeIds: assigneeIds.length > 0 ? assigneeIds : undefined,
       makesProud: categories.includes("H"),
       recurrence: recurrence === "none" ? undefined : recurrence,
       linkedListId: linkedListId || undefined,
@@ -249,17 +257,17 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
 
         {members.length >= 1 && (
           <div>
-            <label className="text-sm text-muted-foreground mb-1 block">Assign to</label>
-            <select
-              value={assigneeId || ""}
-              onChange={(e) => setAssigneeId(e.target.value || null)}
-              className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="">Unassigned</option>
-              {members.map(m => (
-                <option key={m.user_id} value={m.user_id}>{m.display_name || "Member"}</option>
-              ))}
-            </select>
+            <label className="text-sm text-muted-foreground mb-1 block">Assign to (one or several)</label>
+            <div className="flex items-center gap-2 flex-wrap">
+              <MultiAssigneePicker members={members} value={assigneeIds} onChange={setAssigneeIds} size="md" />
+              <span className="text-[11px] text-muted-foreground">
+                {assigneeIds.length === 0
+                  ? "Unassigned"
+                  : assigneeIds
+                      .map((id) => members.find((m) => m.user_id === id)?.display_name || "Member")
+                      .join(", ")}
+              </span>
+            </div>
           </div>
         )}
 

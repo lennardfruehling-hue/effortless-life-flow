@@ -9,6 +9,7 @@ import {
 import TagPicker, { TagChips } from "./TagPicker";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { AssigneeAvatar } from "./AssigneePicker";
+import MultiAssigneePicker, { AssigneeStack } from "./MultiAssigneePicker";
 
 // Auto-growing textarea: expands to fit content, no scrollbars.
 function AutoTextarea({
@@ -328,7 +329,9 @@ export default function ResearchView({ projects }: Props) {
                           <div className="flex items-center gap-2">
                             <span className="text-xs">{note.icon || "📄"}</span>
                             <span className="truncate flex-1 text-xs">{note.title || "Untitled"}</span>
-                            {note.assignee_id && <AssigneeAvatar member={byId(note.assignee_id)} />}
+                            {(note.assignee_ids && note.assignee_ids.length > 0)
+                              ? <AssigneeStack ids={note.assignee_ids} members={members} />
+                              : note.assignee_id && <AssigneeAvatar member={byId(note.assignee_id)} />}
                             <Trash2
                               size={11}
                               onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }}
@@ -406,15 +409,17 @@ export default function ResearchView({ projects }: Props) {
               </button>
               {members.length >= 1 && (
                 <div className="flex items-center gap-1 ml-auto">
-                  <AssigneeAvatar member={byId(activeNote.assignee_id)} size="md" />
-                  <select
-                    value={activeNote.assignee_id || ""}
-                    onChange={(e) => updateNote({ assignee_id: e.target.value || null } as any)}
-                    className="bg-transparent text-xs text-foreground border-none focus:outline-none cursor-pointer"
-                  >
-                    <option value="">Unassigned</option>
-                    {members.map(m => <option key={m.user_id} value={m.user_id}>{m.display_name || "Member"}</option>)}
-                  </select>
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Assignees</span>
+                  <MultiAssigneePicker
+                    members={members}
+                    size="md"
+                    value={
+                      (activeNote.assignee_ids && activeNote.assignee_ids.length > 0)
+                        ? activeNote.assignee_ids
+                        : activeNote.assignee_id ? [activeNote.assignee_id] : []
+                    }
+                    onChange={(ids) => updateNote({ assignee_ids: ids as any, assignee_id: ids[0] ?? null } as any)}
+                  />
                 </div>
               )}
             </div>

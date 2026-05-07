@@ -42,7 +42,10 @@ export interface Task {
   dueDate?: string;
   /** Specific time of day (HH:MM, 24h) by which this task should be done. Drives the bottom alarm center. */
   dueTime?: string;
+  /** Legacy single-assignee. Kept for backwards-compat; prefer `assigneeIds` for multi-assign. */
   assigneeId?: string | null;
+  /** Multi-assignee — any household member ids. When present, takes precedence over `assigneeId`. */
+  assigneeIds?: string[];
   isPrivate?: boolean;
   // Pride scoring — opt-in flag; longer + proud = more points.
   makesProud?: boolean;
@@ -160,6 +163,7 @@ export interface ResearchNoteRow {
   created_at: string;
   updated_at: string;
   assignee_id?: string | null;
+  assignee_ids?: string[];
   created_by?: string | null;
   is_private?: boolean;
 }
@@ -187,6 +191,7 @@ export interface TaskList {
   created_at: string;
   updated_at: string;
   assignee_id?: string | null;
+  assignee_ids?: string[];
   created_by?: string | null;
   is_private?: boolean;
 }

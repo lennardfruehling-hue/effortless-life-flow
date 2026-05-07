@@ -277,6 +277,7 @@ export type Database = {
       research_notes: {
         Row: {
           assignee_id: string | null
+          assignee_ids: Json
           created_at: string
           created_by: string | null
           icon: string | null
@@ -288,6 +289,7 @@ export type Database = {
         }
         Insert: {
           assignee_id?: string | null
+          assignee_ids?: Json
           created_at?: string
           created_by?: string | null
           icon?: string | null
@@ -299,6 +301,7 @@ export type Database = {
         }
         Update: {
           assignee_id?: string | null
+          assignee_ids?: Json
           created_at?: string
           created_by?: string | null
           icon?: string | null
@@ -334,6 +337,7 @@ export type Database = {
       task_lists: {
         Row: {
           assignee_id: string | null
+          assignee_ids: Json
           created_at: string
           created_by: string | null
           description: string | null
@@ -346,6 +350,7 @@ export type Database = {
         }
         Insert: {
           assignee_id?: string | null
+          assignee_ids?: Json
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -358,6 +363,7 @@ export type Database = {
         }
         Update: {
           assignee_id?: string | null
+          assignee_ids?: Json
           created_at?: string
           created_by?: string | null
           description?: string | null

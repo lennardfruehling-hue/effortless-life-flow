@@ -6,6 +6,7 @@ import { Plus, Trash2, ListChecks, CheckSquare, Square, Link2, Loader2, X, Searc
 import TagPicker, { TagChips } from "./TagPicker";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { AssigneeAvatar } from "./AssigneePicker";
+import MultiAssigneePicker, { AssigneeStack } from "./MultiAssigneePicker";
 
 
 interface Props {
@@ -154,7 +155,9 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
                 <div className="truncate flex-1">
                   <div className="truncate flex items-center gap-1.5">
                     {list.name}
-                    {list.assignee_id && <AssigneeAvatar member={byId(list.assignee_id)} />}
+                    {(list.assignee_ids && list.assignee_ids.length > 0)
+                      ? <AssigneeStack ids={list.assignee_ids} members={members} />
+                      : list.assignee_id && <AssigneeAvatar member={byId(list.assignee_id)} />}
                   </div>
                   <div className="mt-0.5"><TagChips kind="list" ownerId={list.id} /></div>
                 </div>
@@ -221,20 +224,20 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
               </button>
               {members.length >= 1 && (
                 <div className="flex items-center gap-1 ml-auto">
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Assignee</span>
-                  <AssigneeAvatar member={byId(active.assignee_id)} size="md" />
-                  <select
-                    value={active.assignee_id || ""}
-                    onChange={async (e) => {
-                      const assignee_id = e.target.value || null;
-                      setLists(prev => prev.map(l => l.id === active.id ? { ...l, assignee_id } : l));
-                      await supabase.from("task_lists").update({ assignee_id }).eq("id", active.id);
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Assignees</span>
+                  <MultiAssigneePicker
+                    members={members}
+                    size="md"
+                    value={
+                      (active.assignee_ids && active.assignee_ids.length > 0)
+                        ? active.assignee_ids
+                        : active.assignee_id ? [active.assignee_id] : []
+                    }
+                    onChange={async (ids) => {
+                      setLists(prev => prev.map(l => l.id === active.id ? { ...l, assignee_ids: ids, assignee_id: ids[0] ?? null } : l));
+                      await supabase.from("task_lists").update({ assignee_ids: ids as any, assignee_id: ids[0] ?? null }).eq("id", active.id);
                     }}
-                    className="bg-transparent text-xs text-foreground border-none focus:outline-none cursor-pointer"
-                  >
-                    <option value="">Unassigned</option>
-                    {members.map(m => <option key={m.user_id} value={m.user_id}>{m.display_name || "Member"}</option>)}
-                  </select>
+                  />
                 </div>
               )}
             </div>
