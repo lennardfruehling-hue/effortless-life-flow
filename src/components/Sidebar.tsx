@@ -60,10 +60,10 @@ export default function Sidebar({
               key={mode}
               onClick={() => onChange(mode)}
               title={label}
-              className={`group w-full flex items-center justify-center md:justify-start gap-3 px-2.5 md:px-3 py-2 rounded-lg text-sm transition-all ${
+              className={`group w-full flex items-center justify-center md:justify-start gap-3 px-2.5 md:px-3 py-2 rounded-lg text-sm font-bold transition-all ${
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-sm"
-                  : "text-white hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+                  ? "bg-sidebar-accent text-white shadow-sm"
+                  : "text-white hover:bg-sidebar-accent/60"
               }`}
             >
               <Icon size={17} strokeWidth={isActive ? 2.25 : 1.75} />
