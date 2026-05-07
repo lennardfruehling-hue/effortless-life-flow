@@ -128,6 +128,19 @@ export default function ResearchView({ projects }: Props) {
     return () => window.removeEventListener("research-updated", handler);
   }, [loadNotes, loadBlocks, loadTagsAndLinks, activeNoteId]);
 
+  // Realtime: refresh when any household member adds/edits/deletes notes or blocks
+  useEffect(() => {
+    const ch = supabase
+      .channel("notes-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "research_notes" }, () => loadNotes())
+      .on("postgres_changes", { event: "*", schema: "public", table: "note_blocks" }, (payload: any) => {
+        const row = payload.new ?? payload.old;
+        if (row?.note_id && row.note_id === activeNoteId) loadBlocks(activeNoteId);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [loadNotes, loadBlocks, activeNoteId]);
+
   useEffect(() => {
     if (activeNoteId) loadBlocks(activeNoteId);
     else setBlocks([]);
