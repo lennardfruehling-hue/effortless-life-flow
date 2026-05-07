@@ -15,11 +15,20 @@ export default function RequireAuth({ children }: { children: React.ReactNode })
       return;
     }
     setHydrated(false);
-    hydrateFromCloud(user.id).then(() => {
+    // Hard backstop: never block the UI more than 10s on hydration.
+    const backstop = window.setTimeout(() => {
+      if (!cancel) {
+        console.warn("[sync] hydration backstop fired — releasing UI");
+        setHydrated(true);
+      }
+    }, 10000);
+    hydrateFromCloud(user.id).finally(() => {
+      window.clearTimeout(backstop);
       if (!cancel) setHydrated(true);
     });
     return () => {
       cancel = true;
+      window.clearTimeout(backstop);
     };
   }, [user?.id]);
 
