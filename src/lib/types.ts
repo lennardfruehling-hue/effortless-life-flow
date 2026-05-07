@@ -37,6 +37,7 @@ export interface Task {
   duration?: number;
   dueDate?: string;
   assigneeId?: string | null;
+  isPrivate?: boolean;
 }
 
 export interface Project {
@@ -65,7 +66,8 @@ export interface CalendarEvent {
   start: string;
   end: string;
   allDay?: boolean;
-  source?: "manual" | "ics";
+  source?: "manual" | "ics" | "ai";
+  isPrivate?: boolean;
 }
 
 export interface DailyScheduleSlot {
