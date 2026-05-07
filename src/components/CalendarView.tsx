@@ -174,7 +174,7 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
 
   const getEventsForDay = (day: number) => {
     const dateStr = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-    return events.filter(e => e.start.startsWith(dateStr));
+    return visibleEvents.filter(e => e.start.startsWith(dateStr));
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -183,7 +183,7 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      const imported = parseICS(text);
+      const imported = parseICS(text).map((ev) => ({ ...ev, createdBy: myId }));
       if (imported.length > 0) {
         onSave([...events, ...imported]);
       }
@@ -193,7 +193,7 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
   };
 
   const handleExport = () => {
-    const ics = toICS(events);
+    const ics = toICS(visibleEvents);
     const blob = new Blob([ics], { type: "text/calendar" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -212,6 +212,7 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
       end: formEnd || formStart,
       allDay: formAllDay,
       source: "manual",
+      createdBy: myId,
     }]);
     setFormTitle("");
     setFormStart("");
@@ -224,7 +225,7 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
   };
 
   const selectedDateEvents = selectedDate
-    ? events.filter(e => e.start.startsWith(selectedDate))
+    ? visibleEvents.filter(e => e.start.startsWith(selectedDate))
     : [];
 
   return (
