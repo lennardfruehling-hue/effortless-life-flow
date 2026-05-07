@@ -87,7 +87,7 @@ export default function Index() {
   };
   const visibleTasks = tasks;
 
-  useEffect(() => { store.saveTasks(tasks); }, [tasks]);
+  // tasks persist via useCloudState (per-user cloud row)
   useEffect(() => { store.saveProjects(projects); }, [projects]);
   useEffect(() => { store.saveReminders(reminders); }, [reminders]);
   useEffect(() => { store.saveCalendarEvents(calendarEvents); }, [calendarEvents]);
