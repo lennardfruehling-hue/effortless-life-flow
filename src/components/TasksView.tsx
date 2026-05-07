@@ -1,11 +1,12 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project, DailyScheduleSlot } from "@/lib/types";
 import TaskCard from "@/components/TaskCard";
 import TaskForm from "@/components/TaskForm";
 import DailySchedule from "@/components/DailySchedule";
 import { CategoryBadgeFull } from "@/components/CategoryBadge";
-import { Plus, Filter, Eye, EyeOff, Clock, X } from "lucide-react";
+import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
+import { applyRecurrenceReset, todayKey, weekKey, totalPride, prideThisWeek } from "@/lib/pride";
 
 interface TasksViewProps {
   tasks: Task[];
@@ -37,8 +38,18 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
   const [showCompleted, setShowCompleted] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
 
+  // Reset recurring tasks when their period rolls over
+  useEffect(() => {
+    const { tasks: reset, changed } = applyRecurrenceReset(tasks);
+    if (changed) onSave(reset);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const dailyTasks = useMemo(() => tasks.filter((t) => t.recurrence === "daily"), [tasks]);
+  const weeklyTasks = useMemo(() => tasks.filter((t) => t.recurrence === "weekly"), [tasks]);
+
   const filteredTasks = useMemo(() => {
-    let list = tasks;
+    let list = tasks.filter((t) => !t.recurrence); // recurring shown in their own groups
     if (filterProjectId) list = list.filter((t) => t.projectId === filterProjectId);
     if (filterCat) list = list.filter((t) => t.categories.includes(filterCat));
     if (!showCompleted) list = list.filter((t) => !t.completed);
@@ -57,11 +68,17 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
 
   const handleToggle = (id: string) => {
     onSave(
-      tasks.map((t) =>
-        t.id === id
-          ? { ...t, completed: !t.completed, completedAt: !t.completed ? new Date().toISOString() : undefined }
-          : t
-      )
+      tasks.map((t) => {
+        if (t.id !== id) return t;
+        const nowCompleted = !t.completed;
+        const period = t.recurrence === "weekly" ? weekKey() : todayKey();
+        return {
+          ...t,
+          completed: nowCompleted,
+          completedAt: nowCompleted ? new Date().toISOString() : undefined,
+          lastCompletedPeriod: t.recurrence && nowCompleted ? period : t.lastCompletedPeriod,
+        };
+      })
     );
   };
 
@@ -72,6 +89,8 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
   const todayCount = tasks.filter((t) => !t.completed && t.categories.includes("A1")).length;
   const activeCount = tasks.filter((t) => !t.completed).length;
   const filterProject = filterProjectId ? projects.find(p => p.id === filterProjectId) : null;
+  const prideTotal = totalPride(tasks);
+  const prideWeek = prideThisWeek(tasks);
 
   return (
     <div className="flex-1 p-4 md:p-6 overflow-y-auto scrollbar-thin min-w-0">
@@ -85,6 +104,13 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
             )}
             {activeCount} active
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-cat-h/10 border border-cat-h/30 text-cat-h text-xs font-mono" title="Pride score (proud-flagged tasks)">
+            <Sparkles size={13} />
+            <span>{prideTotal}</span>
+            <span className="opacity-60">· +{prideWeek} wk</span>
+          </div>
         </div>
         <div className="flex gap-2 flex-shrink-0">
           <button
@@ -164,6 +190,36 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
         <div className="mb-4 p-3 bg-secondary/50 rounded-md border border-border">
           <CategoryBadgeFull category={filterCat} />
           <p className="text-xs text-muted-foreground mt-1">{CATEGORY_META[filterCat].description}</p>
+        </div>
+      )}
+
+      {/* Daily / Weekly recurring groups */}
+      {(dailyTasks.length > 0 || weeklyTasks.length > 0) && (
+        <div className="mb-6 space-y-4">
+          {dailyTasks.length > 0 && (
+            <section>
+              <h3 className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground mb-2 font-mono">
+                <Repeat size={12} /> Daily ({dailyTasks.filter((t) => t.completed).length}/{dailyTasks.length})
+              </h3>
+              <div className="space-y-2">
+                {dailyTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} onDelete={handleDelete} />
+                ))}
+              </div>
+            </section>
+          )}
+          {weeklyTasks.length > 0 && (
+            <section>
+              <h3 className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground mb-2 font-mono">
+                <Repeat size={12} /> Weekly ({weeklyTasks.filter((t) => t.completed).length}/{weeklyTasks.length})
+              </h3>
+              <div className="space-y-2">
+                {weeklyTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} onDelete={handleDelete} />
+                ))}
+              </div>
+            </section>
+          )}
         </div>
       )}
 

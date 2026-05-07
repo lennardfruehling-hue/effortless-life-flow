@@ -1,6 +1,7 @@
 import { Task } from "@/lib/types";
 import { CategoryBadge } from "./CategoryBadge";
-import { Check, Pencil, Trash2, MapPin, Calendar } from "lucide-react";
+import { Check, Pencil, Trash2, MapPin, Calendar, Sparkles, Repeat } from "lucide-react";
+import { pridePointsForTask } from "@/lib/pride";
 import { motion } from "framer-motion";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { AssigneeAvatar } from "./AssigneePicker";
@@ -67,6 +68,16 @@ export default function TaskCard({ task, onToggle, onEdit, onDelete }: TaskCardP
           {task.hateMagnitude && (
             <span className="text-[10px] text-cat-f font-mono">
               🔥{task.hateMagnitude}/10
+            </span>
+          )}
+          {task.recurrence && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-primary font-mono">
+              <Repeat size={10} /> {task.recurrence}
+            </span>
+          )}
+          {task.makesProud && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-cat-h font-mono" title={`+${pridePointsForTask({ ...task, completed: true })} pride`}>
+              <Sparkles size={10} /> +{pridePointsForTask({ ...task, completed: true })}
             </span>
           )}
           <span className="text-[10px] text-muted-foreground font-mono ml-auto">

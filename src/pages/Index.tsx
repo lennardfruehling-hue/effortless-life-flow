@@ -10,6 +10,7 @@ import ListsView from "@/components/ListsView";
 import CalendarView from "@/components/CalendarView";
 import AIChat from "@/components/AIChat";
 import AISidebar from "@/components/AISidebar";
+import ConsistencyView from "@/components/ConsistencyView";
 
 const LIFEPLAN_KEY = "serpent-lifeplan-v2";
 
@@ -95,6 +96,7 @@ export default function Index() {
         {view === "lifeplan" && <LifePlanView onNavigateToTasks={navigateToTasksForProject} />}
         {view === "calendar" && <CalendarView events={calendarEvents} onSave={setCalendarEvents} />}
         {view === "reminders" && <RemindersView reminders={reminders} tasks={tasks} onSave={setReminders} />}
+        {view === "consistency" && <ConsistencyView tasks={tasks} />}
         {view === "ai" && <AIChat tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />}
       </main>
       <AISidebar tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />
