@@ -75,6 +75,69 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nowMin, slots, tasks]);
 
+  // ---- Auto-sync today's schedule slots → Calendar events ----
+  // Every slot gets a matching CalendarEvent (source="schedule", id="sched-<slotId>")
+  // so users see them instantly in the Calendar view. Slots removed → events removed.
+  useEffect(() => {
+    const KEY = "serpent-calendar-events";
+    let raw: string | null = null;
+    try { raw = localStorage.getItem(KEY); } catch {}
+    let events: any[] = [];
+    if (raw) { try { events = JSON.parse(raw) || []; } catch { events = []; } }
+
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, "0");
+    const d = String(today.getDate()).padStart(2, "0");
+    const dateStr = `${y}-${m}-${d}`;
+
+    const wantById = new Map<string, any>();
+    for (const s of slots) {
+      const eventId = `sched-${s.id}`;
+      const task = s.taskId ? tasks.find((t) => t.id === s.taskId) : null;
+      const title = task?.title || s.label || "(untitled)";
+      wantById.set(eventId, {
+        id: eventId,
+        title,
+        start: `${dateStr}T${s.startTime}`,
+        end: `${dateStr}T${s.endTime}`,
+        allDay: false,
+        source: "schedule",
+      });
+    }
+
+    // Keep all non-schedule events untouched; rebuild today's schedule events.
+    // (Past schedule events from previous days are preserved as-is.)
+    const kept = events.filter((e: any) => {
+      if (e?.source !== "schedule") return true;
+      // preserve schedule events from other days
+      if (typeof e.start === "string" && !e.start.startsWith(dateStr)) return true;
+      // today's schedule event: keep only if still in slot list AND matches current data
+      const want = wantById.get(e.id);
+      if (!want) return false; // slot deleted
+      if (e.start === want.start && e.end === want.end && e.title === want.title) {
+        wantById.delete(e.id); // already up to date
+        return true;
+      }
+      return false; // stale → drop and re-add below
+    });
+
+    // Anything left in wantById is new or updated
+    const next = [...kept, ...Array.from(wantById.values())];
+
+    // Avoid no-op writes that would loop the effect
+    const nextSerialized = JSON.stringify(next);
+    if (nextSerialized === raw) return;
+
+    try {
+      localStorage.setItem(KEY, nextSerialized);
+      // Notify CalendarView and any other listeners
+      window.dispatchEvent(new StorageEvent("storage", { key: KEY }));
+    } catch (e) {
+      console.warn("[schedule→calendar] write failed", e);
+    }
+  }, [slots, tasks]);
+
   // ---- Drag & drop from task list ----
   const handleDropTask = (e: React.DragEvent) => {
     e.preventDefault();
