@@ -484,6 +484,55 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
         </div>
       </section>
 
+      {/* Archive */}
+      <section className="mb-8">
+        <button
+          onClick={() => setShowArchive((v) => !v)}
+          className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 hover:text-foreground transition-colors"
+        >
+          {showArchive ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          <Archive size={14} /> Archive ({archivedProjects.length})
+        </button>
+        {showArchive && (
+          archivedProjects.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No archived projects yet. Archive a project to mark it as completed.</p>
+          ) : (
+            <div className="space-y-2">
+              {archivedProjects.map((project) => {
+                const done = project.tasks.filter((t) => t.done).length;
+                const total = project.tasks.length;
+                return (
+                  <div key={project.id} className="bg-card/60 border border-border rounded-lg px-4 py-3 flex items-center gap-2">
+                    <Archive size={12} className="text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm text-muted-foreground flex-1 truncate">{project.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{done}/{total}</span>
+                    {project.archivedAt && (
+                      <span className="text-[10px] text-muted-foreground font-mono ml-2">
+                        {new Date(project.archivedAt).toLocaleDateString()}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => unarchiveProject(project.id)}
+                      className="text-muted-foreground hover:text-primary ml-2"
+                      title="Restore project"
+                    >
+                      <ArchiveRestore size={12} />
+                    </button>
+                    <button
+                      onClick={() => deleteProject(project.id)}
+                      className="text-muted-foreground hover:text-destructive ml-1"
+                      title="Delete permanently"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )
+        )}
+      </section>
+
       {/* Free-form notes */}
       <section>
         <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">Notes</h3>
