@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { Task, DailyScheduleSlot, Category } from "@/lib/types";
 import { CategoryBadge } from "./CategoryBadge";
-import { Trash2, Mail, Plus } from "lucide-react";
+import { Trash2, Mail, Plus, Printer } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import { toast } from "sonner";
 
@@ -179,18 +179,107 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
   };
 
+  // ---- Print today's schedule (printable HTML view) ----
+  const handlePrintSchedule = () => {
+    const sorted = [...slots].sort((a, b) => toMin(a.startTime) - toMin(b.startTime));
+    if (sorted.length === 0) {
+      toast.error("No blocks to print");
+      return;
+    }
+    const dateStr = new Date().toLocaleDateString(undefined, {
+      weekday: "long", year: "numeric", month: "long", day: "numeric",
+    });
+    const rows = sorted.map((s) => {
+      const t = s.taskId ? tasks.find((x) => x.id === s.taskId) : null;
+      const title = t?.title || s.label || "(untitled)";
+      const cats = (s.taskCategories || t?.categories || []).join(", ");
+      const dur = toMin(s.endTime) - toMin(s.startTime);
+      const esc = (v: string) => v.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]!));
+      return `<tr>
+        <td class="time">${s.startTime}–${s.endTime}</td>
+        <td class="dur">${dur}m</td>
+        <td class="title">${esc(title)}</td>
+        <td class="cats">${esc(cats)}</td>
+        <td class="check"><span class="box"></span></td>
+      </tr>`;
+    }).join("");
+    const totalMin = sorted.reduce((sum, s) => sum + (toMin(s.endTime) - toMin(s.startTime)), 0);
+    const html = `<!doctype html>
+<html><head><meta charset="utf-8"/>
+<title>Serpent Schedule — ${dateStr}</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; color: #111; margin: 24px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 16px; }
+  h1 { font-size: 22px; margin: 0; letter-spacing: 0.5px; }
+  .sub { font-size: 12px; color: #555; }
+  .meta { font-size: 12px; color: #555; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid #ddd; vertical-align: top; }
+  th { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #666; border-bottom: 1px solid #111; }
+  td.time { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 600; }
+  td.dur { font-variant-numeric: tabular-nums; color: #666; width: 50px; }
+  td.cats { color: #666; font-size: 11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  td.check { width: 28px; text-align: center; }
+  .box { display: inline-block; width: 16px; height: 16px; border: 1.5px solid #111; border-radius: 3px; }
+  footer { margin-top: 24px; font-size: 11px; color: #777; display: flex; justify-content: space-between; }
+  .toolbar { position: fixed; top: 12px; right: 12px; display: flex; gap: 8px; }
+  .toolbar button { padding: 8px 14px; font-size: 13px; border: 1px solid #111; background: #111; color: #fff; border-radius: 6px; cursor: pointer; }
+  .toolbar button.secondary { background: #fff; color: #111; }
+  @media print { .toolbar { display: none; } body { margin: 12mm; } }
+</style></head>
+<body>
+  <div class="toolbar">
+    <button onclick="window.print()">Print</button>
+    <button class="secondary" onclick="window.close()">Close</button>
+  </div>
+  <header>
+    <h1>🐍 Serpent Schedule</h1>
+    <div class="sub">${dateStr}</div>
+  </header>
+  <div class="meta">${sorted.length} blocks · ${Math.floor(totalMin / 60)}h ${totalMin % 60}m planned</div>
+  <table>
+    <thead><tr><th>Time</th><th>Dur</th><th>Task</th><th>Cat</th><th>Done</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <footer><span>Generated ${new Date().toLocaleString()}</span><span>Serpent List</span></footer>
+  <script>setTimeout(() => { try { window.print(); } catch(e){} }, 300);</script>
+</body></html>`;
+    const win = window.open("", "_blank");
+    if (!win) {
+      // Fallback for popup blockers / mobile: navigate via blob
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      window.location.href = url;
+      return;
+    }
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  };
+
   return (
     <div className="bg-card border border-border rounded-lg p-4" data-tour="schedule-panel">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
         <h3 className="text-sm font-semibold text-foreground">Daily Calendar (24h)</h3>
-        <button
-          data-tour="email-schedule"
-          onClick={handleEmailSchedule}
-          className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded border border-border hover:border-primary/30 hover:text-primary text-muted-foreground transition-colors"
-          title="Email today's schedule"
-        >
-          <Mail size={12} /> Email schedule
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handlePrintSchedule}
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded border border-border hover:border-primary/30 hover:text-primary text-muted-foreground transition-colors"
+            title="Open a printable view of today's schedule"
+          >
+            <Printer size={12} /> Print schedule
+          </button>
+          <button
+            data-tour="email-schedule"
+            onClick={handleEmailSchedule}
+            className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded border border-border hover:border-primary/30 hover:text-primary text-muted-foreground transition-colors"
+            title="Email today's schedule"
+          >
+            <Mail size={12} /> Email schedule
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-[160px_1fr] gap-3">
