@@ -238,44 +238,19 @@ export default function SerpentFlow() {
         )}
       </AnimatePresence>
 
-      {/* Permanent trio at bottom center */}
+      {/* Permanent trio at bottom center — collapsible to a thin tab */}
       {!active && (
-        <div className="fixed bottom-3 left-1/2 -translate-x-1/2 z-40 flex items-end gap-4 px-4 py-2 rounded-2xl bg-sidebar/85 backdrop-blur border border-amber-300/30 shadow-xl">
-          {TRIO.map(({ kind, img, label, done }) => (
-            <button
-              key={kind}
-              onClick={() => startFlow(kind)}
-              title={label + (done ? " — completed" : "")}
-              className="group relative flex flex-col items-center gap-1 w-16"
-            >
-              <div className={`relative w-12 h-12 rounded-full overflow-hidden border-2 transition-all ${done ? "border-emerald-400" : "border-amber-300/50 group-hover:border-amber-300"} group-hover:scale-110`}>
-                <img src={img} alt={label} className="w-full h-full object-contain bg-sidebar" />
-              </div>
-              {done && (
-                <span
-                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border border-emerald-200 flex items-center justify-center text-[10px] text-white font-bold shadow"
-                  aria-label="completed"
-                >
-                  ✓
-                </span>
-              )}
-              <span className="text-[9px] text-white/90 text-center leading-tight font-medium whitespace-nowrap">{label}</span>
-            </button>
-          ))}
-          <button
-            onClick={() => {
-              if (!confirm("Reset today's Serpent flow? Start, Midday and Evening will be marked uncompleted and the phase cleared.")) return;
-              setState((s) => ({ ...s, startCompleted: false, middayCompleted: false, eveningCompleted: false }));
-              setManualPhase(null);
-              setActive(null);
-              setStepIdx(0);
-            }}
-            title="Reset today's Serpent status"
-            className="ml-2 self-center w-8 h-8 rounded-full bg-white/5 border border-white/15 text-white/70 hover:text-white hover:border-white/40 transition flex items-center justify-center text-sm"
-          >
-            ↻
-          </button>
-        </div>
+        <FlowTrioDock
+          trio={TRIO}
+          onStart={startFlow}
+          onReset={() => {
+            if (!confirm("Reset today's Serpent flow? Start, Midday and Evening will be marked uncompleted and the phase cleared.")) return;
+            setState((s) => ({ ...s, startCompleted: false, middayCompleted: false, eveningCompleted: false }));
+            setManualPhase(null);
+            setActive(null);
+            setStepIdx(0);
+          }}
+        />
       )}
 
       {/* Highlight ring + anchored tooltip */}
