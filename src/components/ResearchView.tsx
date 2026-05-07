@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   Plus, Trash2, BookOpen, FileText, Image as ImageIcon, Paperclip,
   CheckSquare, Square, Type, Heading1, Heading2, Heading3, List as ListIcon,
-  Minus, Quote, Code, Loader2, Link2, X
+  Minus, Quote, Code, Loader2, Link2, X, Lock, Unlock
 } from "lucide-react";
 import TagPicker, { TagChips } from "./TagPicker";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
@@ -109,9 +109,10 @@ export default function ResearchView({ projects }: Props) {
   const filteredNotes = filterProject === "all" ? notes : notes.filter(n => n.project_id === filterProject);
 
   const createNote = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
     const { data } = await supabase
       .from("research_notes")
-      .insert({ title: "Untitled", project_id: filterProject === "all" ? null : filterProject })
+      .insert({ title: "Untitled", project_id: filterProject === "all" ? null : filterProject, created_by: user?.id ?? null })
       .select().single();
     if (data) {
       await supabase.from("note_blocks").insert({ note_id: data.id, position: 0, block_type: "text", content: "" });
@@ -283,6 +284,14 @@ export default function ResearchView({ projects }: Props) {
                 </select>
               </div>
               <TagPicker kind="note" ownerId={activeNote.id} />
+              <button
+                onClick={() => updateNote({ is_private: !activeNote.is_private } as any)}
+                title={activeNote.is_private ? "Private to you" : "Shared with household"}
+                className={`flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors ${activeNote.is_private ? "border-primary/40 text-primary bg-primary/10" : "border-border text-muted-foreground hover:text-foreground"}`}
+              >
+                {activeNote.is_private ? <Lock size={11} /> : <Unlock size={11} />}
+                {activeNote.is_private ? "Private" : "Shared"}
+              </button>
               {members.length >= 1 && (
                 <div className="flex items-center gap-1 ml-auto">
                   <AssigneeAvatar member={byId(activeNote.assignee_id)} size="md" />
