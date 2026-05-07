@@ -4,6 +4,7 @@ import { ListTodo, Compass, Bell, BookOpen, CalendarDays, ListChecks, LogOut, Us
 import { useAuth } from "@/hooks/useAuth";
 import HouseholdSettings from "./HouseholdSettings";
 import serpentBg from "@/assets/serpent-sidebar.jpg";
+import serpentLogo from "@/assets/serpent-logo.png";
 
 const NAV_ITEMS: { mode: ViewMode; icon: typeof ListTodo; label: string }[] = [
   { mode: "tasks", icon: ListTodo, label: "Tasks" },
@@ -41,12 +42,17 @@ export default function Sidebar({
         className="pointer-events-none absolute inset-0 bg-sidebar/40"
       />
       <div className="relative flex flex-col h-full">
-      <div className="px-4 pt-6 pb-4 text-center">
+      <div className="px-4 pt-6 pb-4 flex flex-col items-center text-center">
+        <img
+          src={serpentLogo}
+          alt="Serpent List logo"
+          className="w-12 h-12 md:w-16 md:h-16 object-contain drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]"
+        />
         <h1
-          className="text-2xl text-white tracking-wide"
-          style={{ fontFamily: "'UnifrakturCook', 'UnifrakturMaguntia', 'Cinzel', serif", fontWeight: 700, textShadow: "0 2px 8px rgba(0,0,0,0.6)" }}
+          className="hidden md:block mt-2 text-white leading-none"
+          style={{ fontFamily: "'Great Vibes', 'Allura', cursive", fontSize: "2.5rem", textShadow: "0 2px 10px rgba(0,0,0,0.7)" }}
         >
-          🐍 Serpent List
+          Serpent List
         </h1>
         <p className="hidden md:block text-[11px] text-white/80 mt-2 font-mono tracking-wide">
           {taskCount} open tasks
