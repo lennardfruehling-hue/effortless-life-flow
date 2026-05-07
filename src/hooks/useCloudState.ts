@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "./useAuth";
-import { cloudGet, cloudSet } from "@/lib/cloudStore";
+import { cloudGet, cloudGetShared, cloudSet, isPersonalKey } from "@/lib/cloudStore";
 
 /**
  * Cloud-synced state. Loads from Supabase on mount/user change, debounced save on change.
+ * For shared (household) keys, reads merged household value; writes go to caller's row
+ * and merge-on-write inside cloudSet keeps the union safe.
  */
 export function useCloudState<T>(key: string, fallback: T): [T, React.Dispatch<React.SetStateAction<T>>, boolean] {
   const { user } = useAuth();
@@ -22,7 +24,10 @@ export function useCloudState<T>(key: string, fallback: T): [T, React.Dispatch<R
       setLoaded(true);
       return;
     }
-    cloudGet<T>(user.id, key, fallback).then((v) => {
+    const loader = isPersonalKey(key)
+      ? cloudGet<T>(user.id, key, fallback)
+      : cloudGetShared<T>(key, fallback);
+    loader.then((v) => {
       if (cancel) return;
       setValue(v);
       setLoaded(true);

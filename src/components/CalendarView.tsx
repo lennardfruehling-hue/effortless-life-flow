@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { CalendarEvent, Task, WeeklyStructureBlock, DailyScheduleSlot } from "@/lib/types";
-import { ChevronLeft, ChevronRight, Upload, Download, Plus, Trash2, X, CalendarDays, LayoutGrid } from "lucide-react";
+import { ChevronLeft, ChevronRight, Upload, Download, Plus, Trash2, X, CalendarDays, LayoutGrid, Users } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import GoogleCalendarConnect from "./GoogleCalendarConnect";
 import WeeklyStructureView from "./WeeklyStructureView";
+import { useAuth } from "@/hooks/useAuth";
+import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 
 interface CalendarViewProps {
   events: CalendarEvent[];
@@ -94,6 +96,15 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
   const [formEnd, setFormEnd] = useState("");
   const [formAllDay, setFormAllDay] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+  const { members } = useHouseholdMembers();
+  const myId = user?.id;
+  // Per-user visibility filter for calendar. Defaults: show everyone.
+  const [hiddenUserIds, setHiddenUserIds] = useState<Set<string>>(new Set());
+  const visibleEvents = useMemo(
+    () => events.filter((e) => !e.createdBy || !hiddenUserIds.has(e.createdBy)),
+    [events, hiddenUserIds]
+  );
 
   // Auto-populate weekly structure → calendar events for the visible month
   // Generates one CalendarEvent per occurrence (recurring weekly or pinned date),
@@ -163,7 +174,7 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
 
   const getEventsForDay = (day: number) => {
     const dateStr = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-    return events.filter(e => e.start.startsWith(dateStr));
+    return visibleEvents.filter(e => e.start.startsWith(dateStr));
   };
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -172,7 +183,7 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
-      const imported = parseICS(text);
+      const imported = parseICS(text).map((ev) => ({ ...ev, createdBy: myId }));
       if (imported.length > 0) {
         onSave([...events, ...imported]);
       }
@@ -182,7 +193,7 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
   };
 
   const handleExport = () => {
-    const ics = toICS(events);
+    const ics = toICS(visibleEvents);
     const blob = new Blob([ics], { type: "text/calendar" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -201,6 +212,7 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
       end: formEnd || formStart,
       allDay: formAllDay,
       source: "manual",
+      createdBy: myId,
     }]);
     setFormTitle("");
     setFormStart("");
@@ -213,7 +225,7 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
   };
 
   const selectedDateEvents = selectedDate
-    ? events.filter(e => e.start.startsWith(selectedDate))
+    ? visibleEvents.filter(e => e.start.startsWith(selectedDate))
     : [];
 
   return (
@@ -237,6 +249,36 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
           </button>
         </div>
       </div>
+
+      {/* Per-user calendar filter */}
+      {members.length > 1 && (
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <Users size={12} className="text-muted-foreground" />
+          <span className="text-[11px] text-muted-foreground mr-1">Show:</span>
+          {members.map((m) => {
+            const hidden = hiddenUserIds.has(m.user_id);
+            const isMe = m.user_id === myId;
+            return (
+              <button
+                key={m.user_id}
+                onClick={() => {
+                  setHiddenUserIds((prev) => {
+                    const n = new Set(prev);
+                    if (n.has(m.user_id)) n.delete(m.user_id); else n.add(m.user_id);
+                    return n;
+                  });
+                }}
+                className={`text-[11px] px-2 py-1 rounded border transition-colors ${
+                  hidden ? "border-border text-muted-foreground line-through" : "border-primary/30 bg-primary/10 text-foreground"
+                }`}
+                title={hidden ? "Click to show" : "Click to hide"}
+              >
+                {m.display_name || "Member"}{isMe ? " (you)" : ""}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex items-center gap-1 mb-4 border-b border-border">

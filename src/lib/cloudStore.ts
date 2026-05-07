@@ -27,11 +27,41 @@ export async function cloudGetAllByKey<T>(key: string): Promise<{ user_id: strin
 }
 
 // Per-user-only keys (do NOT merge across household — these are personal).
+// Tasks are personal: each user has their own task list. Sharing happens by
+// duplicating a task into another user's personal key when assigned.
+// Daily schedule stays personal. Chat history stays personal.
+// Weekly structure is shared so the household sees one structure.
 const PERSONAL_KEYS: string[] = [
   CLOUD_KEYS.chatHistory,
   CLOUD_KEYS.dailySchedule,
-  CLOUD_KEYS.weeklyStructure,
+  CLOUD_KEYS.tasks,
 ];
+
+/** Write a value directly to another user's personal cloud row (used for task assignment duplication). */
+export async function cloudSetForUser<T>(targetUserId: string, key: string, value: T): Promise<void> {
+  await supabase.from("user_data").upsert(
+    { user_id: targetUserId, key, value: value as any, updated_at: new Date().toISOString() },
+    { onConflict: "user_id,key" }
+  );
+}
+
+/** Append items into another user's personal array key, deduping by id. */
+export async function cloudAppendForUser<T extends { id: string }>(
+  targetUserId: string,
+  key: string,
+  items: T[]
+): Promise<void> {
+  const { data } = await supabase
+    .from("user_data")
+    .select("value")
+    .eq("user_id", targetUserId)
+    .eq("key", key)
+    .maybeSingle();
+  const existing = Array.isArray(data?.value) ? (data!.value as T[]) : [];
+  const seen = new Set(existing.map((i) => i.id));
+  const merged = [...existing, ...items.filter((i) => !seen.has(i.id))];
+  await cloudSetForUser(targetUserId, key, merged);
+}
 
 /** Get caller's row only (used for personal keys and writes). */
 export async function cloudGet<T>(userId: string, key: string, fallback: T): Promise<T> {

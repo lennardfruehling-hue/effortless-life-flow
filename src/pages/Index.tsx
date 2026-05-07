@@ -1,8 +1,8 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { ViewMode, Task, Project, Reminder, LifePlanProject, CalendarEvent, DailyScheduleSlot, WeeklyStructureBlock } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useCloudState } from "@/hooks/useCloudState";
-import { CLOUD_KEYS } from "@/lib/cloudStore";
+import { CLOUD_KEYS, cloudAppendForUser } from "@/lib/cloudStore";
 import { store } from "@/lib/store";
 import Sidebar from "@/components/Sidebar";
 import TasksView from "@/components/TasksView";
@@ -43,32 +43,49 @@ export default function Index() {
   const [taskFilterProject, setTaskFilterProject] = useState<string | undefined>();
   const [weeklyStructure, setWeeklyStructure] = useCloudState<WeeklyStructureBlock[]>(CLOUD_KEYS.weeklyStructure, []);
 
-  // Tasks are stored in a shared household cloud key, but each user only sees:
-  //  - tasks they created (createdBy === me)
-  //  - tasks assigned to them (assigneeId or assigneeIds includes me)
-  //  - legacy tasks with no createdBy (treated as their own to avoid hiding old data)
+  // Tasks are stored per-user (PERSONAL_KEYS). When a task is assigned to other
+  // members, we duplicate it into their personal task list (one-time copy).
   const myId = user?.id;
-  const isVisible = (t: Task) => {
-    if (!myId) return true;
-    if (!t.createdBy) return true; // legacy/un-tagged tasks remain visible to everyone in household (back-compat)
-    if (t.createdBy === myId) return true;
-    if (t.assigneeId === myId) return true;
-    if (Array.isArray(t.assigneeIds) && t.assigneeIds.includes(myId)) return true;
-    return false;
-  };
-  const visibleTasks = useMemo(() => tasks.filter(isVisible), [tasks, myId]);
 
-  // Setter that preserves hidden (other-user) tasks in the underlying store.
+  // Track which assignment-duplications we've already pushed so editing a task doesn't
+  // re-duplicate every save.
+  const dispatchedAssignments = useRef<Set<string>>(new Set());
+
   const setVisibleTasks: React.Dispatch<React.SetStateAction<Task[]>> = (updater) => {
     setTasks((prev) => {
-      const hidden = prev.filter((t) => !isVisible(t));
-      const prevVisible = prev.filter(isVisible);
-      const nextVisible = typeof updater === "function" ? (updater as (p: Task[]) => Task[])(prevVisible) : updater;
-      // Stamp createdBy on any new tasks lacking it
-      const stamped = nextVisible.map((t) => (t.createdBy || !myId ? t : { ...t, createdBy: myId }));
-      return [...hidden, ...stamped];
+      const nextRaw = typeof updater === "function" ? (updater as (p: Task[]) => Task[])(prev) : updater;
+      const stamped = nextRaw.map((t) => (t.createdBy || !myId ? t : { ...t, createdBy: myId }));
+
+      // Detect newly-assigned-to-others (not me) and duplicate to their personal cloud key.
+      if (myId) {
+        for (const t of stamped) {
+          const ids = (t.assigneeIds && t.assigneeIds.length > 0)
+            ? t.assigneeIds
+            : (t.assigneeId ? [t.assigneeId] : []);
+          for (const targetId of ids) {
+            if (!targetId || targetId === myId) continue;
+            const dispatchKey = `${t.id}::${targetId}`;
+            if (dispatchedAssignments.current.has(dispatchKey)) continue;
+            dispatchedAssignments.current.add(dispatchKey);
+            // Create a fresh copy owned by the assignee; preserve link via id reuse not desired.
+            const copy: Task = {
+              ...t,
+              id: `${t.id}-${targetId.slice(0, 8)}`,
+              createdBy: targetId,
+              assigneeId: targetId,
+              assigneeIds: [targetId],
+            };
+            // Fire-and-forget; will appear on their next sync.
+            cloudAppendForUser(targetId, CLOUD_KEYS.tasks, [copy]).catch((e) =>
+              console.warn("[assign] failed to copy task to assignee", e)
+            );
+          }
+        }
+      }
+      return stamped;
     });
   };
+  const visibleTasks = tasks;
 
   useEffect(() => { store.saveTasks(tasks); }, [tasks]);
   useEffect(() => { store.saveProjects(projects); }, [projects]);
