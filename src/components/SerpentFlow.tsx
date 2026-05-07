@@ -13,34 +13,42 @@ import halfMoon from "@/assets/serpent-half-moon.png";
 
 type FlowKind = "start" | "midday" | "evening";
 
+/** What the user must do before the Next button unlocks for a step. */
+type Requirement =
+  | { kind: "click-target" }                // any click inside / on the highlighted target
+  | { kind: "progress-event"; event: string } // CustomEvent name on window: serpent-progress with detail===event
+  | { kind: "none" };
+
 interface Step {
   title: string;
   body: string;
   target?: string;
+  requires?: Requirement;
+  hint?: string; // shown while gated
 }
 
 const FLOWS: Record<FlowKind, { label: string; steps: Step[] }> = {
   start: {
     label: "Start Serpent 🐍",
     steps: [
-      { title: "Open Tasks", body: "Go to the Tasks view to plan your day.", target: '[data-tour="nav-tasks"]' },
-      { title: "Add Daily Tasks", body: "Use Add Task to drop in today's daily items.", target: '[data-tour="add-task"]' },
-      { title: "Check Tasks", body: "Review urgency on existing tasks (A1/B1).", target: '[data-tour="add-task"]' },
-      { title: "Open Schedule", body: "Open the 24h Schedule panel.", target: '[data-tour="schedule-toggle"]' },
-      { title: "Produce & Complete Schedule", body: "Drag tasks in, set realistic time + buffer, sanity-check it's doable.", target: '[data-tour="schedule-panel"]' },
-      { title: "Email schedule", body: "Send the schedule to yourself by email.", target: '[data-tour="email-schedule"]' },
+      { title: "Open Tasks", body: "Go to the Tasks view to plan your day.", target: '[data-tour="nav-tasks"]', requires: { kind: "click-target" }, hint: "Click the Tasks nav item to continue." },
+      { title: "Add Daily Tasks", body: "Use Add Task to drop in today's daily items.", target: '[data-tour="add-task"]', requires: { kind: "click-target" }, hint: "Click Add Task to continue." },
+      { title: "Check Tasks", body: "Review urgency on existing tasks (A1/B1).", target: '[data-tour="add-task"]', requires: { kind: "none" } },
+      { title: "Open Schedule", body: "Open the 24h Schedule panel.", target: '[data-tour="schedule-toggle"]', requires: { kind: "click-target" }, hint: "Click Schedule to open the panel." },
+      { title: "Produce & Complete Schedule", body: "Drag tasks in, set realistic time + buffer, sanity-check it's doable.", target: '[data-tour="schedule-panel"]', requires: { kind: "progress-event", event: "schedule-block-added" }, hint: "Add at least one block to the schedule to continue." },
+      { title: "Email schedule", body: "Send the schedule to yourself by email.", target: '[data-tour="email-schedule"]', requires: { kind: "progress-event", event: "schedule-emailed" }, hint: "Click Email schedule to continue." },
     ],
   },
   midday: {
     label: "Midday Check 🐍",
     steps: [
-      { title: "Daily Serpent list · A1", body: "Check progress on A1 daily items.", target: '[data-tour="nav-consistency"]' },
+      { title: "Daily Serpent list · A1", body: "Check progress on A1 daily items.", target: '[data-tour="nav-consistency"]', requires: { kind: "click-target" }, hint: "Open the Consistency view to continue." },
     ],
   },
   evening: {
     label: "Evening Review 🐍",
     steps: [
-      { title: "Daily Serpent list · A1", body: "Review and check non-negotiable (Célida · K) items.", target: '[data-tour="nav-consistency"]' },
+      { title: "Daily Serpent list · A1", body: "Review and check non-negotiable (Célida · K) items.", target: '[data-tour="nav-consistency"]', requires: { kind: "click-target" }, hint: "Open the Consistency view to continue." },
     ],
   },
 };
