@@ -505,11 +505,30 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
         createdTaskTitle = taskTitle;
       }
 
-      // Check for note creation command — persist to Cloud
-      const noteTopic = extractNoteTopic(textInput);
+      // Check for note creation command — persist to Cloud.
+      // Supports both explicit forms ("save a note about X") and short
+      // confirmations like "yes, save it as a note" / "pin it" by falling
+      // back to deriving the title + body from recent assistant content.
       let createdNoteTitle: string | null = null;
+      let noteTopic = extractNoteTopic(textInput);
+      let noteBody = assistantContent;
+      if (!noteTopic && (hasNoteIntent(textInput) || (AFFIRMATION_REGEX.test(textInput) && /\b(note|pin|checklist|save)\b/i.test(textInput)))) {
+        // Pull body from the most recent assistant message that has substance.
+        let sourceText = assistantContent;
+        if (!sourceText || sourceText.length < 60) {
+          for (let i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role !== "assistant") continue;
+            const t = getTextContent(messages[i].content);
+            if (t && t.length >= 60) { sourceText = t; break; }
+          }
+        }
+        // Try to honor an explicit quoted title in the user's confirmation
+        const q = textInput.match(/["\u201C\u201D']([^"\u201C\u201D'\n]{2,120})["\u201C\u201D']/);
+        noteTopic = (q ? q[1] : deriveTitleFromContent(sourceText)).trim();
+        noteBody = sourceText;
+      }
       if (noteTopic) {
-        const id = await createResearchNote(noteTopic, assistantContent);
+        const id = await createResearchNote(noteTopic, noteBody);
         if (id) createdNoteTitle = noteTopic;
       }
 
