@@ -215,40 +215,18 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
           <label className="text-sm text-muted-foreground mb-1 block">
             Location {categories.includes("D") ? <span className="text-destructive">*</span> : <span className="text-muted-foreground/60">(optional)</span>}
           </label>
-          <input
-            list="task-known-locations"
+          <LocationPicker
             value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            placeholder={categories.includes("D") ? "Where is this? (e.g. Downtown, Home, Office)" : "Pick or type a place"}
+            onChange={(v, coords) => {
+              setLocation(v);
+              setLocationCoords(coords ?? null);
+            }}
+            knownLocations={knownLocations}
+            placeholder={categories.includes("D") ? "Where is this? (search any address)" : "Search address or pick a place"}
+            required={categories.includes("D")}
           />
-          {knownLocations.length > 0 && (
-            <datalist id="task-known-locations">
-              {knownLocations.map((loc) => (
-                <option key={loc} value={loc} />
-              ))}
-            </datalist>
-          )}
-          {knownLocations.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {knownLocations.slice(0, 8).map((loc) => (
-                <button
-                  key={loc}
-                  type="button"
-                  onClick={() => setLocation(loc)}
-                  className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
-                    location === loc
-                      ? "bg-cat-d/20 text-cat-d border-cat-d/40"
-                      : "text-muted-foreground border-border hover:border-cat-d/40 hover:text-cat-d"
-                  }`}
-                >
-                  {loc}
-                </button>
-              ))}
-            </div>
-          )}
           {categories.includes("D") && (
-            <p className="text-[10px] text-muted-foreground mt-1">Category D · Nearby — group with other tasks at the same place.</p>
+            <p className="text-[10px] text-muted-foreground mt-1">Category D · Near geographic location of other tasks — group nearby tasks together.</p>
           )}
         </div>
 
