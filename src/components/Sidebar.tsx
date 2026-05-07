@@ -34,11 +34,11 @@ export default function Sidebar({
         src={serpentBg}
         alt=""
         aria-hidden
-        className="pointer-events-none absolute inset-0 w-full h-full object-cover object-center opacity-70"
+        className="pointer-events-none absolute inset-0 w-full h-full object-cover object-center opacity-50"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-sidebar/30 via-sidebar/50 to-sidebar/80"
+        className="pointer-events-none absolute inset-0 bg-sidebar/40"
       />
       <div className="relative flex flex-col h-full">
       <div className="px-4 pt-6 pb-4 text-center">
@@ -62,14 +62,13 @@ export default function Sidebar({
               key={mode}
               onClick={() => onChange(mode)}
               title={label}
-              className={`group w-full flex items-center justify-center md:justify-start gap-3 px-2.5 md:px-3 py-2 rounded-lg text-sm font-bold transition-all ${
-                isActive
-                  ? "bg-sidebar-accent text-white shadow-sm"
-                  : "text-white hover:bg-sidebar-accent/60"
+              style={{ textShadow: "0 1px 4px rgba(0,0,0,0.85)" }}
+              className={`group w-full flex items-center justify-center md:justify-start gap-3 px-2.5 md:px-3 py-2 rounded-lg text-sm font-bold text-white transition-all ${
+                isActive ? "bg-sidebar-accent shadow-sm" : "hover:bg-sidebar-accent/60"
               }`}
             >
-              <Icon size={17} strokeWidth={isActive ? 2.25 : 1.75} />
-              <span className="hidden md:inline">{label}</span>
+              <Icon size={17} strokeWidth={isActive ? 2.5 : 2} className="text-white drop-shadow" />
+              <span className="hidden md:inline text-white">{label}</span>
             </button>
           );
         })}
