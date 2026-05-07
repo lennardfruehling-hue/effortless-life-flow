@@ -46,6 +46,7 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
       hateMagnitude: categories.includes("F") ? hateMagnitude : undefined,
       duration: duration > 0 ? duration : undefined,
       dueDate: dueDate || undefined,
+      assigneeId: assigneeId || null,
     };
     onSubmit(task);
   };
