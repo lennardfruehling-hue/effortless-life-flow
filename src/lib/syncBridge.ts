@@ -61,12 +61,26 @@ function safeSetItem(key: string, value: string) {
 }
 
 async function refreshKey(userId: string, key: string) {
+  // If we have a pending local push for this key, skip the refresh.
+  // The realtime event is likely an echo of an earlier write and would otherwise
+  // clobber the in-progress local edits before they reach the cloud.
+  if (debounceTimers[key]) {
+    return;
+  }
   const cloudVal = isPersonalKey(key)
     ? await cloudGet<unknown>(userId, key, null as any)
     : await cloudGetShared<unknown>(key, null as any);
+  // Re-check after the await: a local write may have started during the network call.
+  if (debounceTimers[key]) return;
   const prev = activeUserId;
   activeUserId = null;
   const serialized = cloudVal === null || cloudVal === undefined ? null : JSON.stringify(cloudVal);
+  // No-op if cloud value matches what we already have — avoids noisy re-renders.
+  const current = localStorage.getItem(key);
+  if (current === serialized) {
+    activeUserId = prev;
+    return;
+  }
   if (serialized === null) {
     try { localStorage.removeItem(key); } catch {}
   } else {
