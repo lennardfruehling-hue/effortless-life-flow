@@ -6,6 +6,7 @@ import {
   CheckSquare, Square, Type, Heading1, Heading2, Heading3, List as ListIcon,
   Minus, Quote, Code, Loader2, Link2, X
 } from "lucide-react";
+import TagPicker, { TagChips } from "./TagPicker";
 
 // Auto-growing textarea: expands to fit content, no scrollbars.
 function AutoTextarea({
@@ -230,6 +231,7 @@ export default function ResearchView({ projects }: Props) {
                     <Link2 size={9} /> {proj.name}
                   </div>
                 )}
+                <div className="ml-6 mt-0.5"><TagChips kind="note" ownerId={note.id} /></div>
               </button>
             );
           })}
@@ -264,16 +266,19 @@ export default function ResearchView({ projects }: Props) {
                 className="flex-1 bg-transparent text-3xl font-bold text-foreground placeholder:text-muted-foreground focus:outline-none leading-tight"
               />
             </div>
-            <div className="flex items-center gap-2 mb-6 ml-1">
-              <Link2 size={12} className="text-muted-foreground" />
-              <select
-                value={activeNote.project_id || ""}
-                onChange={(e) => updateNote({ project_id: e.target.value || null })}
-                className="bg-transparent text-xs text-muted-foreground border-none focus:outline-none cursor-pointer hover:text-foreground"
-              >
-                <option value="">No project</option>
-                {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+            <div className="flex items-center gap-3 mb-6 ml-1 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Link2 size={12} className="text-muted-foreground" />
+                <select
+                  value={activeNote.project_id || ""}
+                  onChange={(e) => updateNote({ project_id: e.target.value || null })}
+                  className="bg-transparent text-xs text-muted-foreground border-none focus:outline-none cursor-pointer hover:text-foreground"
+                >
+                  <option value="">No project</option>
+                  {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <TagPicker kind="note" ownerId={activeNote.id} />
             </div>
 
             {/* Blocks */}
