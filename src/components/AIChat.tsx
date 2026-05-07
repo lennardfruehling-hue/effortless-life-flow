@@ -43,7 +43,7 @@ interface ChatMessage {
 const TASK_COMMAND_REGEX = /(?:add|create|new|save|make|put)\s+(?:(?:a|an|the)[.\s]+)?task\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into|on)\s+(?:the\s+|my\s+)?(?:tasks?|list|todo)s?)?(?:[.!?]|$)/i;
 const PROJECT_COMMAND_REGEX = /(?:add|create|new|save|make|start|put)\s+(?:a\s+|an\s+|the\s+)?project\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into|on)\s+(?:the\s+|my\s+)?(?:projects?|life[- ]?plan|plan))?(?:[.!?]|$)/i;
 const NOTE_COMMAND_REGEX = /(?:add|create|new|save|make|write|put)\s+(?:a\s+|an\s+|the\s+)?(?:research\s+)?note\s+(?:called\s+|named\s+|about\s+|on\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into)\s+(?:the\s+|my\s+)?(?:notes?|research))?(?:[.!?]|$)/i;
-const LIST_COMMAND_REGEX = /(?:add|create|new|save|make|start|build|put)\s+(?:a\s+|an\s+|the\s+)?(?:packing\s+|shopping\s+|todo\s+|to-do\s+)?list\s+(?:called\s+|named\s+|for\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into|on)\s+(?:the\s+|my\s+)?lists?)?(?:[.!?]|$)/i;
+const LIST_COMMAND_REGEX = /(?:add|create|new|save|make|start|build|put)\s+(?:a\s+|an\s+|the\s+)?(?:packing\s+|shopping\s+|todo\s+|to-do\s+)?list\s+(?:called\s+|named\s+|for\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^,;:.!?\n]+?))(?:\s+(?:with|having|containing|to|in|into|on)\b|[,;:.!?\n]|$)/i;
 const CATEGORY_CODE_REGEX = /\b(A1|A2|A3|B1|B2|C|D|E|F|G|H|I|J)\b(?=\s*:|\b)/g;
 const LIFE_PLAN_PROJECT_REGEX = /\b(lp-[a-z0-9]+)\b/i;
 
@@ -105,11 +105,17 @@ async function createListWithItems(name: string, items: string[]) {
 
 // Pull a bullet-list out of an AI response, if any
 function extractBullets(text: string): string[] {
-  const lines = text.split("\n").map(l => l.trim());
-  return lines
-    .filter(l => /^([-*•]|\d+\.)\s+/.test(l))
-    .map(l => l.replace(/^([-*•]|\d+\.)\s+/, "").replace(/\*\*/g, "").trim())
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+  const bulleted = lines
+    .filter(l => /^([-*•]|\d+[.)])\s+/.test(l))
+    .map(l => l.replace(/^([-*•]|\d+[.)])\s+/, "").replace(/\*\*/g, "").trim())
     .filter(Boolean);
+  if (bulleted.length > 0) return bulleted;
+  // Inline numbered like "1) Test 2) Test B 3) Test 3"
+  const inline = Array.from(text.matchAll(/\d+[.)]\s*([^0-9\n][^\n]*?)(?=\s+\d+[.)]\s|$)/g))
+    .map(m => m[1].trim().replace(/[,;.]+$/, ""))
+    .filter(Boolean);
+  return inline;
 }
 
 function extractCategories(content: string): Category[] {
@@ -296,7 +302,8 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
       const listName = extractListName(textInput);
       let createdListName: string | null = null;
       if (listName) {
-        const items = extractBullets(assistantContent);
+        let items = extractBullets(textInput);
+        if (items.length === 0) items = extractBullets(assistantContent);
         const id = await createListWithItems(listName, items);
         if (id) createdListName = listName;
       }
