@@ -494,7 +494,7 @@ function FlowTrioDock({
     }
 
     return { alerts: out, hasOverdue: out.some(a => a.severity === "overdue") };
-  }, [tick, flow, tasks, reminders, lifePlanProjects, dailySchedule]);
+  }, [tick, flow, tasks, reminders, lifePlanProjects, dailySchedule, cutoffs]);
 
   // Fire chime when a NEW overdue alert appears
   useEffect(() => {
