@@ -101,7 +101,7 @@ export default function Index() {
   useEffect(() => {
     const handler = (e: StorageEvent) => {
       switch (e.key) {
-        case "serpent-tasks": setTasks(store.getTasks()); break;
+        // tasks are cloud-synced per user; do not refill from cross-user localStorage
         case "serpent-projects": setProjects(store.getProjects()); break;
         case "serpent-reminders": setReminders(store.getReminders()); break;
         case "serpent-calendar-events": setCalendarEvents(store.getCalendarEvents()); break;
