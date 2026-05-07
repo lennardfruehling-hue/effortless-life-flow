@@ -40,7 +40,7 @@ interface ChatMessage {
   content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
 }
 
-const TASK_COMMAND_REGEX = /(?:add|create|new|save|make|put)\s+(?:a\s+|an\s+|the\s+)?task\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into|on)\s+(?:the\s+|my\s+)?(?:tasks?|list|todo)s?)?(?:[.!?]|$)/i;
+const TASK_COMMAND_REGEX = /(?:add|create|new|save|make|put)\s+(?:(?:a|an|the)[.\s]+)?task\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into|on)\s+(?:the\s+|my\s+)?(?:tasks?|list|todo)s?)?(?:[.!?]|$)/i;
 const PROJECT_COMMAND_REGEX = /(?:add|create|new|save|make|start|put)\s+(?:a\s+|an\s+|the\s+)?project\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into|on)\s+(?:the\s+|my\s+)?(?:projects?|life[- ]?plan|plan))?(?:[.!?]|$)/i;
 const NOTE_COMMAND_REGEX = /(?:add|create|new|save|make|write|put)\s+(?:a\s+|an\s+|the\s+)?(?:research\s+)?note\s+(?:called\s+|named\s+|about\s+|on\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into)\s+(?:the\s+|my\s+)?(?:notes?|research))?(?:[.!?]|$)/i;
 const LIST_COMMAND_REGEX = /(?:add|create|new|save|make|start|build|put)\s+(?:a\s+|an\s+|the\s+)?(?:packing\s+|shopping\s+|todo\s+|to-do\s+)?list\s+(?:called\s+|named\s+|for\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into|on)\s+(?:the\s+|my\s+)?lists?)?(?:[.!?]|$)/i;
