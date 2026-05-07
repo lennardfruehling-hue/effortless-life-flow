@@ -302,7 +302,8 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
       const listName = extractListName(textInput);
       let createdListName: string | null = null;
       if (listName) {
-        const items = extractBullets(assistantContent);
+        let items = extractBullets(textInput);
+        if (items.length === 0) items = extractBullets(assistantContent);
         const id = await createListWithItems(listName, items);
         if (id) createdListName = listName;
       }
