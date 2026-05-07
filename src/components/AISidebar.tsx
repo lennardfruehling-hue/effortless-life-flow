@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Bot, ChevronRight, ChevronLeft } from "lucide-react";
+import { Bot, ChevronRight, ChevronLeft, Mic } from "lucide-react";
 import { Task, Project } from "@/lib/types";
 import AIChat from "./AIChat";
+import VoiceTaskDialog from "./VoiceTaskDialog";
 
 interface Props {
   tasks: Task[];
