@@ -51,7 +51,8 @@ export default function Sidebar({
         </p>
       </div>
 
-      <nav className="flex-1 px-2 md:px-3 space-y-1">
+      <div className="flex-1" />
+      <nav className="px-2 md:px-3 space-y-1">
         {NAV_ITEMS.map(({ mode, icon: Icon, label }) => {
           const isActive = active === mode;
           return (
@@ -62,7 +63,7 @@ export default function Sidebar({
               className={`group w-full flex items-center justify-center md:justify-start gap-3 px-2.5 md:px-3 py-2 rounded-lg text-sm transition-all ${
                 isActive
                   ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-sm"
-                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
+                  : "text-white hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground"
               }`}
             >
               <Icon size={17} strokeWidth={isActive ? 2.25 : 1.75} />
