@@ -137,9 +137,8 @@ export interface TaskList {
   project_id?: string | null;
   created_at: string;
   updated_at: string;
+  assignee_id?: string | null;
 }
-
-export interface ListItem {
   id: string;
   list_id: string;
   position: number;
