@@ -50,12 +50,12 @@ interface LifePlanViewProps {
 
 const STORAGE_KEY = "serpent-lifeplan-v2";
 
-function loadData(): LifePlanData {
+function loadData(): LifePlanData | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
-  return getDefaultData();
+  return null;
 }
 
 function saveData(data: LifePlanData) {
