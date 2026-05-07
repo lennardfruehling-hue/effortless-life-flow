@@ -282,6 +282,19 @@ export default function ResearchView({ projects }: Props) {
                 </select>
               </div>
               <TagPicker kind="note" ownerId={activeNote.id} />
+              {members.length > 1 && (
+                <div className="flex items-center gap-1 ml-auto">
+                  <AssigneeAvatar member={byId(activeNote.assignee_id)} size="md" />
+                  <select
+                    value={activeNote.assignee_id || ""}
+                    onChange={(e) => updateNote({ assignee_id: e.target.value || null } as any)}
+                    className="bg-transparent text-xs text-foreground border-none focus:outline-none cursor-pointer"
+                  >
+                    <option value="">Unassigned</option>
+                    {members.map(m => <option key={m.user_id} value={m.user_id}>{m.display_name || "Member"}</option>)}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Blocks */}
