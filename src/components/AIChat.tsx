@@ -303,6 +303,7 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
 
       const confirmations: string[] = [];
       if (createdProjectId) confirmations.push(`✅ Project **"${projectName}"** added to your Life Plan.`);
+      if (createdTaskTitle) confirmations.push(`✅ Task **"${createdTaskTitle}"** added.`);
       if (createdNoteTitle) confirmations.push(`✅ Research note **"${createdNoteTitle}"** saved.`);
       if (createdListName) confirmations.push(`✅ List **"${createdListName}"** saved with all items.`);
       const finalContent = confirmations.length > 0
