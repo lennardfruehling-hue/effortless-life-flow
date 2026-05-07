@@ -197,7 +197,7 @@ export default function VoiceTaskDialog({ onClose, onSave }: Props) {
   // Save when done
   useEffect(() => {
     if (!done) return;
-    const cats: Category[] = values.categories || [];
+    const cats: Category[] = ALL_CATEGORIES.filter((c) => values["cat_" + c] === true);
     (async () => {
       const { data } = await supabase.auth.getUser();
       const task: Task = {
