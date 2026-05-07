@@ -201,8 +201,13 @@ function parseEventDateTime(input: string, ref = new Date()): { start: string; e
 }
 
 function extractEventTitle(input: string) {
-  const m = input.trim().match(EVENT_COMMAND_REGEX);
-  return m ? (m[1] || m[2] || "").trim().replace(/\s+(on|at|for)\s+.*$/i, "") : "";
+  if (!EVENT_COMMAND_REGEX.test(input)) return "";
+  const q = input.match(/["\u201C\u201D'](.+?)["\u201C\u201D']/);
+  if (q) return q[1].trim();
+  const m = input.match(EVENT_TITLE_REGEX);
+  if (m) return (m[1] || m[2] || "").trim();
+  // fallback: last capitalized word group, or generic title
+  return "Event";
 }
 
 function addCalendarEvent(title: string, dt: { start: string; end: string; allDay: boolean }) {
