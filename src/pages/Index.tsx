@@ -12,6 +12,7 @@ import AIChat from "@/components/AIChat";
 import AISidebar from "@/components/AISidebar";
 import ConsistencyView from "@/components/ConsistencyView";
 import ReminderWatcher from "@/components/ReminderWatcher";
+import SyncStatusBanner from "@/components/SyncStatusBanner";
 
 const LIFEPLAN_KEY = "serpent-lifeplan-v2";
 
