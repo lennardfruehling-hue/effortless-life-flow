@@ -74,6 +74,7 @@ export default function TaskCard({ task, onToggle, onEdit, onDelete }: TaskCardP
           </span>
         </div>
       </div>
+      {assignee && <div className="flex-shrink-0 mt-0.5"><AssigneeAvatar member={assignee} /></div>}
 
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button onClick={() => onEdit(task)} className="p-1 text-muted-foreground hover:text-foreground">
