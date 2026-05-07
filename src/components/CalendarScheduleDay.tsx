@@ -95,6 +95,9 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
     };
     onSaveSlots([...slots, slot].sort((a, b) => toMin(a.startTime) - toMin(b.startTime)));
     window.dispatchEvent(new CustomEvent("serpent-progress", { detail: "schedule-block-added" }));
+  };
+
+  // ---- Click empty area to create custom block ----
   const handleGridClick = (e: React.MouseEvent) => {
     if (drag) return;
     if (e.target !== gridRef.current && (e.target as HTMLElement).dataset.bg !== "1") return;
