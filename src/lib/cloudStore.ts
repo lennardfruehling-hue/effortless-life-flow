@@ -10,7 +10,21 @@ export const CLOUD_KEYS = {
   chatHistory: "serpent-chat-history",
   calendarEvents: "serpent-calendar-events",
   dailySchedule: "serpent-daily-schedule",
+  weeklyStructure: "serpent-weekly-structure",
 } as const;
+
+/**
+ * Read every household member's value for a key (per-user, no merging).
+ * Returns rows of { user_id, value } so the caller can render owner-tagged variants.
+ */
+export async function cloudGetAllByKey<T>(key: string): Promise<{ user_id: string; value: T }[]> {
+  const { data, error } = await supabase
+    .from("user_data")
+    .select("user_id, value")
+    .eq("key", key);
+  if (error || !data) return [];
+  return data.map((r) => ({ user_id: r.user_id as string, value: r.value as T }));
+}
 
 // Per-user-only keys (do NOT merge across household — these are personal).
 const PERSONAL_KEYS: string[] = [
