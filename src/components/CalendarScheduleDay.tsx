@@ -235,8 +235,46 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
 
   const unscheduledTasks = useMemo(() => {
     const scheduledIds = new Set(slots.map((s) => s.taskId).filter(Boolean));
-    return tasks.filter((t) => !t.completed && !scheduledIds.has(t.id));
-  }, [tasks, slots]);
+    const base = tasks.filter((t) => !t.completed && !scheduledIds.has(t.id));
+    if (filter === "all") return base;
+    if (filter === "none") return base.filter((t) => !t.recurrence || t.recurrence === "none");
+    return base.filter((t) => t.recurrence === filter);
+  }, [tasks, slots, filter]);
+
+  // Auto-populate today's schedule with daily-recurring tasks that have a dueTime
+  // and any weekly task whose dueDate falls today. Each task gets at most one slot per day.
+  useEffect(() => {
+    const todayDow = new Date().getDay();
+    const today = new Date().toISOString().slice(0, 10);
+    const existingTaskIds = new Set(slots.map((s) => s.taskId).filter(Boolean));
+    const additions: DailyScheduleSlot[] = [];
+
+    for (const t of tasks) {
+      if (t.completed || existingTaskIds.has(t.id)) continue;
+      let shouldAdd = false;
+      if (t.recurrence === "daily") shouldAdd = true;
+      else if (t.recurrence === "weekly" && t.dueDate) {
+        const d = new Date(t.dueDate + "T00:00");
+        if (d.getDay() === todayDow) shouldAdd = true;
+      } else if (!t.recurrence && t.dueDate === today) shouldAdd = true;
+      if (!shouldAdd) continue;
+      // Need a time anchor — use dueTime, otherwise skip to avoid clutter
+      if (!t.dueTime) continue;
+      const [hh, mm] = t.dueTime.split(":").map(Number);
+      const startMin = hh * 60 + mm;
+      const dur = t.duration && t.duration >= 15 ? t.duration : 30;
+      additions.push({
+        id: `auto-${t.id}-${today}`,
+        startTime: toHHMM(startMin),
+        endTime: toHHMM(Math.min(1440, startMin + dur)),
+        taskId: t.id,
+        taskCategories: t.categories,
+      });
+    }
+    if (additions.length === 0) return;
+    onSaveSlots([...slots, ...additions].sort((a, b) => toMin(a.startTime) - toMin(b.startTime)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks]);
 
   // ---- Email today's schedule ----
   const handleEmailSchedule = () => {
