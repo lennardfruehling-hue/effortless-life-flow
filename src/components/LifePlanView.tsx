@@ -50,12 +50,12 @@ interface LifePlanViewProps {
 
 const STORAGE_KEY = "serpent-lifeplan-v2";
 
-function loadData(): LifePlanData {
+function loadData(): LifePlanData | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
   } catch {}
-  return getDefaultData();
+  return null;
 }
 
 function saveData(data: LifePlanData) {
@@ -205,18 +205,26 @@ function GanttBar({ project, globalStart, globalEnd }: { project: ProjectGroup; 
 
 export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTasks }: LifePlanViewProps) {
   const { members, byId } = useHouseholdMembers();
-  const [data, setData] = useState<LifePlanData>(loadData);
+  const [data, setData] = useState<LifePlanData>(() => loadData() ?? getDefaultData());
+  const hadStoredData = useRef<boolean>(loadData() !== null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [newProjectName, setNewProjectName] = useState("");
   const [showArchive, setShowArchive] = useState(false);
   const [pickerProjectId, setPickerProjectId] = useState<string | null>(null);
   const [pickerQuery, setPickerQuery] = useState("");
 
-  useEffect(() => { saveData(data); }, [data]);
-
-  // Reload when external sources (e.g. AI chat) update the Life Plan
   useEffect(() => {
-    const reload = () => setData(loadData());
+    // Don't write defaults over a (possibly still-hydrating) cloud value on first mount.
+    if (!hadStoredData.current) { hadStoredData.current = true; return; }
+    saveData(data);
+  }, [data]);
+
+  // Reload when external sources (cloud sync, AI chat) update the Life Plan
+  useEffect(() => {
+    const reload = () => {
+      const fresh = loadData();
+      if (fresh) { hadStoredData.current = true; setData(fresh); }
+    };
     window.addEventListener("lifeplan-updated", reload);
     window.addEventListener("storage", reload);
     return () => {
