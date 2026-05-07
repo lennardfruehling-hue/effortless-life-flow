@@ -193,7 +193,7 @@ export default function SerpentFlow() {
         )}
       </AnimatePresence>
 
-      {/* Midday & Evening prompts */}
+      {/* Midday, Evening & manual relaunch prompts */}
       <div className="fixed bottom-4 right-4 z-40 flex flex-col gap-2 items-end">
         {showMidday && !active && (
           <button
@@ -209,6 +209,15 @@ export default function SerpentFlow() {
             className="px-3 py-2 rounded-md bg-cat-k/90 text-white text-xs shadow-lg hover:opacity-90"
           >
             🐍 Evening check
+          </button>
+        )}
+        {!active && (
+          <button
+            onClick={() => startFlow("start")}
+            title="Relaunch Serpent flow"
+            className="w-10 h-10 rounded-full bg-sidebar/90 border border-amber-300/40 text-white text-lg shadow-lg hover:bg-sidebar transition-colors flex items-center justify-center"
+          >
+            🐍
           </button>
         )}
       </div>
