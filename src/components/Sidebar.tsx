@@ -137,7 +137,7 @@ export default function Sidebar({
       <div className="p-3 border-t border-sidebar-border space-y-1">
         <button
           onClick={() => onChange("consistency")}
-          title={`Pride ${pride} · ${weekPride} this week · ${streak}-day streak`}
+          title={`Pride ${pride} · ${weekPride} this week · ${streak}-day streak · Serpent ${trioDone}/3 today`}
           className="w-full flex items-center justify-center md:justify-between gap-2 px-2.5 md:px-3 py-2 rounded-lg bg-sidebar-accent/40 hover:bg-sidebar-accent/70 transition-colors mb-1"
         >
           <span className="flex items-center gap-1.5 text-white">
@@ -149,6 +149,28 @@ export default function Sidebar({
             <span className="text-xs font-bold tabular-nums">{streak}</span>
           </span>
         </button>
+        <div
+          className="w-full flex items-center justify-center md:justify-between gap-1.5 px-2.5 md:px-3 py-1.5 rounded-lg bg-sidebar-accent/20 mb-1"
+          title={`Serpent flow today: ${trioDone}/3 (Start ${flow.startCompleted ? "✓" : "·"} · Midday ${flow.middayCompleted ? "✓" : "·"} · Evening ${flow.eveningCompleted ? "✓" : "·"})`}
+        >
+          <span className="hidden md:inline text-[10px] font-mono uppercase tracking-wider text-white/70">Serpent</span>
+          <span className="flex items-center gap-1">
+            {[
+              { ok: flow.startCompleted, label: "S" },
+              { ok: flow.middayCompleted, label: "M" },
+              { ok: flow.eveningCompleted, label: "E" },
+            ].map((d, i) => (
+              <span
+                key={i}
+                className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold border ${
+                  d.ok ? "bg-emerald-500/80 border-emerald-300 text-white" : "bg-transparent border-white/30 text-white/50"
+                }`}
+              >
+                {d.ok ? "✓" : d.label}
+              </span>
+            ))}
+          </span>
+        </div>
         {user && (
           <p className="hidden md:block text-[10px] text-muted-foreground font-mono truncate mb-1.5 px-1" title={user.email ?? ""}>
             {user.email}
