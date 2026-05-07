@@ -11,6 +11,7 @@ import CalendarView from "@/components/CalendarView";
 import AIChat from "@/components/AIChat";
 import AISidebar from "@/components/AISidebar";
 import ConsistencyView from "@/components/ConsistencyView";
+import ReminderWatcher from "@/components/ReminderWatcher";
 
 const LIFEPLAN_KEY = "serpent-lifeplan-v2";
 
@@ -100,6 +101,7 @@ export default function Index() {
         {view === "ai" && <AIChat tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />}
       </main>
       <AISidebar tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />
+      <ReminderWatcher reminders={reminders} onUpdate={setReminders} />
     </div>
   );
 }
