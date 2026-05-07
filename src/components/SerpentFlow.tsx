@@ -250,6 +250,11 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
       {!active && (
         <FlowTrioDock
           trio={TRIO}
+          flow={state}
+          tasks={tasks}
+          reminders={reminders}
+          lifePlanProjects={lifePlanProjects}
+          dailySchedule={dailySchedule}
           onStart={startFlow}
           onReset={() => {
             if (!confirm("Reset today's Serpent flow? Start, Midday and Evening will be marked uncompleted and the phase cleared.")) return;
