@@ -13,6 +13,8 @@ interface TaskCardProps {
 }
 
 export default function TaskCard({ task, onToggle, onEdit, onDelete }: TaskCardProps) {
+  const { byId } = useHouseholdMembers();
+  const assignee = byId(task.assigneeId);
   return (
     <motion.div
       layout
