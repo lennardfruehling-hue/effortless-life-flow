@@ -84,9 +84,10 @@ function extractListItemsFromUser(input: string, listName: string): string[] {
 }
 
 async function createResearchNote(title: string, body: string) {
+  const { data: { user } } = await supabase.auth.getUser();
   const { data } = await supabase
     .from("research_notes")
-    .insert({ title })
+    .insert({ title, created_by: user?.id ?? null })
     .select().single();
   if (!data) return null;
   const blocks = body
@@ -108,7 +109,8 @@ async function createResearchNote(title: string, body: string) {
 }
 
 async function createListWithItems(name: string, items: string[]) {
-  const { data } = await supabase.from("task_lists").insert({ name }).select().single();
+  const { data: { user } } = await supabase.auth.getUser();
+  const { data } = await supabase.from("task_lists").insert({ name, created_by: user?.id ?? null }).select().single();
   if (!data) return null;
   if (items.length > 0) {
     await supabase.from("list_items").insert(
