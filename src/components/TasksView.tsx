@@ -45,6 +45,16 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Broadcast schedule-active state so the sidebar can swap to its strike backdrop.
+  useEffect(() => {
+    document.body.dataset.scheduleActive = showSchedule ? "1" : "0";
+    window.dispatchEvent(new CustomEvent("schedule-active-change", { detail: showSchedule }));
+    return () => {
+      document.body.dataset.scheduleActive = "0";
+      window.dispatchEvent(new CustomEvent("schedule-active-change", { detail: false }));
+    };
+  }, [showSchedule]);
+
   const dailyTasks = useMemo(() => tasks.filter((t) => t.recurrence === "daily"), [tasks]);
   const weeklyTasks = useMemo(() => tasks.filter((t) => t.recurrence === "weekly"), [tasks]);
 
