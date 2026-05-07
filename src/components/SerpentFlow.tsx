@@ -13,34 +13,42 @@ import halfMoon from "@/assets/serpent-half-moon.png";
 
 type FlowKind = "start" | "midday" | "evening";
 
+/** What the user must do before the Next button unlocks for a step. */
+type Requirement =
+  | { kind: "click-target" }                // any click inside / on the highlighted target
+  | { kind: "progress-event"; event: string } // CustomEvent name on window: serpent-progress with detail===event
+  | { kind: "none" };
+
 interface Step {
   title: string;
   body: string;
   target?: string;
+  requires?: Requirement;
+  hint?: string; // shown while gated
 }
 
 const FLOWS: Record<FlowKind, { label: string; steps: Step[] }> = {
   start: {
     label: "Start Serpent 🐍",
     steps: [
-      { title: "Open Tasks", body: "Go to the Tasks view to plan your day.", target: '[data-tour="nav-tasks"]' },
-      { title: "Add Daily Tasks", body: "Use Add Task to drop in today's daily items.", target: '[data-tour="add-task"]' },
-      { title: "Check Tasks", body: "Review urgency on existing tasks (A1/B1).", target: '[data-tour="add-task"]' },
-      { title: "Open Schedule", body: "Open the 24h Schedule panel.", target: '[data-tour="schedule-toggle"]' },
-      { title: "Produce & Complete Schedule", body: "Drag tasks in, set realistic time + buffer, sanity-check it's doable.", target: '[data-tour="schedule-panel"]' },
-      { title: "Email schedule", body: "Send the schedule to yourself by email.", target: '[data-tour="email-schedule"]' },
+      { title: "Open Tasks", body: "Go to the Tasks view to plan your day.", target: '[data-tour="nav-tasks"]', requires: { kind: "click-target" }, hint: "Click the Tasks nav item to continue." },
+      { title: "Add Daily Tasks", body: "Use Add Task to drop in today's daily items.", target: '[data-tour="add-task"]', requires: { kind: "click-target" }, hint: "Click Add Task to continue." },
+      { title: "Check Tasks", body: "Review urgency on existing tasks (A1/B1).", target: '[data-tour="add-task"]', requires: { kind: "none" } },
+      { title: "Open Schedule", body: "Open the 24h Schedule panel.", target: '[data-tour="schedule-toggle"]', requires: { kind: "click-target" }, hint: "Click Schedule to open the panel." },
+      { title: "Produce & Complete Schedule", body: "Drag tasks in, set realistic time + buffer, sanity-check it's doable.", target: '[data-tour="schedule-panel"]', requires: { kind: "progress-event", event: "schedule-block-added" }, hint: "Add at least one block to the schedule to continue." },
+      { title: "Email schedule", body: "Send the schedule to yourself by email.", target: '[data-tour="email-schedule"]', requires: { kind: "progress-event", event: "schedule-emailed" }, hint: "Click Email schedule to continue." },
     ],
   },
   midday: {
     label: "Midday Check 🐍",
     steps: [
-      { title: "Daily Serpent list · A1", body: "Check progress on A1 daily items.", target: '[data-tour="nav-consistency"]' },
+      { title: "Daily Serpent list · A1", body: "Check progress on A1 daily items.", target: '[data-tour="nav-consistency"]', requires: { kind: "click-target" }, hint: "Open the Consistency view to continue." },
     ],
   },
   evening: {
     label: "Evening Review 🐍",
     steps: [
-      { title: "Daily Serpent list · A1", body: "Review and check non-negotiable (Célida · K) items.", target: '[data-tour="nav-consistency"]' },
+      { title: "Daily Serpent list · A1", body: "Review and check non-negotiable (Célida · K) items.", target: '[data-tour="nav-consistency"]', requires: { kind: "click-target" }, hint: "Open the Consistency view to continue." },
     ],
   },
 };
@@ -76,7 +84,8 @@ function useTargetRect(selector: string | undefined): Rect | null {
   return rect;
 }
 
-function derivePhase(s: SerpentFlowDayState, active: FlowKind | null): SerpentPhase {
+function derivePhase(s: SerpentFlowDayState, active: FlowKind | null, manual: SerpentPhase | null): SerpentPhase {
+  if (manual) return manual;
   if (active === "start") return "planning";
   if (active === "evening" || s.eveningCompleted) return "review";
   if (active === "midday" || s.startCompleted) return "action";
@@ -88,12 +97,25 @@ export default function SerpentFlow() {
   const [active, setActive] = useState<FlowKind | null>(null);
   const [stepIdx, setStepIdx] = useState(0);
   const [trioOpen, setTrioOpen] = useState(false);
+  const [manualPhase, setManualPhase] = useState<SerpentPhase | null>(null);
+  // Tracks whether the active step's requirement is satisfied.
+  const [stepSatisfied, setStepSatisfied] = useState(false);
 
   // Persist + broadcast phase whenever inputs change.
   useEffect(() => {
-    const next = { ...state, phase: derivePhase(state, active) };
+    const next = { ...state, phase: derivePhase(state, active, manualPhase) };
     saveFlowState(next);
-  }, [state, active]);
+  }, [state, active, manualPhase]);
+
+  // Listen for manual phase override from the sidebar (user clicks the phase chip).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as SerpentPhase | null;
+      setManualPhase(detail || null);
+    };
+    window.addEventListener("serpent-set-phase", handler);
+    return () => window.removeEventListener("serpent-set-phase", handler);
+  }, []);
 
   const startFlow = (kind: FlowKind) => {
     setTrioOpen(false);
@@ -136,6 +158,38 @@ export default function SerpentFlow() {
 
   const currentStep = active ? FLOWS[active].steps[stepIdx] : undefined;
   const targetRect = useTargetRect(currentStep?.target);
+
+  // Reset gating when step changes; auto-satisfy if requirement is "none".
+  useEffect(() => {
+    if (!currentStep) { setStepSatisfied(false); return; }
+    const req = currentStep.requires ?? { kind: "none" as const };
+    setStepSatisfied(req.kind === "none");
+  }, [active, stepIdx, currentStep]);
+
+  // Listen for the step requirement: target click or progress event.
+  useEffect(() => {
+    if (!active || !currentStep) return;
+    const req = currentStep.requires ?? { kind: "none" as const };
+    if (req.kind === "none") return;
+
+    if (req.kind === "click-target" && currentStep.target) {
+      const handler = (ev: MouseEvent) => {
+        const el = document.querySelector(currentStep.target!) as HTMLElement | null;
+        if (el && ev.target instanceof Node && el.contains(ev.target)) {
+          setStepSatisfied(true);
+        }
+      };
+      document.addEventListener("click", handler, true);
+      return () => document.removeEventListener("click", handler, true);
+    }
+    if (req.kind === "progress-event") {
+      const handler = (e: Event) => {
+        if ((e as CustomEvent).detail === req.event) setStepSatisfied(true);
+      };
+      window.addEventListener("serpent-progress", handler);
+      return () => window.removeEventListener("serpent-progress", handler);
+    }
+  }, [active, currentStep]);
 
   const popover = (() => {
     if (!targetRect) return { top: 24, left: window.innerWidth / 2 - 180 };
@@ -253,11 +307,19 @@ export default function SerpentFlow() {
                 </button>
               </div>
               <p className="text-xs text-muted-foreground mb-3">{currentStep.body}</p>
+              {!stepSatisfied && currentStep.hint && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-300 mb-2 italic">⏳ {currentStep.hint}</p>
+              )}
               <button
                 onClick={next}
-                className="w-full flex items-center justify-center gap-1 bg-primary text-primary-foreground rounded px-3 py-2 text-xs font-medium hover:opacity-90"
+                disabled={!stepSatisfied}
+                className={`w-full flex items-center justify-center gap-1 rounded px-3 py-2 text-xs font-medium transition ${
+                  stepSatisfied
+                    ? "bg-primary text-primary-foreground hover:opacity-90"
+                    : "bg-muted text-muted-foreground cursor-not-allowed"
+                }`}
               >
-                {stepIdx + 1 >= FLOWS[active].steps.length ? "Complete" : "Next"} <ChevronRight size={14} />
+                {stepSatisfied ? (stepIdx + 1 >= FLOWS[active].steps.length ? "Complete" : "Next") : "Locked"} <ChevronRight size={14} />
               </button>
             </motion.div>
           </>

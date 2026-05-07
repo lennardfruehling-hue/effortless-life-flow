@@ -94,6 +94,7 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
       taskCategories: task.categories,
     };
     onSaveSlots([...slots, slot].sort((a, b) => toMin(a.startTime) - toMin(b.startTime)));
+    window.dispatchEvent(new CustomEvent("serpent-progress", { detail: "schedule-block-added" }));
   };
 
   // ---- Click empty area to create custom block ----
@@ -112,6 +113,7 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
       label: title,
     };
     onSaveSlots([...slots, slot].sort((a, b) => toMin(a.startTime) - toMin(b.startTime)));
+    window.dispatchEvent(new CustomEvent("serpent-progress", { detail: "schedule-block-added" }));
   };
 
   // ---- Block move/resize ----
@@ -177,6 +179,7 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
     const body = encodeURIComponent(`Today's Serpent Schedule\n\n${lines.join("\n")}\n`);
     const subject = encodeURIComponent(`Serpent — Schedule for ${new Date().toLocaleDateString()}`);
     window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    window.dispatchEvent(new CustomEvent("serpent-progress", { detail: "schedule-emailed" }));
   };
 
   // ---- Print today's schedule (printable HTML view) ----
