@@ -113,6 +113,8 @@ export interface ResearchNoteRow {
   created_at: string;
   updated_at: string;
   assignee_id?: string | null;
+  created_by?: string | null;
+  is_private?: boolean;
 }
 
 export interface NoteBlock {
@@ -138,6 +140,8 @@ export interface TaskList {
   created_at: string;
   updated_at: string;
   assignee_id?: string | null;
+  created_by?: string | null;
+  is_private?: boolean;
 }
 
 export interface ListItem {
