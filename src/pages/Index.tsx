@@ -101,6 +101,7 @@ export default function Index() {
         {view === "ai" && <AIChat tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />}
       </main>
       <AISidebar tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />
+      <ReminderWatcher reminders={reminders} onUpdate={setReminders} />
     </div>
   );
 }
