@@ -510,17 +510,34 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
                           <input type="checkbox" checked={task.done} onChange={(e) => updateTask(project.id, task.id, "done", e.target.checked)} className="accent-primary flex-shrink-0" />
                           <input value={task.task} onChange={(e) => updateTask(project.id, task.id, "task", e.target.value)} className={`flex-1 bg-transparent text-sm focus:outline-none ${task.done ? "line-through text-muted-foreground" : "text-foreground"}`} placeholder="Task description" />
                           {members.length >= 1 && (
-                            <div className="relative flex-shrink-0">
-                              <AssigneeAvatar member={byId(task.assigneeId)} />
-                              <select
-                                value={task.assigneeId || ""}
-                                onChange={(e) => updateTask(project.id, task.id, "assigneeId" as any, e.target.value || null as any)}
-                                className="absolute inset-0 opacity-0 cursor-pointer"
-                                title="Assign"
-                              >
-                                <option value="">Unassigned</option>
-                                {members.map(m => <option key={m.user_id} value={m.user_id}>{m.display_name || "Member"}</option>)}
-                              </select>
+                            <div className="flex-shrink-0">
+                              <MultiAssigneePicker
+                                members={members}
+                                value={
+                                  task.assigneeIds && task.assigneeIds.length > 0
+                                    ? task.assigneeIds
+                                    : task.assigneeId
+                                      ? [task.assigneeId]
+                                      : []
+                                }
+                                onChange={(ids) => {
+                                  setData((d) => ({
+                                    ...d,
+                                    projects: d.projects.map((p) =>
+                                      p.id === project.id
+                                        ? {
+                                            ...p,
+                                            tasks: p.tasks.map((t) =>
+                                              t.id === task.id
+                                                ? { ...t, assigneeIds: ids, assigneeId: ids[0] ?? null }
+                                                : t
+                                            ),
+                                          }
+                                        : p
+                                    ),
+                                  }));
+                                }}
+                              />
                             </div>
                           )}
                           <div className="flex items-center gap-1 flex-shrink-0">
@@ -531,7 +548,23 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
                         </div>
                       );
                     })}
-                    <button onClick={() => addTask(project.id)} className="w-full px-4 py-2 text-xs text-muted-foreground hover:text-primary hover:bg-secondary/50 transition-colors text-left">+ Add task</button>
+                    <div className="flex items-center gap-1 px-2 py-1 border-t border-border/30">
+                      <button
+                        onClick={() => addTask(project.id)}
+                        className="flex-1 px-3 py-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-secondary/50 transition-colors text-left rounded"
+                      >
+                        + Add task (new)
+                      </button>
+                      {tasks.length > 0 && (
+                        <button
+                          onClick={() => { setPickerProjectId(project.id); setPickerQuery(""); }}
+                          className="px-3 py-1.5 text-xs text-muted-foreground hover:text-primary hover:bg-secondary/50 transition-colors rounded inline-flex items-center gap-1"
+                          title="Add an existing saved task to this project"
+                        >
+                          <Search size={11} /> From saved tasks…
+                        </button>
+                      )}
+                    </div>
 
                     {project.tasks.length > 0 && (() => {
                       const projStart = project.startDate ? new Date(project.startDate) : globalStart;
