@@ -139,6 +139,8 @@ export interface TaskList {
   updated_at: string;
   assignee_id?: string | null;
 }
+
+export interface ListItem {
   id: string;
   list_id: string;
   position: number;
