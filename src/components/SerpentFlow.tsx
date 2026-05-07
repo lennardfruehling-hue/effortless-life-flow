@@ -1,12 +1,13 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
+import { X, ChevronRight, ChevronDown, ChevronUp, Bell, AlertTriangle, Clock, Compass } from "lucide-react";
 import {
   loadFlowState,
   saveFlowState,
   SerpentFlowDayState,
   SerpentPhase,
 } from "@/lib/serpentFlowState";
+import { Task, Reminder, LifePlanProject, DailyScheduleSlot } from "@/lib/types";
 import risingSun from "@/assets/serpent-rising-sun.png";
 import sun from "@/assets/serpent-sun.png";
 import halfMoon from "@/assets/serpent-half-moon.png";
@@ -92,7 +93,14 @@ function derivePhase(s: SerpentFlowDayState, active: FlowKind | null, manual: Se
   return "idle";
 }
 
-export default function SerpentFlow() {
+interface SerpentFlowProps {
+  tasks?: Task[];
+  reminders?: Reminder[];
+  lifePlanProjects?: LifePlanProject[];
+  dailySchedule?: DailyScheduleSlot[];
+}
+
+export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjects = [], dailySchedule = [] }: SerpentFlowProps = {}) {
   const [state, setState] = useState<SerpentFlowDayState>(loadFlowState);
   const [active, setActive] = useState<FlowKind | null>(null);
   const [stepIdx, setStepIdx] = useState(0);
@@ -242,6 +250,11 @@ export default function SerpentFlow() {
       {!active && (
         <FlowTrioDock
           trio={TRIO}
+          flow={state}
+          tasks={tasks}
+          reminders={reminders}
+          lifePlanProjects={lifePlanProjects}
+          dailySchedule={dailySchedule}
           onStart={startFlow}
           onReset={() => {
             if (!confirm("Reset today's Serpent flow? Start, Midday and Evening will be marked uncompleted and the phase cleared.")) return;
@@ -318,17 +331,69 @@ export default function SerpentFlow() {
 }
 
 // ============================================================================
-// FlowTrioDock — permanent bottom-center trio with a collapse-to-tab affordance.
-// Persists collapsed state per-browser so the user's choice sticks.
+// FlowTrioDock — Process & Alarm Center.
+// Combines the Serpent flow trio with overdue tasks/reminders/consistency,
+// and surfaces life-plan project risk. Turns faded-red with a bell when
+// anything needs attention; plays an alarm tone for new alerts.
 // ============================================================================
 type TrioItem = { kind: FlowKind; img: string; label: string; done: boolean };
 
+interface AlarmItem {
+  id: string;
+  kind: "flow" | "task" | "consistency" | "reminder" | "project";
+  label: string;
+  detail?: string;
+  severity: "warn" | "overdue";
+}
+
+function nowHHMM(): string {
+  const n = new Date();
+  return `${String(n.getHours()).padStart(2,"0")}:${String(n.getMinutes()).padStart(2,"0")}`;
+}
+
+function todayISO(): string {
+  const n = new Date();
+  return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}-${String(n.getDate()).padStart(2,"0")}`;
+}
+
+/** Short rising-tone alert (~1.2s) — distinct from reminder alarm. */
+function playAlertChime(ctxRef: { current: AudioContext | null }) {
+  try {
+    if (!ctxRef.current) ctxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const ctx = ctxRef.current;
+    if (ctx.state === "suspended") ctx.resume();
+    const t0 = ctx.currentTime;
+    [880, 1175, 1568].forEach((freq, i) => {
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      o.type = "sine";
+      o.frequency.value = freq;
+      const start = t0 + i * 0.18;
+      g.gain.setValueAtTime(0.0001, start);
+      g.gain.exponentialRampToValueAtTime(0.35, start + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, start + 0.35);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(start); o.stop(start + 0.4);
+    });
+  } catch (e) { /* swallow */ }
+}
+
 function FlowTrioDock({
   trio,
+  flow,
+  tasks,
+  reminders,
+  lifePlanProjects,
+  dailySchedule,
   onStart,
   onReset,
 }: {
   trio: TrioItem[];
+  flow: SerpentFlowDayState;
+  tasks: Task[];
+  reminders: Reminder[];
+  lifePlanProjects: LifePlanProject[];
+  dailySchedule: DailyScheduleSlot[];
   onStart: (k: FlowKind) => void;
   onReset: () => void;
 }) {
@@ -340,59 +405,203 @@ function FlowTrioDock({
     try { localStorage.setItem(KEY, collapsed ? "1" : "0"); } catch {}
   }, [collapsed]);
 
+  const [showPanel, setShowPanel] = useState(false);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setTick(t => t + 1), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const audioRef = useRef<AudioContext | null>(null);
+  const lastAlarmIdsRef = useRef<Set<string>>(new Set());
+
+  // Compute alerts on every render (cheap; lists are small)
+  const { alerts, hasOverdue } = useMemo(() => {
+    void tick; // re-run on interval
+    const out: AlarmItem[] = [];
+    const now = new Date();
+    const today = todayISO();
+    const hm = nowHHMM();
+    const hour = now.getHours();
+
+    // Outstanding flows by time of day
+    if (!flow.startCompleted && hour >= 8) {
+      out.push({ id: "flow-start", kind: "flow", label: "Start Serpent overdue", detail: "Plan your day", severity: hour >= 10 ? "overdue" : "warn" });
+    }
+    if (flow.startCompleted && !flow.middayCompleted && hour >= 13) {
+      out.push({ id: "flow-midday", kind: "flow", label: "Midday Check overdue", detail: "Review A1 progress", severity: hour >= 15 ? "overdue" : "warn" });
+    }
+    if (!flow.eveningCompleted && hour >= 19) {
+      out.push({ id: "flow-evening", kind: "flow", label: "Evening Review overdue", detail: "Reflect on the day", severity: hour >= 21 ? "overdue" : "warn" });
+    }
+
+    // Overdue tasks (with dueTime today, or past dueDate)
+    for (const t of tasks) {
+      if (t.completed) continue;
+      if (t.dueTime && (!t.dueDate || t.dueDate === today)) {
+        if (t.dueTime < hm) {
+          out.push({ id: `task-${t.id}`, kind: t.recurrence === "daily" ? "consistency" : "task", label: t.title, detail: `Due ${t.dueTime}`, severity: "overdue" });
+        }
+      } else if (t.dueDate && t.dueDate < today) {
+        out.push({ id: `task-${t.id}`, kind: "task", label: t.title, detail: `Was due ${t.dueDate}`, severity: "overdue" });
+      }
+    }
+
+    // Overdue reminders (not completed, datetime in past)
+    for (const r of reminders) {
+      if (r.completed) continue;
+      const due = new Date(r.datetime).getTime();
+      if (due <= now.getTime()) {
+        out.push({ id: `rem-${r.id}`, kind: "reminder", label: r.title, detail: `Was due ${new Date(r.datetime).toLocaleString()}`, severity: "overdue" });
+      }
+    }
+
+    // Life-plan projects at risk: any associated task overdue or > 50% past due-time
+    for (const lp of lifePlanProjects) {
+      const lpId = `lp-${lp.id}`;
+      const projTasks = tasks.filter(t => t.projectId === lpId && !t.completed);
+      const overdueCount = projTasks.filter(t =>
+        (t.dueDate && t.dueDate < today) ||
+        (t.dueTime && (!t.dueDate || t.dueDate === today) && t.dueTime < hm)
+      ).length;
+      if (overdueCount > 0) {
+        out.push({
+          id: `proj-${lp.id}`,
+          kind: "project",
+          label: `${lp.name} at risk`,
+          detail: `${overdueCount} overdue task${overdueCount === 1 ? "" : "s"}`,
+          severity: overdueCount >= 3 ? "overdue" : "warn",
+        });
+      }
+    }
+
+    return { alerts: out, hasOverdue: out.some(a => a.severity === "overdue") };
+  }, [tick, flow, tasks, reminders, lifePlanProjects, dailySchedule]);
+
+  // Fire chime when a NEW overdue alert appears
+  useEffect(() => {
+    const currentIds = new Set(alerts.filter(a => a.severity === "overdue").map(a => a.id));
+    const lastIds = lastAlarmIdsRef.current;
+    let hasNew = false;
+    for (const id of currentIds) if (!lastIds.has(id)) { hasNew = true; break; }
+    if (hasNew && currentIds.size > 0) {
+      playAlertChime(audioRef);
+      try {
+        if ("Notification" in window && Notification.permission === "granted") {
+          const sample = alerts.find(a => a.severity === "overdue");
+          if (sample) new Notification("⚠️ Serpent alert", { body: sample.label, tag: sample.id });
+        }
+      } catch {}
+    }
+    lastAlarmIdsRef.current = currentIds;
+  }, [alerts]);
+
+  const alertCount = alerts.length;
+  const alarmActive = alertCount > 0;
+  // Faded red palette when alarming, default sidebar otherwise
+  const dockTone = alarmActive
+    ? "bg-red-950/70 border-red-400/40 text-red-50"
+    : "bg-sidebar/85 border-amber-300/30 text-white";
+
   if (collapsed) {
     const doneCount = trio.filter(t => t.done).length;
     return (
       <button
         onClick={() => setCollapsed(false)}
-        title="Show Serpent flow"
-        className="fixed bottom-0 left-1/2 -translate-x-1/2 z-40 px-4 py-1 rounded-t-lg bg-sidebar/90 backdrop-blur border border-b-0 border-amber-300/30 shadow-lg flex items-center gap-2 text-white/90 hover:text-white hover:bg-sidebar transition"
+        title={alarmActive ? `${alertCount} alert${alertCount === 1 ? "" : "s"}` : "Show alarm center"}
+        className={`fixed bottom-0 left-1/2 -translate-x-1/2 z-40 px-4 py-1 rounded-t-lg backdrop-blur border border-b-0 shadow-lg flex items-center gap-2 hover:opacity-90 transition ${dockTone} ${hasOverdue ? "animate-pulse" : ""}`}
       >
-        <span className="text-xs font-mono uppercase tracking-wider">🐍 Flow {doneCount}/3</span>
+        {alarmActive ? <Bell size={14} className="text-red-200" /> : <span>🐍</span>}
+        <span className="text-xs font-mono uppercase tracking-wider">
+          {alarmActive ? `${alertCount} alert${alertCount === 1 ? "" : "s"}` : `Flow ${doneCount}/3`}
+        </span>
         <ChevronUp size={14} />
       </button>
     );
   }
 
   return (
-    <div className="fixed bottom-3 left-1/2 -translate-x-1/2 z-40 flex items-end gap-4 px-4 py-2 rounded-2xl bg-sidebar/85 backdrop-blur border border-amber-300/30 shadow-xl">
-      {trio.map(({ kind, img, label, done }) => (
+    <div className={`fixed bottom-3 left-1/2 -translate-x-1/2 z-40 backdrop-blur border rounded-2xl shadow-xl ${dockTone} ${hasOverdue ? "ring-2 ring-red-400/50" : ""}`}>
+      {/* Top row: alarm summary + bell */}
+      {alarmActive && (
         <button
-          key={kind}
-          onClick={() => onStart(kind)}
-          title={label + (done ? " — completed" : "")}
-          className="group relative flex flex-col items-center gap-1 w-16"
+          onClick={() => setShowPanel(s => !s)}
+          className={`w-full flex items-center justify-between gap-2 px-4 py-1.5 border-b border-white/10 text-xs font-medium ${hasOverdue ? "text-red-100" : "text-amber-100"}`}
+          title="Open alarm center"
         >
-          <div className={`relative w-12 h-12 rounded-full overflow-hidden border-2 transition-all ${done ? "border-emerald-400" : "border-amber-300/50 group-hover:border-amber-300"} group-hover:scale-110`}>
-            <img src={img} alt={label} className="w-full h-full object-contain bg-sidebar" />
-          </div>
-          {done && (
-            <span
-              className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border border-emerald-200 flex items-center justify-center text-[10px] text-white font-bold shadow"
-              aria-label="completed"
-            >
-              ✓
-            </span>
-          )}
-          <span className="text-[9px] text-white/90 text-center leading-tight font-medium whitespace-nowrap">{label}</span>
+          <span className="flex items-center gap-1.5">
+            <Bell size={13} className={hasOverdue ? "animate-pulse text-red-200" : "text-amber-200"} />
+            {alertCount} {alertCount === 1 ? "alert" : "alerts"} — {hasOverdue ? "overdue" : "warning"}
+          </span>
+          <ChevronUp size={12} className={`transition-transform ${showPanel ? "rotate-180" : ""}`} />
         </button>
-      ))}
-      {/* Reset button — solid black so it's visible against the dock backdrop */}
-      <button
-        onClick={onReset}
-        title="Reset today's Serpent status"
-        className="ml-2 self-center w-8 h-8 rounded-full bg-black text-white border border-white/30 hover:bg-neutral-900 hover:border-white/60 transition flex items-center justify-center text-sm shadow"
-      >
-        ↻
-      </button>
-      {/* Collapse toggle */}
-      <button
-        onClick={() => setCollapsed(true)}
-        title="Collapse Serpent flow"
-        className="self-center w-7 h-7 rounded-full bg-white/5 text-white/70 border border-white/15 hover:text-white hover:border-white/40 transition flex items-center justify-center"
-      >
-        <ChevronDown size={14} />
-      </button>
+      )}
+
+      {/* Alarm panel — expandable list */}
+      {alarmActive && showPanel && (
+        <div className="px-3 py-2 border-b border-white/10 max-h-64 overflow-y-auto scrollbar-thin space-y-1 min-w-[280px]">
+          {alerts.map(a => {
+            const Icon =
+              a.kind === "flow" ? Compass :
+              a.kind === "reminder" ? Bell :
+              a.kind === "project" ? AlertTriangle :
+              a.kind === "consistency" ? Clock :
+              AlertTriangle;
+            return (
+              <div key={a.id} className={`flex items-start gap-2 px-2 py-1.5 rounded text-xs ${a.severity === "overdue" ? "bg-red-500/15" : "bg-amber-500/10"}`}>
+                <Icon size={12} className={a.severity === "overdue" ? "text-red-200 mt-0.5" : "text-amber-200 mt-0.5"} />
+                <div className="flex-1 min-w-0">
+                  <div className="truncate font-medium text-white">{a.label}</div>
+                  {a.detail && <div className="text-[10px] text-white/70 truncate">{a.detail}</div>}
+                </div>
+                <span className="text-[9px] uppercase tracking-wider font-mono text-white/60">{a.kind}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Main row: flow trio + reset + collapse */}
+      <div className="flex items-end gap-4 px-4 py-2">
+        {trio.map(({ kind, img, label, done }) => (
+          <button
+            key={kind}
+            onClick={() => onStart(kind)}
+            title={label + (done ? " — completed" : "")}
+            className="group relative flex flex-col items-center gap-1 w-16"
+          >
+            <div className={`relative w-12 h-12 rounded-full overflow-hidden border-2 transition-all ${done ? "border-emerald-400" : alarmActive ? "border-red-300/50 group-hover:border-red-200" : "border-amber-300/50 group-hover:border-amber-300"} group-hover:scale-110`}>
+              <img src={img} alt={label} className="w-full h-full object-contain bg-sidebar" />
+            </div>
+            {done && (
+              <span
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border border-emerald-200 flex items-center justify-center text-[10px] text-white font-bold shadow"
+                aria-label="completed"
+              >
+                ✓
+              </span>
+            )}
+            <span className="text-[9px] text-white/90 text-center leading-tight font-medium whitespace-nowrap">{label}</span>
+          </button>
+        ))}
+        {/* Reset — black for visibility */}
+        <button
+          onClick={onReset}
+          title="Reset today's Serpent status"
+          className="ml-2 self-center w-8 h-8 rounded-full bg-black text-white border border-white/30 hover:bg-neutral-900 hover:border-white/60 transition flex items-center justify-center text-sm shadow"
+        >
+          ↻
+        </button>
+        {/* Collapse */}
+        <button
+          onClick={() => setCollapsed(true)}
+          title="Collapse alarm center"
+          className="self-center w-7 h-7 rounded-full bg-white/5 text-white/70 border border-white/15 hover:text-white hover:border-white/40 transition flex items-center justify-center"
+        >
+          <ChevronDown size={14} />
+        </button>
+      </div>
     </div>
   );
 }
+

@@ -24,6 +24,7 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
   const [hateMagnitude, setHateMagnitude] = useState(editTask?.hateMagnitude || 5);
   const [duration, setDuration] = useState(editTask?.duration || 0);
   const [dueDate, setDueDate] = useState(editTask?.dueDate || "");
+  const [dueTime, setDueTime] = useState(editTask?.dueTime || "");
   const [assigneeId, setAssigneeId] = useState<string | null>(editTask?.assigneeId ?? null);
   const [makesProud, setMakesProud] = useState<boolean>(editTask?.makesProud ?? false);
   const [recurrence, setRecurrence] = useState<"none" | "daily" | "weekly">(editTask?.recurrence ?? "none");
@@ -58,6 +59,7 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
       hateMagnitude: categories.includes("F") ? hateMagnitude : undefined,
       duration: duration > 0 ? duration : undefined,
       dueDate: dueDate || undefined,
+      dueTime: dueTime || undefined,
       assigneeId: assigneeId || null,
       makesProud: categories.includes("H"),
       recurrence: recurrence === "none" ? undefined : recurrence,
@@ -123,14 +125,26 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
             )}
         </div>
 
-        <div>
-          <label className="text-sm text-muted-foreground mb-1 block">Due date (optional)</label>
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          />
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-sm text-muted-foreground mb-1 block">Due date (optional)</label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="text-sm text-muted-foreground mb-1 block">Time of day (optional)</label>
+            <input
+              type="time"
+              value={dueTime}
+              onChange={(e) => setDueTime(e.target.value)}
+              className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">Triggers an alarm when overdue.</p>
+          </div>
         </div>
         </div>
 
