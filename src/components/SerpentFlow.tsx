@@ -8,6 +8,7 @@ import {
   SerpentPhase,
 } from "@/lib/serpentFlowState";
 import { Task, Reminder, LifePlanProject, DailyScheduleSlot } from "@/lib/types";
+import { loadCutoffs, onCutoffsChange, FlowCutoffs } from "@/lib/flowSettings";
 import risingSun from "@/assets/serpent-rising-sun.png";
 import sun from "@/assets/serpent-sun.png";
 import halfMoon from "@/assets/serpent-half-moon.png";
@@ -412,6 +413,9 @@ function FlowTrioDock({
     return () => window.clearInterval(id);
   }, []);
 
+  const [cutoffs, setCutoffs] = useState<FlowCutoffs>(() => loadCutoffs());
+  useEffect(() => onCutoffsChange(setCutoffs), []);
+
   const audioRef = useRef<AudioContext | null>(null);
   const lastAlarmIdsRef = useRef<Set<string>>(new Set());
 
@@ -422,17 +426,31 @@ function FlowTrioDock({
     const now = new Date();
     const today = todayISO();
     const hm = nowHHMM();
-    const hour = now.getHours();
 
-    // Outstanding flows by time of day
-    if (!flow.startCompleted && hour >= 8) {
-      out.push({ id: "flow-start", kind: "flow", label: "Start Serpent overdue", detail: "Plan your day", severity: hour >= 10 ? "overdue" : "warn" });
+    // Helper: minutes-before-cutoff window for "warn" before going "overdue".
+    const sev = (cutoff: string): "warn" | "overdue" | null => {
+      if (hm >= cutoff) return "overdue";
+      // warn 60 min before cutoff
+      const [ch, cm] = cutoff.split(":").map(Number);
+      const cutoffMin = ch * 60 + cm;
+      const [nh, nm] = hm.split(":").map(Number);
+      const nowMin = nh * 60 + nm;
+      if (cutoffMin - nowMin <= 60) return "warn";
+      return null;
+    };
+
+    // Outstanding flows by configured cutoff
+    if (!flow.startCompleted) {
+      const s = sev(cutoffs.start);
+      if (s) out.push({ id: "flow-start", kind: "flow", label: s === "overdue" ? "Start Serpent overdue" : "Start Serpent due soon", detail: `By ${cutoffs.start}`, severity: s });
     }
-    if (flow.startCompleted && !flow.middayCompleted && hour >= 13) {
-      out.push({ id: "flow-midday", kind: "flow", label: "Midday Check overdue", detail: "Review A1 progress", severity: hour >= 15 ? "overdue" : "warn" });
+    if (flow.startCompleted && !flow.middayCompleted) {
+      const s = sev(cutoffs.midday);
+      if (s) out.push({ id: "flow-midday", kind: "flow", label: s === "overdue" ? "Midday Check overdue" : "Midday Check due soon", detail: `By ${cutoffs.midday}`, severity: s });
     }
-    if (!flow.eveningCompleted && hour >= 19) {
-      out.push({ id: "flow-evening", kind: "flow", label: "Evening Review overdue", detail: "Reflect on the day", severity: hour >= 21 ? "overdue" : "warn" });
+    if (!flow.eveningCompleted) {
+      const s = sev(cutoffs.evening);
+      if (s) out.push({ id: "flow-evening", kind: "flow", label: s === "overdue" ? "Evening Review overdue" : "Evening Review due soon", detail: `By ${cutoffs.evening}`, severity: s });
     }
 
     // Overdue tasks (with dueTime today, or past dueDate)
@@ -476,7 +494,7 @@ function FlowTrioDock({
     }
 
     return { alerts: out, hasOverdue: out.some(a => a.severity === "overdue") };
-  }, [tick, flow, tasks, reminders, lifePlanProjects, dailySchedule]);
+  }, [tick, flow, tasks, reminders, lifePlanProjects, dailySchedule, cutoffs]);
 
   // Fire chime when a NEW overdue alert appears
   useEffect(() => {
