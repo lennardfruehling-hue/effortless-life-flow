@@ -28,13 +28,25 @@ function snap(min: number): number {
   return Math.round(min / SNAP_MIN) * SNAP_MIN;
 }
 
+type RecurFilter = "all" | "daily" | "weekly" | "none";
+
 export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ id: string; mode: "move" | "resize"; offsetMin: number; origStart: number; origEnd: number } | null>(null);
+  const [filter, setFilter] = useState<RecurFilter>("all");
   const [nowMin, setNowMin] = useState(() => {
     const n = new Date();
     return n.getHours() * 60 + n.getMinutes();
   });
+
+  // Scroll to current time on mount
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const target = Math.max(0, (nowMin / 60) * HOUR_PX - scrollRef.current.clientHeight / 3);
+    scrollRef.current.scrollTo({ top: target });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => {
@@ -223,8 +235,46 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
 
   const unscheduledTasks = useMemo(() => {
     const scheduledIds = new Set(slots.map((s) => s.taskId).filter(Boolean));
-    return tasks.filter((t) => !t.completed && !scheduledIds.has(t.id));
-  }, [tasks, slots]);
+    const base = tasks.filter((t) => !t.completed && !scheduledIds.has(t.id));
+    if (filter === "all") return base;
+    if (filter === "none") return base.filter((t) => !t.recurrence);
+    return base.filter((t) => t.recurrence === filter);
+  }, [tasks, slots, filter]);
+
+  // Auto-populate today's schedule with daily-recurring tasks that have a dueTime
+  // and any weekly task whose dueDate falls today. Each task gets at most one slot per day.
+  useEffect(() => {
+    const todayDow = new Date().getDay();
+    const today = new Date().toISOString().slice(0, 10);
+    const existingTaskIds = new Set(slots.map((s) => s.taskId).filter(Boolean));
+    const additions: DailyScheduleSlot[] = [];
+
+    for (const t of tasks) {
+      if (t.completed || existingTaskIds.has(t.id)) continue;
+      let shouldAdd = false;
+      if (t.recurrence === "daily") shouldAdd = true;
+      else if (t.recurrence === "weekly" && t.dueDate) {
+        const d = new Date(t.dueDate + "T00:00");
+        if (d.getDay() === todayDow) shouldAdd = true;
+      } else if (!t.recurrence && t.dueDate === today) shouldAdd = true;
+      if (!shouldAdd) continue;
+      // Need a time anchor — use dueTime, otherwise skip to avoid clutter
+      if (!t.dueTime) continue;
+      const [hh, mm] = t.dueTime.split(":").map(Number);
+      const startMin = hh * 60 + mm;
+      const dur = t.duration && t.duration >= 15 ? t.duration : 30;
+      additions.push({
+        id: `auto-${t.id}-${today}`,
+        startTime: toHHMM(startMin),
+        endTime: toHHMM(Math.min(1440, startMin + dur)),
+        taskId: t.id,
+        taskCategories: t.categories,
+      });
+    }
+    if (additions.length === 0) return;
+    onSaveSlots([...slots, ...additions].sort((a, b) => toMin(a.startTime) - toMin(b.startTime)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks]);
 
   // ---- Email today's schedule ----
   const handleEmailSchedule = () => {
@@ -348,40 +398,77 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
         </div>
       </div>
 
-      <div className="grid grid-cols-[160px_1fr] gap-3">
+      <div className="grid grid-cols-[180px_1fr] gap-3">
         {/* Task palette */}
         <div className="border-r border-border pr-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-2">Drag tasks →</p>
-          <div className="space-y-1.5 max-h-[600px] overflow-y-auto scrollbar-thin">
-            {unscheduledTasks.length === 0 && <p className="text-[11px] text-muted-foreground italic">No unscheduled tasks</p>}
-            {unscheduledTasks.map((t) => (
-              <div
-                key={t.id}
-                draggable
-                onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
-                className="cursor-grab active:cursor-grabbing p-2 rounded border border-border bg-secondary/40 hover:border-primary/40 hover:bg-secondary text-xs"
+          <div className="flex flex-wrap gap-1 mb-2">
+            {(["all", "daily", "weekly", "none"] as RecurFilter[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`text-[10px] font-mono px-1.5 py-0.5 rounded border transition-colors ${
+                  filter === f
+                    ? "bg-primary/20 text-primary border-primary/40"
+                    : "text-muted-foreground border-border hover:border-primary/30"
+                }`}
               >
-                <div className="text-foreground line-clamp-2 mb-1">{t.title}</div>
-                <div className="flex flex-wrap gap-0.5">
-                  {t.categories.slice(0, 3).map((c) => (
-                    <CategoryBadge key={c} category={c} small />
-                  ))}
-                </div>
-                {t.duration && <div className="text-[10px] text-muted-foreground font-mono mt-0.5">{t.duration}m</div>}
-              </div>
+                {f === "none" ? "one-off" : f}
+              </button>
             ))}
+          </div>
+          <div className="space-y-2 max-h-[600px] overflow-y-auto scrollbar-thin">
+            {unscheduledTasks.length === 0 && <p className="text-[11px] text-muted-foreground italic">No tasks</p>}
+            {(["daily", "weekly", "none"] as const)
+              .filter((g) => filter === "all" || (g === "none" ? filter === "none" : filter === g))
+              .map((group) => {
+                const items = unscheduledTasks.filter((t) =>
+                  group === "none" ? !t.recurrence : t.recurrence === group
+                );
+                if (items.length === 0) return null;
+                const labels: Record<string, string> = { daily: "Daily", weekly: "Weekly", none: "One-off" };
+                return (
+                  <div key={group}>
+                    <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-mono mb-1">
+                      {labels[group]} · {items.length}
+                    </div>
+                    <div className="space-y-1.5">
+                      {items.map((t) => (
+                        <div
+                          key={t.id}
+                          draggable
+                          onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
+                          className="cursor-grab active:cursor-grabbing p-2 rounded border border-border bg-secondary/40 hover:border-primary/40 hover:bg-secondary text-xs"
+                        >
+                          <div className="text-foreground line-clamp-2 mb-1">{t.title}</div>
+                          <div className="flex flex-wrap gap-0.5">
+                            {t.categories.slice(0, 3).map((c) => (
+                              <CategoryBadge key={c} category={c} small />
+                            ))}
+                          </div>
+                          {t.duration && <div className="text-[10px] text-muted-foreground font-mono mt-0.5">{t.duration}m</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </div>
 
-        {/* 24h grid */}
+        {/* 24h grid (scrollable, opens at current time) */}
         <div className="relative">
+          <div
+            ref={scrollRef}
+            className="relative max-h-[600px] overflow-y-auto scrollbar-thin rounded border border-border bg-secondary/20"
+          >
           <div
             ref={gridRef}
             data-bg="1"
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDropTask}
             onClick={handleGridClick}
-            className="relative bg-secondary/20 rounded border border-border overflow-hidden"
+            className="relative"
             style={{ height: 24 * HOUR_PX }}
           >
             {/* hour lines */}
@@ -444,6 +531,7 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
                 </div>
               );
             })}
+          </div>
           </div>
           <p className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1">
             <Plus size={10} /> Click empty space to add a custom block · drag to move · drag bottom edge to resize
