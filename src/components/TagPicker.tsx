@@ -34,7 +34,7 @@ export default function TagPicker({ kind, ownerId }: Props) {
   const load = useCallback(async () => {
     const [{ data: tags }, { data: links }] = await Promise.all([
       supabase.from("tags").select("*").order("name"),
-      supabase.from(joinTable).select("tag_id").eq(ownerCol, ownerId),
+      supabase.from(joinTable).select("tag_id").eq(ownerCol as any, ownerId),
     ]);
     if (tags) setAllTags(tags as Tag[]);
     if (links) setSelected(links.map((l: any) => l.tag_id));
@@ -45,7 +45,7 @@ export default function TagPicker({ kind, ownerId }: Props) {
   const toggle = async (tagId: string) => {
     if (selected.includes(tagId)) {
       setSelected(s => s.filter(x => x !== tagId));
-      await supabase.from(joinTable).delete().eq(ownerCol, ownerId).eq("tag_id", tagId);
+      await supabase.from(joinTable).delete().eq(ownerCol as any, ownerId).eq("tag_id", tagId);
     } else {
       setSelected(s => [...s, tagId]);
       await supabase.from(joinTable).insert({ [ownerCol]: ownerId, tag_id: tagId } as any);
@@ -155,7 +155,7 @@ export function TagChips({ kind, ownerId }: Props) {
   const ownerCol = kind === "note" ? "note_id" : "list_id";
   useEffect(() => {
     let cancel = false;
-    supabase.from(joinTable).select("tag_id, tags(*)").eq(ownerCol, ownerId).then(({ data }) => {
+    supabase.from(joinTable).select("tag_id, tags(*)").eq(ownerCol as any, ownerId).then(({ data }) => {
       if (cancel || !data) return;
       setTags(data.map((r: any) => r.tags).filter(Boolean));
     });
