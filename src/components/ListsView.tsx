@@ -200,6 +200,24 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
                 </select>
               </div>
               <TagPicker kind="list" ownerId={active.id} />
+              {members.length > 1 && (
+                <div className="flex items-center gap-1 ml-auto">
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Assignee</span>
+                  <AssigneeAvatar member={byId(active.assignee_id)} size="md" />
+                  <select
+                    value={active.assignee_id || ""}
+                    onChange={async (e) => {
+                      const assignee_id = e.target.value || null;
+                      setLists(prev => prev.map(l => l.id === active.id ? { ...l, assignee_id } : l));
+                      await supabase.from("task_lists").update({ assignee_id }).eq("id", active.id);
+                    }}
+                    className="bg-transparent text-xs text-foreground border-none focus:outline-none cursor-pointer"
+                  >
+                    <option value="">Unassigned</option>
+                    {members.map(m => <option key={m.user_id} value={m.user_id}>{m.display_name || "Member"}</option>)}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Items */}
