@@ -7,6 +7,8 @@ import {
   Minus, Quote, Code, Loader2, Link2, X
 } from "lucide-react";
 import TagPicker, { TagChips } from "./TagPicker";
+import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
+import { AssigneeAvatar } from "./AssigneePicker";
 
 // Auto-growing textarea: expands to fit content, no scrollbars.
 function AutoTextarea({
