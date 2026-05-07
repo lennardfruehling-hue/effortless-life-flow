@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { CalendarEvent, Task, WeeklyStructureBlock, DailyScheduleSlot } from "@/lib/types";
 import { ChevronLeft, ChevronRight, Upload, Download, Plus, Trash2, X, CalendarDays, LayoutGrid } from "lucide-react";
 import { v4 as uuid } from "uuid";
@@ -94,6 +94,65 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
   const [formEnd, setFormEnd] = useState("");
   const [formAllDay, setFormAllDay] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Auto-populate weekly structure → calendar events for the visible month
+  // Generates one CalendarEvent per occurrence (recurring weekly or pinned date),
+  // tagged with source="structure" and id="ws-<blockId>-<YYYY-MM-DD>" so we can
+  // refresh them without duplicating or stomping on user-created events.
+  useEffect(() => {
+    if (!weeklyStructure || weeklyStructure.length === 0) return;
+    const want = new Map<string, CalendarEvent>();
+    const daysIn = getDaysInMonth(year, month);
+    const pad = (n: number) => String(n).padStart(2, "0");
+
+    for (const b of weeklyStructure) {
+      const baseTitle = b.label || (b.taskId ? tasks.find((t) => t.id === b.taskId)?.title : "") || "Structure block";
+      if (b.recurring === false && b.pinnedDate) {
+        const id = `ws-${b.id}-${b.pinnedDate}`;
+        want.set(id, {
+          id,
+          title: baseTitle,
+          start: `${b.pinnedDate}T${b.startTime}`,
+          end: `${b.pinnedDate}T${b.endTime}`,
+          allDay: false,
+          source: "structure" as any,
+        });
+      } else {
+        for (let d = 1; d <= daysIn; d++) {
+          const date = new Date(year, month, d);
+          if (date.getDay() !== b.dayOfWeek) continue;
+          const dateStr = `${year}-${pad(month + 1)}-${pad(d)}`;
+          const id = `ws-${b.id}-${dateStr}`;
+          want.set(id, {
+            id,
+            title: baseTitle,
+            start: `${dateStr}T${b.startTime}`,
+            end: `${dateStr}T${b.endTime}`,
+            allDay: false,
+            source: "structure" as any,
+          });
+        }
+      }
+    }
+
+    // Keep all non-structure events; rebuild this month's structure events
+    const monthPrefix = `${year}-${pad(month + 1)}-`;
+    const kept = events.filter((e) => {
+      if ((e as any).source !== "structure") return true;
+      if (!e.start.startsWith(monthPrefix)) return true; // other months untouched
+      const w = want.get(e.id);
+      if (!w) return false; // block deleted
+      if (w.start === e.start && w.end === e.end && w.title === e.title) {
+        want.delete(e.id);
+        return true;
+      }
+      return false;
+    });
+    if (want.size === 0 && kept.length === events.length) return;
+    onSave([...kept, ...Array.from(want.values())]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weeklyStructure, year, month, tasks]);
+
 
   const prev = () => { if (month === 0) { setMonth(11); setYear(y => y - 1); } else setMonth(m => m - 1); };
   const next = () => { if (month === 11) { setMonth(0); setYear(y => y + 1); } else setMonth(m => m + 1); };
