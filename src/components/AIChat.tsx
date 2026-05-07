@@ -586,14 +586,32 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
         if (id) createdListName = listName;
       }
 
-      // Check for calendar event command
+      // Check for reminder command (must run BEFORE calendar event check)
+      let createdReminderTitle: string | null = null;
+      const reminderTitle = extractReminderTitle(textInput);
+      if (reminderTitle) {
+        const dt = parseEventDateTime(textInput) || (() => {
+          // default: 1 hour from now if no time given
+          const d = new Date(Date.now() + 60 * 60 * 1000);
+          const pad = (n: number) => String(n).padStart(2, "0");
+          const s = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+          return { start: s, end: s, allDay: false };
+        })();
+        const recurring = extractRecurring(textInput);
+        const id = addReminderEntry(reminderTitle, dt, recurring);
+        if (id) createdReminderTitle = `${reminderTitle} (${dt.allDay ? dt.start.slice(0,10) : dt.start.replace("T", " ")})`;
+      }
+
+      // Check for calendar event command (skip if reminder already handled it)
       let createdEventTitle: string | null = null;
-      const eventTitle = extractEventTitle(textInput);
-      if (eventTitle) {
-        const dt = parseEventDateTime(textInput);
-        if (dt) {
-          const id = addCalendarEvent(eventTitle, dt);
-          if (id) createdEventTitle = `${eventTitle} (${dt.allDay ? dt.start.slice(0,10) : dt.start.replace("T", " ")})`;
+      if (!createdReminderTitle) {
+        const eventTitle = extractEventTitle(textInput);
+        if (eventTitle) {
+          const dt = parseEventDateTime(textInput);
+          if (dt) {
+            const id = addCalendarEvent(eventTitle, dt);
+            if (id) createdEventTitle = `${eventTitle} (${dt.allDay ? dt.start.slice(0,10) : dt.start.replace("T", " ")})`;
+          }
         }
       }
 
@@ -603,6 +621,7 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
       if (createdNoteTitle) confirmations.push(`✅ Research note **"${createdNoteTitle}"** saved.`);
       if (createdListName) confirmations.push(`✅ List **"${createdListName}"** saved with all items.`);
       if (createdEventTitle) confirmations.push(`📅 Calendar event **"${createdEventTitle}"** added to your calendar.`);
+      if (createdReminderTitle) confirmations.push(`🔔 Reminder **"${createdReminderTitle}"** saved.`);
 
       // If we successfully added a calendar event, don't show the LLM's
       // (often confused "I can't add to your calendar") text — replace it.
