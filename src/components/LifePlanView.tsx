@@ -661,6 +661,59 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
           className="w-full bg-card border border-border rounded-lg p-4 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary resize-none scrollbar-thin leading-relaxed"
         />
       </section>
+      {/* Saved-tasks picker modal */}
+      {pickerProjectId && (() => {
+        const proj = data.projects.find((p) => p.id === pickerProjectId);
+        const available = availableTasksFor(pickerProjectId);
+        const q = pickerQuery.trim().toLowerCase();
+        const filtered = q
+          ? available.filter((t) => t.title.toLowerCase().includes(q) || (t.description || "").toLowerCase().includes(q))
+          : available;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
+            <div className="bg-card border border-border rounded-lg w-full max-w-lg max-h-[80vh] flex flex-col">
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Add saved task to "{proj?.name}"</h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Pick an existing task to link into this Life Plan project.</p>
+                </div>
+                <button onClick={() => setPickerProjectId(null)} className="text-muted-foreground hover:text-foreground"><X size={18} /></button>
+              </div>
+              <div className="p-3 border-b border-border">
+                <div className="flex items-center gap-2 bg-secondary border border-border rounded px-2.5 py-1.5">
+                  <Search size={12} className="text-muted-foreground" />
+                  <input
+                    autoFocus
+                    value={pickerQuery}
+                    onChange={(e) => setPickerQuery(e.target.value)}
+                    placeholder="Search saved tasks…"
+                    className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  />
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto scrollbar-thin">
+                {filtered.length === 0 && (
+                  <div className="p-6 text-center text-xs text-muted-foreground">No matching saved tasks.</div>
+                )}
+                {filtered.map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => addTaskFromExisting(pickerProjectId, t)}
+                    className="w-full text-left px-4 py-2.5 border-b border-border/50 hover:bg-secondary/60 transition-colors"
+                  >
+                    <div className="text-sm text-foreground line-clamp-1">{t.title}</div>
+                    <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground font-mono">
+                      {t.dueDate && <span>📅 {t.dueDate}</span>}
+                      {t.categories.length > 0 && <span>{t.categories.join(", ")}</span>}
+                      {t.completed && <span className="text-primary">done</span>}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
