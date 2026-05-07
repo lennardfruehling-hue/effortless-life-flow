@@ -113,15 +113,15 @@ export default function Index() {
 
   return (
     <div className="flex min-h-screen bg-background w-full">
-      <Sidebar active={view} onChange={setView} taskCount={tasks.filter((t) => !t.completed).length} tasks={tasks} />
+      <Sidebar active={view} onChange={setView} taskCount={visibleTasks.filter((t) => !t.completed).length} tasks={visibleTasks} />
       <div className="flex-1 min-w-0 flex flex-col">
         <SyncStatusBanner />
       <main className="flex-1 min-w-0 overflow-x-hidden">
         {view === "tasks" && (
           <TasksView
-            tasks={tasks}
+            tasks={visibleTasks}
             projects={allProjects}
-            onSave={setTasks}
+            onSave={setVisibleTasks as any}
             dailySchedule={dailySchedule}
             onSaveDailySchedule={setDailySchedule}
             filterProjectId={taskFilterProject}
@@ -129,27 +129,27 @@ export default function Index() {
           />
         )}
         {view === "research" && <ResearchTabs projects={allProjects} />}
-        {view === "lists" && <ListsView tasks={tasks} onSaveTasks={setTasks} projects={allProjects} />}
-        {view === "lifeplan" && <LifePlanView onNavigateToTasks={navigateToTasksForProject} tasks={tasks} onSaveTasks={setTasks} />}
+        {view === "lists" && <ListsView tasks={visibleTasks} onSaveTasks={setVisibleTasks} projects={allProjects} />}
+        {view === "lifeplan" && <LifePlanView onNavigateToTasks={navigateToTasksForProject} tasks={visibleTasks} onSaveTasks={setVisibleTasks as any} />}
         {view === "calendar" && (
           <CalendarView
             events={calendarEvents}
             onSave={setCalendarEvents}
-            tasks={tasks}
+            tasks={visibleTasks}
             weeklyStructure={weeklyStructure}
             onSaveWeeklyStructure={setWeeklyStructure}
             dailySchedule={dailySchedule}
             onSaveDailySchedule={setDailySchedule}
           />
         )}
-        {view === "reminders" && <RemindersView reminders={reminders} tasks={tasks} onSave={setReminders} />}
-        {view === "consistency" && <ConsistencyView tasks={tasks} />}
-        {view === "ai" && <AIChat tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />}
+        {view === "reminders" && <RemindersView reminders={reminders} tasks={visibleTasks} onSave={setReminders} />}
+        {view === "consistency" && <ConsistencyView tasks={visibleTasks} />}
+        {view === "ai" && <AIChat tasks={visibleTasks} projects={allProjects} onSaveTasks={setVisibleTasks} onSaveProjects={setProjects} />}
       </main>
       </div>
-      <AISidebar tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />
+      <AISidebar tasks={visibleTasks} projects={allProjects} onSaveTasks={setVisibleTasks} onSaveProjects={setProjects} />
       <ReminderWatcher reminders={reminders} onUpdate={setReminders} />
-      <SerpentFlow tasks={tasks} reminders={reminders} lifePlanProjects={lifePlanProjects} dailySchedule={dailySchedule} />
+      <SerpentFlow tasks={visibleTasks} reminders={reminders} lifePlanProjects={lifePlanProjects} dailySchedule={dailySchedule} />
     </div>
   );
 }
