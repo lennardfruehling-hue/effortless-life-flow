@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { ViewMode } from "@/lib/types";
-import { ListTodo, Compass, Bell, BookOpen, CalendarDays, ListChecks, LogOut } from "lucide-react";
+import { ListTodo, Compass, Bell, BookOpen, CalendarDays, ListChecks, LogOut, Users } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import HouseholdSettings from "./HouseholdSettings";
 
 const NAV_ITEMS: { mode: ViewMode; icon: typeof ListTodo; label: string }[] = [
   { mode: "tasks", icon: ListTodo, label: "Tasks" },
