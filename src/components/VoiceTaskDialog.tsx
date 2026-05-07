@@ -353,9 +353,12 @@ export default function VoiceTaskDialog({ onClose, onSave }: Props) {
               />
               <button
                 onClick={() => {
-                  if (typed.trim()) {
-                    submitAnswer(typed);
+                  const text = typed.trim();
+                  if (text) {
+                    submitAnswer(text);
                     setTyped("");
+                  } else if (step.parse === parseYesNo) {
+                    submitAnswer("no");
                   } else if (!step.required) {
                     submitAnswer("skip");
                   }
