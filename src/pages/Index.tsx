@@ -32,6 +32,7 @@ function loadLifePlanProjects(): LifePlanProject[] {
 }
 
 export default function Index() {
+  const { user } = useAuth();
   const [view, setView] = useState<ViewMode>("tasks");
   const [tasks, setTasks] = useState<Task[]>(() => store.getTasks());
   const [projects, setProjects] = useState<Project[]>(() => store.getProjects());
@@ -41,6 +42,33 @@ export default function Index() {
   const [lifePlanProjects, setLifePlanProjects] = useState<LifePlanProject[]>(loadLifePlanProjects);
   const [taskFilterProject, setTaskFilterProject] = useState<string | undefined>();
   const [weeklyStructure, setWeeklyStructure] = useCloudState<WeeklyStructureBlock[]>(CLOUD_KEYS.weeklyStructure, []);
+
+  // Tasks are stored in a shared household cloud key, but each user only sees:
+  //  - tasks they created (createdBy === me)
+  //  - tasks assigned to them (assigneeId or assigneeIds includes me)
+  //  - legacy tasks with no createdBy (treated as their own to avoid hiding old data)
+  const myId = user?.id;
+  const isVisible = (t: Task) => {
+    if (!myId) return true;
+    if (!t.createdBy) return true; // legacy/un-tagged tasks remain visible to everyone in household (back-compat)
+    if (t.createdBy === myId) return true;
+    if (t.assigneeId === myId) return true;
+    if (Array.isArray(t.assigneeIds) && t.assigneeIds.includes(myId)) return true;
+    return false;
+  };
+  const visibleTasks = useMemo(() => tasks.filter(isVisible), [tasks, myId]);
+
+  // Setter that preserves hidden (other-user) tasks in the underlying store.
+  const setVisibleTasks: React.Dispatch<React.SetStateAction<Task[]>> = (updater) => {
+    setTasks((prev) => {
+      const hidden = prev.filter((t) => !isVisible(t));
+      const prevVisible = prev.filter(isVisible);
+      const nextVisible = typeof updater === "function" ? (updater as (p: Task[]) => Task[])(prevVisible) : updater;
+      // Stamp createdBy on any new tasks lacking it
+      const stamped = nextVisible.map((t) => (t.createdBy || !myId ? t : { ...t, createdBy: myId }));
+      return [...hidden, ...stamped];
+    });
+  };
 
   useEffect(() => { store.saveTasks(tasks); }, [tasks]);
   useEffect(() => { store.saveProjects(projects); }, [projects]);
