@@ -22,6 +22,8 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
   const [hateMagnitude, setHateMagnitude] = useState(editTask?.hateMagnitude || 5);
   const [duration, setDuration] = useState(editTask?.duration || 0);
   const [dueDate, setDueDate] = useState(editTask?.dueDate || "");
+  const [assigneeId, setAssigneeId] = useState<string | null>(editTask?.assigneeId ?? null);
+  const { members } = useHouseholdMembers();
 
   const toggleCat = (cat: Category) =>
     setCategories((prev) =>
