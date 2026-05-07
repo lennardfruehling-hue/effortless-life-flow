@@ -169,6 +169,7 @@ function GanttBar({ project, globalStart, globalEnd }: { project: ProjectGroup; 
 }
 
 export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
+  const { members, byId } = useHouseholdMembers();
   const [data, setData] = useState<LifePlanData>(loadData);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [newProjectName, setNewProjectName] = useState("");
