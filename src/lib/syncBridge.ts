@@ -66,11 +66,15 @@ async function refreshKey(userId: string, key: string) {
     : await cloudGetShared<unknown>(key, null as any);
   const prev = activeUserId;
   activeUserId = null;
-  if (cloudVal === null || cloudVal === undefined) {
+  const serialized = cloudVal === null || cloudVal === undefined ? null : JSON.stringify(cloudVal);
+  if (serialized === null) {
     try { localStorage.removeItem(key); } catch {}
   } else {
-    safeSetItem(key, JSON.stringify(cloudVal));
+    safeSetItem(key, serialized);
   }
+  // Mark this value as "just hydrated" so we don't immediately push it back.
+  lastPushedHash[key] = serialized ?? "null";
+  suppressPush(key);
   activeUserId = prev;
   window.dispatchEvent(new StorageEvent("storage", { key }));
 }
