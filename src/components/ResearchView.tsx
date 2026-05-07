@@ -223,6 +223,7 @@ export default function ResearchView({ projects }: Props) {
                 <div className="flex items-center gap-2">
                   <span>{note.icon || "📄"}</span>
                   <span className="truncate flex-1">{note.title || "Untitled"}</span>
+                  {note.assignee_id && <AssigneeAvatar member={byId(note.assignee_id)} />}
                   <Trash2
                     size={12}
                     onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }}
