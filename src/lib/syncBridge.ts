@@ -15,11 +15,14 @@ function suppressPush(key: string, ms = 3000) {
 
 function pushDebounced(userId: string, key: string, raw: string | null) {
   if (debounceTimers[key]) window.clearTimeout(debounceTimers[key]);
-  debounceTimers[key] = window.setTimeout(() => {
+  debounceTimers[key] = window.setTimeout(async () => {
     // Drop pushes that are echoes of a value we just hydrated from cloud.
     if (Date.now() < (suppressUntil[key] ?? 0)) {
       const hash = raw ?? "null";
-      if (lastPushedHash[key] === hash) return;
+      if (lastPushedHash[key] === hash) {
+        delete debounceTimers[key];
+        return;
+      }
     }
     let value: any = null;
     if (raw !== null) {
@@ -30,7 +33,11 @@ function pushDebounced(userId: string, key: string, raw: string | null) {
       }
     }
     lastPushedHash[key] = raw ?? "null";
-    cloudSet(userId, key, value);
+    try {
+      await cloudSet(userId, key, value);
+    } finally {
+      delete debounceTimers[key];
+    }
   }, 500) as unknown as number;
 }
 
@@ -61,12 +68,26 @@ function safeSetItem(key: string, value: string) {
 }
 
 async function refreshKey(userId: string, key: string) {
+  // If we have a pending local push for this key, skip the refresh.
+  // The realtime event is likely an echo of an earlier write and would otherwise
+  // clobber the in-progress local edits before they reach the cloud.
+  if (debounceTimers[key]) {
+    return;
+  }
   const cloudVal = isPersonalKey(key)
     ? await cloudGet<unknown>(userId, key, null as any)
     : await cloudGetShared<unknown>(key, null as any);
+  // Re-check after the await: a local write may have started during the network call.
+  if (debounceTimers[key]) return;
   const prev = activeUserId;
   activeUserId = null;
   const serialized = cloudVal === null || cloudVal === undefined ? null : JSON.stringify(cloudVal);
+  // No-op if cloud value matches what we already have — avoids noisy re-renders.
+  const current = localStorage.getItem(key);
+  if (current === serialized) {
+    activeUserId = prev;
+    return;
+  }
   if (serialized === null) {
     try { localStorage.removeItem(key); } catch {}
   } else {
