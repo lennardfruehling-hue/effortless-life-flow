@@ -7,6 +7,8 @@ import {
   Minus, Quote, Code, Loader2, Link2, X
 } from "lucide-react";
 import TagPicker, { TagChips } from "./TagPicker";
+import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
+import { AssigneeAvatar } from "./AssigneePicker";
 
 // Auto-growing textarea: expands to fit content, no scrollbars.
 function AutoTextarea({
@@ -70,6 +72,7 @@ function useDebouncedSaver() {
 }
 
 export default function ResearchView({ projects }: Props) {
+  const { members, byId } = useHouseholdMembers();
   const [notes, setNotes] = useState<ResearchNoteRow[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [blocks, setBlocks] = useState<NoteBlock[]>([]);
@@ -220,6 +223,7 @@ export default function ResearchView({ projects }: Props) {
                 <div className="flex items-center gap-2">
                   <span>{note.icon || "📄"}</span>
                   <span className="truncate flex-1">{note.title || "Untitled"}</span>
+                  {note.assignee_id && <AssigneeAvatar member={byId(note.assignee_id)} />}
                   <Trash2
                     size={12}
                     onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }}
@@ -279,6 +283,19 @@ export default function ResearchView({ projects }: Props) {
                 </select>
               </div>
               <TagPicker kind="note" ownerId={activeNote.id} />
+              {members.length > 1 && (
+                <div className="flex items-center gap-1 ml-auto">
+                  <AssigneeAvatar member={byId(activeNote.assignee_id)} size="md" />
+                  <select
+                    value={activeNote.assignee_id || ""}
+                    onChange={(e) => updateNote({ assignee_id: e.target.value || null } as any)}
+                    className="bg-transparent text-xs text-foreground border-none focus:outline-none cursor-pointer"
+                  >
+                    <option value="">Unassigned</option>
+                    {members.map(m => <option key={m.user_id} value={m.user_id}>{m.display_name || "Member"}</option>)}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Blocks */}

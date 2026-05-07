@@ -250,8 +250,33 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          color: string
+          created_at: string
+          display_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          display_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          display_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       research_notes: {
         Row: {
+          assignee_id: string | null
           created_at: string
           icon: string | null
           id: string
@@ -260,6 +285,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assignee_id?: string | null
           created_at?: string
           icon?: string | null
           id?: string
@@ -268,6 +294,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assignee_id?: string | null
           created_at?: string
           icon?: string | null
           id?: string
@@ -300,6 +327,7 @@ export type Database = {
       }
       task_lists: {
         Row: {
+          assignee_id: string | null
           created_at: string
           description: string | null
           icon: string | null
@@ -309,6 +337,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assignee_id?: string | null
           created_at?: string
           description?: string | null
           icon?: string | null
@@ -318,6 +347,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assignee_id?: string | null
           created_at?: string
           description?: string | null
           icon?: string | null
@@ -354,6 +384,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invite_token: { Args: { _token: string }; Returns: Json }
       current_household: { Args: never; Returns: string }
       is_household_owner: {
         Args: { _household: string; _user: string }

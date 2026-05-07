@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuid } from "uuid";
 import { Plus, Trash2, ListChecks, CheckSquare, Square, Link2, Loader2, X, Search, ListTodo } from "lucide-react";
 import TagPicker, { TagChips } from "./TagPicker";
+import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
+import { AssigneeAvatar } from "./AssigneePicker";
 
 
 interface Props {
@@ -13,6 +15,7 @@ interface Props {
 }
 
 export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) {
+  const { members, byId } = useHouseholdMembers();
   const [lists, setLists] = useState<TaskList[]>([]);
   const [items, setItems] = useState<ListItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -141,7 +144,10 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
               >
                 <span>{list.icon || "📋"}</span>
                 <div className="truncate flex-1">
-                  <div className="truncate">{list.name}</div>
+                  <div className="truncate flex items-center gap-1.5">
+                    {list.name}
+                    {list.assignee_id && <AssigneeAvatar member={byId(list.assignee_id)} />}
+                  </div>
                   <div className="mt-0.5"><TagChips kind="list" ownerId={list.id} /></div>
                 </div>
                 <Trash2
@@ -197,6 +203,24 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
                 </select>
               </div>
               <TagPicker kind="list" ownerId={active.id} />
+              {members.length > 1 && (
+                <div className="flex items-center gap-1 ml-auto">
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Assignee</span>
+                  <AssigneeAvatar member={byId(active.assignee_id)} size="md" />
+                  <select
+                    value={active.assignee_id || ""}
+                    onChange={async (e) => {
+                      const assignee_id = e.target.value || null;
+                      setLists(prev => prev.map(l => l.id === active.id ? { ...l, assignee_id } : l));
+                      await supabase.from("task_lists").update({ assignee_id }).eq("id", active.id);
+                    }}
+                    className="bg-transparent text-xs text-foreground border-none focus:outline-none cursor-pointer"
+                  >
+                    <option value="">Unassigned</option>
+                    {members.map(m => <option key={m.user_id} value={m.user_id}>{m.display_name || "Member"}</option>)}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Items */}

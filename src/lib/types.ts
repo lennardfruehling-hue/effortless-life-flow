@@ -36,6 +36,7 @@ export interface Task {
   hateMagnitude?: number;
   duration?: number;
   dueDate?: string;
+  assigneeId?: string | null;
 }
 
 export interface Project {
@@ -111,6 +112,7 @@ export interface ResearchNoteRow {
   project_id?: string | null;
   created_at: string;
   updated_at: string;
+  assignee_id?: string | null;
 }
 
 export interface NoteBlock {
@@ -135,6 +137,7 @@ export interface TaskList {
   project_id?: string | null;
   created_at: string;
   updated_at: string;
+  assignee_id?: string | null;
 }
 
 export interface ListItem {

@@ -2,6 +2,8 @@ import { Task } from "@/lib/types";
 import { CategoryBadge } from "./CategoryBadge";
 import { Check, Pencil, Trash2, MapPin, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
+import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
+import { AssigneeAvatar } from "./AssigneePicker";
 
 interface TaskCardProps {
   task: Task;
@@ -11,6 +13,8 @@ interface TaskCardProps {
 }
 
 export default function TaskCard({ task, onToggle, onEdit, onDelete }: TaskCardProps) {
+  const { byId } = useHouseholdMembers();
+  const assignee = byId(task.assigneeId);
   return (
     <motion.div
       layout
@@ -70,6 +74,7 @@ export default function TaskCard({ task, onToggle, onEdit, onDelete }: TaskCardP
           </span>
         </div>
       </div>
+      {assignee && <div className="flex-shrink-0 mt-0.5"><AssigneeAvatar member={assignee} /></div>}
 
       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <button onClick={() => onEdit(task)} className="p-1 text-muted-foreground hover:text-foreground">

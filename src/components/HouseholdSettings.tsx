@@ -1,18 +1,20 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Users, Mail, Trash2, Copy, Loader2, Check } from "lucide-react";
+import { Users, Mail, Trash2, Copy, Loader2, Check, User as UserIcon } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
 interface Household { id: string; name: string }
 interface Member { user_id: string; role: "owner" | "member"; joined_at: string }
 interface Invite { id: string; email: string; token: string; created_at: string; expires_at: string; accepted: boolean }
+interface Profile { user_id: string; display_name: string | null; color: string }
 
 export default function HouseholdSettings({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
   const [household, setHousehold] = useState<Household | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -20,15 +22,27 @@ export default function HouseholdSettings({ onClose }: { onClose: () => void }) 
 
   const load = async () => {
     setLoading(true);
-    const [hh, mm, ii] = await Promise.all([
+    const [hh, mm, ii, pp] = await Promise.all([
       supabase.from("households").select("*").maybeSingle(),
       supabase.from("household_members").select("*").order("joined_at"),
       supabase.from("household_invites").select("*").eq("accepted", false).order("created_at", { ascending: false }),
+      supabase.from("profiles").select("user_id, display_name, color"),
     ]);
     if (hh.data) setHousehold(hh.data as Household);
     if (mm.data) setMembers(mm.data as Member[]);
     if (ii.data) setInvites(ii.data as Invite[]);
+    if (pp.data) setProfiles(pp.data as Profile[]);
     setLoading(false);
+  };
+
+  const myProfile = profiles.find(p => p.user_id === user?.id);
+  const profileById = (id: string) => profiles.find(p => p.user_id === id);
+
+  const updateMyProfile = async (patch: Partial<Profile>) => {
+    if (!user) return;
+    setProfiles(prev => prev.map(p => p.user_id === user.id ? { ...p, ...patch } : p));
+    await supabase.from("profiles").upsert({ user_id: user.id, ...patch }, { onConflict: "user_id" });
+    window.dispatchEvent(new Event("household-updated"));
   };
 
   useEffect(() => { load(); }, []);
@@ -99,18 +113,47 @@ export default function HouseholdSettings({ onClose }: { onClose: () => void }) 
             </div>
 
             <div>
+              <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                <UserIcon size={14} className="text-primary" /> Your profile
+              </h3>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="color"
+                  value={myProfile?.color || "#6366f1"}
+                  onChange={(e) => updateMyProfile({ color: e.target.value })}
+                  className="w-10 h-10 rounded border border-border bg-transparent cursor-pointer"
+                  title="Your color"
+                />
+                <input
+                  value={myProfile?.display_name || ""}
+                  onChange={(e) => updateMyProfile({ display_name: e.target.value })}
+                  placeholder="Display name"
+                  className="flex-1 bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            <div>
               <h3 className="text-sm font-semibold text-foreground mb-2">Members ({members.length})</h3>
               <div className="space-y-1.5">
-                {members.map(m => (
-                  <div key={m.user_id} className="flex items-center justify-between bg-secondary/50 border border-border/50 rounded px-3 py-2 text-sm">
-                    <span className="text-foreground font-mono text-xs truncate">
-                      {m.user_id === user?.id ? "You" : m.user_id.slice(0, 8) + "…"}
-                    </span>
-                    <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded ${m.role === "owner" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-                      {m.role}
-                    </span>
-                  </div>
-                ))}
+                {members.map(m => {
+                  const p = profileById(m.user_id);
+                  const initials = (p?.display_name || "?").split(/\s+/).map(s => s[0]).slice(0, 2).join("").toUpperCase();
+                  return (
+                    <div key={m.user_id} className="flex items-center gap-3 bg-secondary/50 border border-border/50 rounded px-3 py-2 text-sm">
+                      <span
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold"
+                        style={{ background: p?.color || "#6366f1" }}
+                      >{initials}</span>
+                      <span className="text-foreground flex-1 truncate">
+                        {p?.display_name || "Unnamed"} {m.user_id === user?.id && <span className="text-muted-foreground text-xs">(you)</span>}
+                      </span>
+                      <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded ${m.role === "owner" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+                        {m.role}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

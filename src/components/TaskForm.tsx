@@ -3,6 +3,8 @@ import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project } from "@/lib/ty
 import { CategoryBadgeFull } from "./CategoryBadge";
 import { v4 as uuid } from "uuid";
 import { X } from "lucide-react";
+import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
+import AssigneePicker from "./AssigneePicker";
 
 interface TaskFormProps {
   projects: Project[];
@@ -20,6 +22,8 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
   const [hateMagnitude, setHateMagnitude] = useState(editTask?.hateMagnitude || 5);
   const [duration, setDuration] = useState(editTask?.duration || 0);
   const [dueDate, setDueDate] = useState(editTask?.dueDate || "");
+  const [assigneeId, setAssigneeId] = useState<string | null>(editTask?.assigneeId ?? null);
+  const { members } = useHouseholdMembers();
 
   const toggleCat = (cat: Category) =>
     setCategories((prev) =>
@@ -42,6 +46,7 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
       hateMagnitude: categories.includes("F") ? hateMagnitude : undefined,
       duration: duration > 0 ? duration : undefined,
       dueDate: dueDate || undefined,
+      assigneeId: assigneeId || null,
     };
     onSubmit(task);
   };
@@ -185,6 +190,22 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
               ))}
             </select>
             <p className="text-xs text-muted-foreground mt-1">Assign this task to a Life Plan project.</p>
+          </div>
+        )}
+
+        {members.length > 1 && (
+          <div>
+            <label className="text-sm text-muted-foreground mb-1 block">Assign to</label>
+            <select
+              value={assigneeId || ""}
+              onChange={(e) => setAssigneeId(e.target.value || null)}
+              className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">Unassigned</option>
+              {members.map(m => (
+                <option key={m.user_id} value={m.user_id}>{m.display_name || "Member"}</option>
+              ))}
+            </select>
           </div>
         )}
 
