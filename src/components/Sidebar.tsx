@@ -123,19 +123,28 @@ export default function Sidebar({
       <nav className="px-2 md:px-3 space-y-1">
         {NAV_ITEMS.map(({ mode, icon: Icon, label }) => {
           const isActive = active === mode;
+          const phaseColor =
+            phase === "action"   ? "text-orange-200" :
+            phase === "review"   ? "text-indigo-200" :
+            phase === "planning" ? "text-amber-200" :
+                                   "text-white";
+          const phaseIcon =
+            phase === "action"   ? "text-orange-300" :
+            phase === "review"   ? "text-indigo-300" :
+            phase === "planning" ? "text-amber-300" :
+                                   "text-white";
           return (
             <button
               key={mode}
               data-tour={`nav-${mode}`}
               onClick={() => onChange(mode)}
               title={label}
-              
-              className={`group w-full flex items-center justify-center md:justify-start gap-3 px-2.5 md:px-3 py-2 rounded-lg text-sm font-bold text-white transition-all ${
+              className={`group w-full flex items-center justify-center md:justify-start gap-3 px-2.5 md:px-3 py-2 rounded-lg text-sm font-bold transition-all ${phaseColor} ${
                 isActive ? "bg-sidebar-accent shadow-sm" : "hover:bg-sidebar-accent/60"
               }`}
             >
-              <Icon size={17} strokeWidth={isActive ? 2.5 : 2} className="text-white drop-shadow" />
-              <span className="hidden md:inline text-white">{label}</span>
+              <Icon size={17} strokeWidth={isActive ? 2.5 : 2} className={`${phaseIcon} drop-shadow`} />
+              <span className="hidden md:inline">{label}</span>
             </button>
           );
         })}
