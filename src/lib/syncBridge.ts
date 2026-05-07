@@ -36,6 +36,17 @@ function patchLocalStorage() {
   };
 }
 
+function safeSetItem(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (e) {
+    console.warn(`[sync] localStorage quota exceeded for ${key} (${value.length} chars). Skipping local cache; data still lives in cloud.`, e);
+    try { localStorage.removeItem(key); } catch {}
+    return false;
+  }
+}
+
 async function refreshKey(userId: string, key: string) {
   const cloudVal = isPersonalKey(key)
     ? await cloudGet<unknown>(userId, key, null as any)
@@ -43,9 +54,9 @@ async function refreshKey(userId: string, key: string) {
   const prev = activeUserId;
   activeUserId = null;
   if (cloudVal === null || cloudVal === undefined) {
-    localStorage.removeItem(key);
+    try { localStorage.removeItem(key); } catch {}
   } else {
-    localStorage.setItem(key, JSON.stringify(cloudVal));
+    safeSetItem(key, JSON.stringify(cloudVal));
   }
   activeUserId = prev;
   window.dispatchEvent(new StorageEvent("storage", { key }));
@@ -56,18 +67,22 @@ export async function hydrateFromCloud(userId: string) {
   patchLocalStorage();
   activeUserId = null; // pause sync during hydration
   for (const key of KEYS) {
-    const cloudVal = isPersonalKey(key)
-      ? await cloudGet<unknown>(userId, key, null as any)
-      : await cloudGetShared<unknown>(key, null as any);
-    if (cloudVal !== null && cloudVal !== undefined) {
-      localStorage.setItem(key, JSON.stringify(cloudVal));
-    } else {
-      const local = localStorage.getItem(key);
-      if (local) {
-        try {
-          await cloudSet(userId, key, JSON.parse(local));
-        } catch {}
+    try {
+      const cloudVal = isPersonalKey(key)
+        ? await cloudGet<unknown>(userId, key, null as any)
+        : await cloudGetShared<unknown>(key, null as any);
+      if (cloudVal !== null && cloudVal !== undefined) {
+        safeSetItem(key, JSON.stringify(cloudVal));
+      } else {
+        const local = localStorage.getItem(key);
+        if (local) {
+          try {
+            await cloudSet(userId, key, JSON.parse(local));
+          } catch {}
+        }
       }
+    } catch (err) {
+      console.warn(`[sync] failed to hydrate ${key}`, err);
     }
   }
   activeUserId = userId;
