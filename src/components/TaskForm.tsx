@@ -226,6 +226,63 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
           </div>
         )}
 
+        <div className="rounded-md border border-border bg-secondary/40 p-3 space-y-2">
+          <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <input
+              type="checkbox"
+              checked={makesProud}
+              onChange={(e) => setMakesProud(e.target.checked)}
+              className="accent-primary"
+            />
+            <Sparkles size={14} className="text-cat-h" />
+            <span className="text-foreground">Makes me proud</span>
+            {makesProud && projectedPride > 0 && (
+              <span className="ml-auto text-xs font-mono text-cat-h">+{projectedPride} pride</span>
+            )}
+          </label>
+          <p className="text-[11px] text-muted-foreground pl-6">Counts toward your Pride score when completed. Longer tasks earn disproportionately more.</p>
+        </div>
+
+        <div>
+          <label className="text-sm text-muted-foreground mb-1 block">Recurrence</label>
+          <div className="flex gap-2">
+            {(["none", "daily", "weekly"] as const).map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setRecurrence(r)}
+                className={`px-3 py-1.5 rounded text-xs font-mono border transition-colors ${
+                  recurrence === r
+                    ? "bg-primary/20 text-primary border-primary/30"
+                    : "text-muted-foreground border-border hover:border-primary/20"
+                }`}
+              >
+                {r === "none" ? "One-off" : r === "daily" ? "Daily" : "Weekly"}
+              </button>
+            ))}
+          </div>
+          {recurrence !== "none" && (
+            <p className="text-[11px] text-muted-foreground mt-1">Auto-resets every {recurrence === "daily" ? "day" : "week"} and feeds your consistency streak.</p>
+          )}
+        </div>
+
+        {lists.length > 0 && (
+          <div>
+            <label className="text-sm text-muted-foreground mb-1 block">Linked list (optional)</label>
+            <select
+              value={linkedListId}
+              onChange={(e) => setLinkedListId(e.target.value)}
+              className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              <option value="">None</option>
+              {lists.map((l) => (
+                <option key={l.id} value={l.id}>{l.name}</option>
+              ))}
+            </select>
+            <p className="text-[11px] text-muted-foreground mt-1">Open this list when running the routine.</p>
+          </div>
+        )}
+
         <div className="flex gap-3 pt-2">
           <button
             type="submit"
