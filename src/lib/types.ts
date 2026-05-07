@@ -37,6 +37,8 @@ export interface Task {
   hateMagnitude?: number;
   duration?: number;
   dueDate?: string;
+  /** Specific time of day (HH:MM, 24h) by which this task should be done. Drives the bottom alarm center. */
+  dueTime?: string;
   assigneeId?: string | null;
   isPrivate?: boolean;
   // Pride scoring — opt-in flag; longer + proud = more points.
