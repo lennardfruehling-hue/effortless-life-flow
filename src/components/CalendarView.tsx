@@ -1,12 +1,18 @@
 import { useState, useRef } from "react";
-import { CalendarEvent } from "@/lib/types";
-import { ChevronLeft, ChevronRight, Upload, Download, Plus, Trash2, X } from "lucide-react";
+import { CalendarEvent, Task, WeeklyStructureBlock, DailyScheduleSlot } from "@/lib/types";
+import { ChevronLeft, ChevronRight, Upload, Download, Plus, Trash2, X, CalendarDays, LayoutGrid } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import GoogleCalendarConnect from "./GoogleCalendarConnect";
+import WeeklyStructureView from "./WeeklyStructureView";
 
 interface CalendarViewProps {
   events: CalendarEvent[];
   onSave: (events: CalendarEvent[]) => void;
+  tasks?: Task[];
+  weeklyStructure?: WeeklyStructureBlock[];
+  onSaveWeeklyStructure?: (b: WeeklyStructureBlock[]) => void;
+  dailySchedule?: DailyScheduleSlot[];
+  onSaveDailySchedule?: (s: DailyScheduleSlot[]) => void;
 }
 
 function parseICS(text: string): CalendarEvent[] {
