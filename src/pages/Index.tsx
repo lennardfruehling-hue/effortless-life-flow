@@ -107,6 +107,7 @@ export default function Index() {
       </div>
       <AISidebar tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />
       <ReminderWatcher reminders={reminders} onUpdate={setReminders} />
+      <SerpentFlow />
     </div>
   );
 }

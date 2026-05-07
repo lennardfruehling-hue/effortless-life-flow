@@ -63,7 +63,6 @@ function getDefaultData(): LifePlanData {
     notes: "",
     planning: [
       { id: uid(), name: "Serpent/Projects", when: "Mornings", done: false },
-      { id: uid(), name: "Weekly Review", when: "Saturdays", done: false },
       { id: uid(), name: "Check-ins", when: "Saturdays", done: false },
     ],
     projects: [
