@@ -38,6 +38,14 @@ export interface Task {
   dueDate?: string;
   assigneeId?: string | null;
   isPrivate?: boolean;
+  // Pride scoring — opt-in flag; longer + proud = more points.
+  makesProud?: boolean;
+  // Recurrence — daily / weekly auto-resetting tasks.
+  recurrence?: "daily" | "weekly";
+  // Date (YYYY-MM-DD or ISO week id like 2026-W19) of last completion for recurring tasks.
+  lastCompletedPeriod?: string;
+  // Optional list to open when starting this task.
+  linkedListId?: string | null;
 }
 
 export interface Project {
