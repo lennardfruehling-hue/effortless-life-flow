@@ -62,29 +62,41 @@ async function refreshKey(userId: string, key: string) {
   window.dispatchEvent(new StorageEvent("storage", { key }));
 }
 
-/** Pull all known keys from cloud into localStorage, merging across household members. */
+/** Pull all known keys from cloud into localStorage in parallel, with per-key timeout so no single key can stall the loading gate. */
 export async function hydrateFromCloud(userId: string) {
   patchLocalStorage();
   activeUserId = null; // pause sync during hydration
-  for (const key of KEYS) {
+
+  const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T | null> =>
+    new Promise((resolve) => {
+      const t = setTimeout(() => {
+        console.warn(`[sync] hydrate timeout after ${ms}ms`);
+        resolve(null);
+      }, ms);
+      p.then((v) => { clearTimeout(t); resolve(v); }).catch((e) => { clearTimeout(t); console.warn("[sync] hydrate err", e); resolve(null); });
+    });
+
+  await Promise.all(KEYS.map(async (key) => {
     try {
-      const cloudVal = isPersonalKey(key)
-        ? await cloudGet<unknown>(userId, key, null as any)
-        : await cloudGetShared<unknown>(key, null as any);
+      const cloudVal = await withTimeout(
+        isPersonalKey(key)
+          ? cloudGet<unknown>(userId, key, null as any)
+          : cloudGetShared<unknown>(key, null as any),
+        8000
+      );
       if (cloudVal !== null && cloudVal !== undefined) {
         safeSetItem(key, JSON.stringify(cloudVal));
       } else {
         const local = localStorage.getItem(key);
         if (local) {
-          try {
-            await cloudSet(userId, key, JSON.parse(local));
-          } catch {}
+          try { await cloudSet(userId, key, JSON.parse(local)); } catch {}
         }
       }
     } catch (err) {
       console.warn(`[sync] failed to hydrate ${key}`, err);
     }
-  }
+  }));
+
   activeUserId = userId;
 
   // Realtime updates from any household member (RLS restricts visibility to the household).
