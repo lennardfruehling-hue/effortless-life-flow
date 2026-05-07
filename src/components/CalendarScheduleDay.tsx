@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useMemo } from "react";
 import { Task, DailyScheduleSlot, Category } from "@/lib/types";
 import { CategoryBadge } from "./CategoryBadge";
-import { Trash2, Mail, Plus } from "lucide-react";
+import { Trash2, Mail, Plus, Printer } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import { toast } from "sonner";
 
