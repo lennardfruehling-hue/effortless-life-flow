@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { CalendarEvent, Task, WeeklyStructureBlock, DailyScheduleSlot } from "@/lib/types";
 import { ChevronLeft, ChevronRight, Upload, Download, Plus, Trash2, X, CalendarDays, LayoutGrid } from "lucide-react";
 import { v4 as uuid } from "uuid";
