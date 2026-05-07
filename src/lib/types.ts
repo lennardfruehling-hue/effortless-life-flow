@@ -163,6 +163,7 @@ export interface ResearchNoteRow {
   created_at: string;
   updated_at: string;
   assignee_id?: string | null;
+  assignee_ids?: string[];
   created_by?: string | null;
   is_private?: boolean;
 }
@@ -190,6 +191,7 @@ export interface TaskList {
   created_at: string;
   updated_at: string;
   assignee_id?: string | null;
+  assignee_ids?: string[];
   created_by?: string | null;
   is_private?: boolean;
 }
