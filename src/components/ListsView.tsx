@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { TaskList, ListItem, Task } from "@/lib/types";
+import { TaskList, ListItem, Task, Project } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuid } from "uuid";
 import { Plus, Trash2, ListChecks, CheckSquare, Square, Link2, Loader2, X, Search, ListTodo } from "lucide-react";
@@ -9,9 +9,10 @@ import { Project } from "@/lib/types";
 interface Props {
   tasks: Task[];
   onSaveTasks: React.Dispatch<React.SetStateAction<Task[]>>;
+  projects?: Project[];
 }
 
-export default function ListsView({ tasks, onSaveTasks }: Props) {
+export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) {
   const [lists, setLists] = useState<TaskList[]>([]);
   const [items, setItems] = useState<ListItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
