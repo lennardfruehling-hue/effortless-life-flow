@@ -1,12 +1,18 @@
 import { useState, useRef } from "react";
-import { CalendarEvent } from "@/lib/types";
-import { ChevronLeft, ChevronRight, Upload, Download, Plus, Trash2, X } from "lucide-react";
+import { CalendarEvent, Task, WeeklyStructureBlock, DailyScheduleSlot } from "@/lib/types";
+import { ChevronLeft, ChevronRight, Upload, Download, Plus, Trash2, X, CalendarDays, LayoutGrid } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import GoogleCalendarConnect from "./GoogleCalendarConnect";
+import WeeklyStructureView from "./WeeklyStructureView";
 
 interface CalendarViewProps {
   events: CalendarEvent[];
   onSave: (events: CalendarEvent[]) => void;
+  tasks?: Task[];
+  weeklyStructure?: WeeklyStructureBlock[];
+  onSaveWeeklyStructure?: (b: WeeklyStructureBlock[]) => void;
+  dailySchedule?: DailyScheduleSlot[];
+  onSaveDailySchedule?: (s: DailyScheduleSlot[]) => void;
 }
 
 function parseICS(text: string): CalendarEvent[] {
@@ -76,7 +82,8 @@ function getFirstDayOfWeek(year: number, month: number) {
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-export default function CalendarView({ events, onSave }: CalendarViewProps) {
+export default function CalendarView({ events, onSave, tasks = [], weeklyStructure = [], onSaveWeeklyStructure, dailySchedule = [], onSaveDailySchedule }: CalendarViewProps) {
+  const [tab, setTab] = useState<"month" | "week">("month");
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
@@ -172,6 +179,37 @@ export default function CalendarView({ events, onSave }: CalendarViewProps) {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex items-center gap-1 mb-4 border-b border-border">
+        <button
+          onClick={() => setTab("month")}
+          className={`flex items-center gap-1.5 text-xs px-3 py-2 border-b-2 -mb-px transition-colors ${
+            tab === "month" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <LayoutGrid size={12} /> Month
+        </button>
+        <button
+          onClick={() => setTab("week")}
+          className={`flex items-center gap-1.5 text-xs px-3 py-2 border-b-2 -mb-px transition-colors ${
+            tab === "week" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <CalendarDays size={12} /> Weekly Structure
+        </button>
+      </div>
+
+      {tab === "week" && onSaveWeeklyStructure && onSaveDailySchedule && (
+        <WeeklyStructureView
+          blocks={weeklyStructure}
+          onSave={onSaveWeeklyStructure}
+          tasks={tasks}
+          dailySchedule={dailySchedule}
+          onSaveDailySchedule={onSaveDailySchedule}
+        />
+      )}
+
+      {tab === "month" && (<>
       {/* Month nav */}
       <div className="flex items-center justify-between mb-4">
         <button onClick={prev} className="p-1 text-muted-foreground hover:text-foreground"><ChevronLeft size={20} /></button>
@@ -233,6 +271,7 @@ export default function CalendarView({ events, onSave }: CalendarViewProps) {
           )}
         </div>
       )}
+      </>)}
 
       {/* Add event modal */}
       {showForm && (

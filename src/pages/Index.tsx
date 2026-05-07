@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
-import { ViewMode, Task, Project, Reminder, LifePlanProject, CalendarEvent, DailyScheduleSlot } from "@/lib/types";
+import { ViewMode, Task, Project, Reminder, LifePlanProject, CalendarEvent, DailyScheduleSlot, WeeklyStructureBlock } from "@/lib/types";
+import { useCloudState } from "@/hooks/useCloudState";
+import { CLOUD_KEYS } from "@/lib/cloudStore";
 import { store } from "@/lib/store";
 import Sidebar from "@/components/Sidebar";
 import TasksView from "@/components/TasksView";
@@ -37,6 +39,7 @@ export default function Index() {
   const [dailySchedule, setDailySchedule] = useState<DailyScheduleSlot[]>(() => store.getDailySchedule());
   const [lifePlanProjects, setLifePlanProjects] = useState<LifePlanProject[]>(loadLifePlanProjects);
   const [taskFilterProject, setTaskFilterProject] = useState<string | undefined>();
+  const [weeklyStructure, setWeeklyStructure] = useCloudState<WeeklyStructureBlock[]>(CLOUD_KEYS.weeklyStructure, []);
 
   useEffect(() => { store.saveTasks(tasks); }, [tasks]);
   useEffect(() => { store.saveProjects(projects); }, [projects]);
@@ -99,7 +102,17 @@ export default function Index() {
         {view === "research" && <ResearchTabs projects={allProjects} />}
         {view === "lists" && <ListsView tasks={tasks} onSaveTasks={setTasks} projects={allProjects} />}
         {view === "lifeplan" && <LifePlanView onNavigateToTasks={navigateToTasksForProject} />}
-        {view === "calendar" && <CalendarView events={calendarEvents} onSave={setCalendarEvents} />}
+        {view === "calendar" && (
+          <CalendarView
+            events={calendarEvents}
+            onSave={setCalendarEvents}
+            tasks={tasks}
+            weeklyStructure={weeklyStructure}
+            onSaveWeeklyStructure={setWeeklyStructure}
+            dailySchedule={dailySchedule}
+            onSaveDailySchedule={setDailySchedule}
+          />
+        )}
         {view === "reminders" && <RemindersView reminders={reminders} tasks={tasks} onSave={setReminders} />}
         {view === "consistency" && <ConsistencyView tasks={tasks} />}
         {view === "ai" && <AIChat tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />}

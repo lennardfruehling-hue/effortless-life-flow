@@ -85,6 +85,34 @@ export interface CalendarEvent {
   isPrivate?: boolean;
 }
 
+/**
+ * A reusable block in the weekly structure template.
+ * `dayOfWeek`: 0 = Sunday … 6 = Saturday.
+ * Times are HH:MM (24h, 15-min snapped).
+ * `recurring` defaults to true (every week); set false for one-off entries pinned to a date.
+ */
+export interface WeeklyStructureBlock {
+  id: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  /** Optional task this block represents (drag from palette). */
+  taskId?: string;
+  /** Snapshot label when no task is linked (e.g. ICS event, "Work shift"). */
+  label?: string;
+  /** Snapshot of category badges (for visual). */
+  taskCategories?: Category[];
+  /** Source: manual block, dragged task, ICS import, or weekly recurring task entry. */
+  source?: "manual" | "task" | "ics" | "recurring";
+  /** Optional colour override (semantic token name or HSL). */
+  color?: string;
+  /** True = repeats every week. False = pinned to a specific ISO date (`pinnedDate`). */
+  recurring?: boolean;
+  pinnedDate?: string; // YYYY-MM-DD
+  /** ICS source URL (if from a subscription) so we can refresh. */
+  icsUrl?: string;
+}
+
 export interface DailyScheduleSlot {
   id: string;
   startTime: string; // "HH:MM"
