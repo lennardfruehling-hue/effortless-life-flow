@@ -237,7 +237,39 @@ function extractEventTitle(input: string) {
   return "Event";
 }
 
-function addCalendarEvent(title: string, dt: { start: string; end: string; allDay: boolean }) {
+function extractReminderTitle(input: string) {
+  if (!REMINDER_COMMAND_REGEX.test(input)) return "";
+  const m = input.match(REMINDER_TITLE_REGEX);
+  if (m) return (m[1] || m[2] || "").trim().replace(/[.!?,;:]+$/, "");
+  const q = input.match(/["\u201C\u201D'](.+?)["\u201C\u201D']/);
+  if (q) return q[1].trim();
+  return "Reminder";
+}
+
+function addReminderEntry(title: string, dt: { start: string; end: string; allDay: boolean }, recurring?: "daily" | "weekly" | "monthly") {
+  try {
+    const KEY = "serpent-reminders";
+    const raw = localStorage.getItem(KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    const datetime = dt.allDay ? `${dt.start.slice(0, 10)}T09:00` : dt.start;
+    const rem = { id: uuid(), title, datetime, recurring, completed: false };
+    arr.push(rem);
+    localStorage.setItem(KEY, JSON.stringify(arr));
+    window.dispatchEvent(new StorageEvent("storage", { key: KEY }));
+    return rem.id;
+  } catch (e) {
+    console.error("Failed to add reminder:", e);
+    return null;
+  }
+}
+
+function extractRecurring(input: string): "daily" | "weekly" | "monthly" | undefined {
+  const l = input.toLowerCase();
+  if (/\b(every\s+day|daily|each\s+day)\b/.test(l)) return "daily";
+  if (/\b(every\s+week|weekly|each\s+week)\b/.test(l)) return "weekly";
+  if (/\b(every\s+month|monthly|each\s+month)\b/.test(l)) return "monthly";
+  return undefined;
+}
   try {
     const KEY = "serpent-calendar-events";
     const raw = localStorage.getItem(KEY);
