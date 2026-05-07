@@ -3,6 +3,8 @@ import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project } from "@/lib/ty
 import { CategoryBadgeFull } from "./CategoryBadge";
 import { v4 as uuid } from "uuid";
 import { X } from "lucide-react";
+import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
+import AssigneePicker from "./AssigneePicker";
 
 interface TaskFormProps {
   projects: Project[];
