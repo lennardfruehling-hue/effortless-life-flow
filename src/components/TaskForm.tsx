@@ -5,6 +5,7 @@ import { v4 as uuid } from "uuid";
 import { X, Sparkles } from "lucide-react";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import AssigneePicker from "./AssigneePicker";
+import MultiAssigneePicker from "./MultiAssigneePicker";
 import LocationPicker from "./LocationPicker";
 import { supabase } from "@/integrations/supabase/client";
 import { pridePointsForTask } from "@/lib/pride";
@@ -39,7 +40,13 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
   const [duration, setDuration] = useState(editTask?.duration || 0);
   const [dueDate, setDueDate] = useState(editTask?.dueDate || "");
   const [dueTime, setDueTime] = useState(editTask?.dueTime || "");
-  const [assigneeId, setAssigneeId] = useState<string | null>(editTask?.assigneeId ?? null);
+  const [assigneeIds, setAssigneeIds] = useState<string[]>(
+    editTask?.assigneeIds && editTask.assigneeIds.length > 0
+      ? editTask.assigneeIds
+      : editTask?.assigneeId
+        ? [editTask.assigneeId]
+        : []
+  );
   const [makesProud, setMakesProud] = useState<boolean>(editTask?.makesProud ?? false);
   const [recurrence, setRecurrence] = useState<"none" | "daily" | "weekly">(editTask?.recurrence ?? "none");
   const [linkedListId, setLinkedListId] = useState<string>(editTask?.linkedListId ?? "");
