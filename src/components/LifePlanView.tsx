@@ -393,7 +393,10 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
                   <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden ml-2">
                     <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progress}%` }} />
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }} className="text-muted-foreground hover:text-destructive ml-2">
+                  <button onClick={(e) => { e.stopPropagation(); archiveProject(project.id); }} className="text-muted-foreground hover:text-primary ml-2" title="Archive project">
+                    <Archive size={12} />
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }} className="text-muted-foreground hover:text-destructive ml-1" title="Delete project">
                     <Trash2 size={12} />
                   </button>
                 </div>
