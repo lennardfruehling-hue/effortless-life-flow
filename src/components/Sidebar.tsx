@@ -34,11 +34,11 @@ export default function Sidebar({
         src={serpentBg}
         alt=""
         aria-hidden
-        className="pointer-events-none absolute inset-0 w-full h-full object-cover object-center opacity-70"
+        className="pointer-events-none absolute inset-0 w-full h-full object-cover object-center opacity-50"
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-sidebar/30 via-sidebar/50 to-sidebar/80"
+        className="pointer-events-none absolute inset-0 bg-sidebar/40"
       />
       <div className="relative flex flex-col h-full">
       <div className="px-4 pt-6 pb-4 text-center">
