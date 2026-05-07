@@ -625,14 +625,14 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
 
       // If we successfully added a calendar event, don't show the LLM's
       // (often confused "I can't add to your calendar") text — replace it.
-      const baseContent = createdEventTitle
+      const baseContent = createdReminderTitle
+        ? `🔔 Done — saved reminder **"${createdReminderTitle}"**.`
+        : createdEventTitle
         ? `📅 Done — added **"${createdEventTitle}"** to your in-app calendar.`
         : assistantContent;
-      const finalContent = confirmations.length > 0 && !createdEventTitle
-        ? `${baseContent}\n\n${confirmations.join("\n")}`
-        : createdEventTitle
-          ? baseContent
-          : confirmations.length > 0 ? `${baseContent}\n\n${confirmations.join("\n")}` : baseContent;
+      const finalContent = (createdReminderTitle || createdEventTitle)
+        ? baseContent + (confirmations.length > 1 ? `\n\n${confirmations.filter(c => !c.includes(createdReminderTitle || "____") && !c.includes(createdEventTitle || "____")).join("\n")}` : "")
+        : confirmations.length > 0 ? `${baseContent}\n\n${confirmations.join("\n")}` : baseContent;
       setMessages((prev) => [...prev, { role: "assistant", content: finalContent }]);
     } catch (e: any) {
       console.error("AI error:", e);
