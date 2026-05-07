@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Users, Mail, Trash2, Copy, Loader2, Check } from "lucide-react";
+import { Users, Mail, Trash2, Copy, Loader2, Check, User as UserIcon } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
 
 interface Household { id: string; name: string }
 interface Member { user_id: string; role: "owner" | "member"; joined_at: string }
 interface Invite { id: string; email: string; token: string; created_at: string; expires_at: string; accepted: boolean }
+interface Profile { user_id: string; display_name: string | null; color: string }
 
 export default function HouseholdSettings({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
