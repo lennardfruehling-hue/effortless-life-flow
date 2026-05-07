@@ -159,6 +159,38 @@ export default function SerpentFlow() {
   const currentStep = active ? FLOWS[active].steps[stepIdx] : undefined;
   const targetRect = useTargetRect(currentStep?.target);
 
+  // Reset gating when step changes; auto-satisfy if requirement is "none".
+  useEffect(() => {
+    if (!currentStep) { setStepSatisfied(false); return; }
+    const req = currentStep.requires ?? { kind: "none" as const };
+    setStepSatisfied(req.kind === "none");
+  }, [active, stepIdx, currentStep]);
+
+  // Listen for the step requirement: target click or progress event.
+  useEffect(() => {
+    if (!active || !currentStep) return;
+    const req = currentStep.requires ?? { kind: "none" as const };
+    if (req.kind === "none") return;
+
+    if (req.kind === "click-target" && currentStep.target) {
+      const handler = (ev: MouseEvent) => {
+        const el = document.querySelector(currentStep.target!) as HTMLElement | null;
+        if (el && ev.target instanceof Node && el.contains(ev.target)) {
+          setStepSatisfied(true);
+        }
+      };
+      document.addEventListener("click", handler, true);
+      return () => document.removeEventListener("click", handler, true);
+    }
+    if (req.kind === "progress-event") {
+      const handler = (e: Event) => {
+        if ((e as CustomEvent).detail === req.event) setStepSatisfied(true);
+      };
+      window.addEventListener("serpent-progress", handler);
+      return () => window.removeEventListener("serpent-progress", handler);
+    }
+  }, [active, currentStep]);
+
   const popover = (() => {
     if (!targetRect) return { top: 24, left: window.innerWidth / 2 - 180 };
     const W = 320;
