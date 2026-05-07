@@ -72,6 +72,7 @@ function useDebouncedSaver() {
 }
 
 export default function ResearchView({ projects }: Props) {
+  const { members, byId } = useHouseholdMembers();
   const [notes, setNotes] = useState<ResearchNoteRow[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [blocks, setBlocks] = useState<NoteBlock[]>([]);
