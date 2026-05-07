@@ -36,7 +36,7 @@ export interface Task {
   hateMagnitude?: number;
   duration?: number;
   dueDate?: string;
-}
+  assigneeId?: string | null;
 
 export interface Project {
   id: string;
