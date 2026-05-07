@@ -11,7 +11,9 @@ interface Props {
 }
 
 export default function AISidebar({ tasks, projects, onSaveTasks, onSaveProjects }: Props) {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 1024 : true,
+  );
 
   if (!open) {
     return (
