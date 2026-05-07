@@ -44,7 +44,9 @@ const TASK_COMMAND_REGEX = /(?:add|create|new|save|make|put)\s+(?:(?:a|an|the)[.
 const PROJECT_COMMAND_REGEX = /(?:add|create|new|save|make|start|put)\s+(?:a\s+|an\s+|the\s+)?project\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into|on)\s+(?:the\s+|my\s+)?(?:projects?|life[- ]?plan|plan))?(?:[.!?]|$)/i;
 const NOTE_COMMAND_REGEX = /(?:add|create|new|save|make|write|put)\s+(?:a\s+|an\s+|the\s+)?(?:research\s+)?note\s+(?:called\s+|named\s+|about\s+|on\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into)\s+(?:the\s+|my\s+)?(?:notes?|research))?(?:[.!?]|$)/i;
 const LIST_COMMAND_REGEX = /(?:add|create|new|save|make|start|build|put)\s+(?:a\s+|an\s+|the\s+)?(?:packing\s+|shopping\s+|todo\s+|to-do\s+)?list\s+(?:called\s+|named\s+|for\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^,;:.!?\n]+?))(?:\s+(?:with|having|containing|to|in|into|on)\b|[,;:.!?\n]|$)/i;
-const EVENT_COMMAND_REGEX = /(?:add|create|new|schedule|put|book|set)\s+(?:a\s+|an\s+|the\s+)?(?:calendar\s+)?(?:event|entry|item|meeting|appointment|reminder|date)\b/i;
+const EVENT_COMMAND_REGEX = /(?:add|create|new|schedule|put|book|set)\s+(?:a\s+|an\s+|the\s+)?(?:calendar\s+)?(?:event|entry|item|meeting|appointment|date)\b/i;
+const REMINDER_COMMAND_REGEX = /(?:^|\b)(?:(?:add|create|new|set|save|make|put)\s+(?:a\s+|an\s+|the\s+)?reminder\b|remind\s+(?:me|us)\b)/i;
+const REMINDER_TITLE_REGEX = /(?:remind\s+(?:me|us)\s+to\s+|reminder\s+(?:to|for|about|called|named|titled)\s+)(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^"\n]+?))(?:\s+(?:at|on|tomorrow|today|next|every|in)\b|[.!?\n]|$)/i;
 const EVENT_TITLE_REGEX = /(?:called|named|titled|for)\s+(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([A-Z][^.!?\n,;:]{0,60}))/;
 const CATEGORY_CODE_REGEX = /\b(A1|A2|A3|B1|B2|C|D|E|F|G|H|I|J)\b(?=\s*:|\b)/g;
 const LIFE_PLAN_PROJECT_REGEX = /\b(lp-[a-z0-9]+)\b/i;
@@ -235,6 +237,40 @@ function extractEventTitle(input: string) {
   return "Event";
 }
 
+function extractReminderTitle(input: string) {
+  if (!REMINDER_COMMAND_REGEX.test(input)) return "";
+  const m = input.match(REMINDER_TITLE_REGEX);
+  if (m) return (m[1] || m[2] || "").trim().replace(/[.!?,;:]+$/, "");
+  const q = input.match(/["\u201C\u201D'](.+?)["\u201C\u201D']/);
+  if (q) return q[1].trim();
+  return "Reminder";
+}
+
+function addReminderEntry(title: string, dt: { start: string; end: string; allDay: boolean }, recurring?: "daily" | "weekly" | "monthly") {
+  try {
+    const KEY = "serpent-reminders";
+    const raw = localStorage.getItem(KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    const datetime = dt.allDay ? `${dt.start.slice(0, 10)}T09:00` : dt.start;
+    const rem = { id: uuid(), title, datetime, recurring, completed: false };
+    arr.push(rem);
+    localStorage.setItem(KEY, JSON.stringify(arr));
+    window.dispatchEvent(new StorageEvent("storage", { key: KEY }));
+    return rem.id;
+  } catch (e) {
+    console.error("Failed to add reminder:", e);
+    return null;
+  }
+}
+
+function extractRecurring(input: string): "daily" | "weekly" | "monthly" | undefined {
+  const l = input.toLowerCase();
+  if (/\b(every\s+day|daily|each\s+day)\b/.test(l)) return "daily";
+  if (/\b(every\s+week|weekly|each\s+week)\b/.test(l)) return "weekly";
+  if (/\b(every\s+month|monthly|each\s+month)\b/.test(l)) return "monthly";
+  return undefined;
+}
+
 function addCalendarEvent(title: string, dt: { start: string; end: string; allDay: boolean }) {
   try {
     const KEY = "serpent-calendar-events";
@@ -389,6 +425,7 @@ ${projectList || "No projects"}
 8. **Save research notes** - when user says "save a note about X" or "write a note on X", produce a markdown body (use # for headings, - for bullets) that will become a Notion-style note
 9. **Build lists** - when user says "make a packing list for Tokyo", reply with a clear bulleted list (one item per line starting with "-"); items will be saved automatically
 10. **Add calendar entries** - when user says "add a calendar entry/event/item today at 7:30pm called 'Datenight'", the app saves it directly to the in-app calendar. Confirm naturally — DO NOT tell the user you can't, and DO NOT offer Google Calendar links or .ics files. Just confirm what was added (title + date/time).
+11. **Set reminders** - when user says "remind me to X at TIME" or "add a reminder for X", the app saves it directly to the in-app Reminders list. Confirm naturally — DO NOT say you can't set reminders.
 
 ## Serpent System Rules
 - A1 tasks are done FIRST (today, urgent)
@@ -550,14 +587,32 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
         if (id) createdListName = listName;
       }
 
-      // Check for calendar event command
+      // Check for reminder command (must run BEFORE calendar event check)
+      let createdReminderTitle: string | null = null;
+      const reminderTitle = extractReminderTitle(textInput);
+      if (reminderTitle) {
+        const dt = parseEventDateTime(textInput) || (() => {
+          // default: 1 hour from now if no time given
+          const d = new Date(Date.now() + 60 * 60 * 1000);
+          const pad = (n: number) => String(n).padStart(2, "0");
+          const s = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+          return { start: s, end: s, allDay: false };
+        })();
+        const recurring = extractRecurring(textInput);
+        const id = addReminderEntry(reminderTitle, dt, recurring);
+        if (id) createdReminderTitle = `${reminderTitle} (${dt.allDay ? dt.start.slice(0,10) : dt.start.replace("T", " ")})`;
+      }
+
+      // Check for calendar event command (skip if reminder already handled it)
       let createdEventTitle: string | null = null;
-      const eventTitle = extractEventTitle(textInput);
-      if (eventTitle) {
-        const dt = parseEventDateTime(textInput);
-        if (dt) {
-          const id = addCalendarEvent(eventTitle, dt);
-          if (id) createdEventTitle = `${eventTitle} (${dt.allDay ? dt.start.slice(0,10) : dt.start.replace("T", " ")})`;
+      if (!createdReminderTitle) {
+        const eventTitle = extractEventTitle(textInput);
+        if (eventTitle) {
+          const dt = parseEventDateTime(textInput);
+          if (dt) {
+            const id = addCalendarEvent(eventTitle, dt);
+            if (id) createdEventTitle = `${eventTitle} (${dt.allDay ? dt.start.slice(0,10) : dt.start.replace("T", " ")})`;
+          }
         }
       }
 
@@ -567,17 +622,18 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
       if (createdNoteTitle) confirmations.push(`✅ Research note **"${createdNoteTitle}"** saved.`);
       if (createdListName) confirmations.push(`✅ List **"${createdListName}"** saved with all items.`);
       if (createdEventTitle) confirmations.push(`📅 Calendar event **"${createdEventTitle}"** added to your calendar.`);
+      if (createdReminderTitle) confirmations.push(`🔔 Reminder **"${createdReminderTitle}"** saved.`);
 
       // If we successfully added a calendar event, don't show the LLM's
       // (often confused "I can't add to your calendar") text — replace it.
-      const baseContent = createdEventTitle
+      const baseContent = createdReminderTitle
+        ? `🔔 Done — saved reminder **"${createdReminderTitle}"**.`
+        : createdEventTitle
         ? `📅 Done — added **"${createdEventTitle}"** to your in-app calendar.`
         : assistantContent;
-      const finalContent = confirmations.length > 0 && !createdEventTitle
-        ? `${baseContent}\n\n${confirmations.join("\n")}`
-        : createdEventTitle
-          ? baseContent
-          : confirmations.length > 0 ? `${baseContent}\n\n${confirmations.join("\n")}` : baseContent;
+      const finalContent = (createdReminderTitle || createdEventTitle)
+        ? baseContent + (confirmations.length > 1 ? `\n\n${confirmations.filter(c => !c.includes(createdReminderTitle || "____") && !c.includes(createdEventTitle || "____")).join("\n")}` : "")
+        : confirmations.length > 0 ? `${baseContent}\n\n${confirmations.join("\n")}` : baseContent;
       setMessages((prev) => [...prev, { role: "assistant", content: finalContent }]);
     } catch (e: any) {
       console.error("AI error:", e);
