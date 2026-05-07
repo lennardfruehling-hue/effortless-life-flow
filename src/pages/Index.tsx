@@ -13,6 +13,7 @@ import AISidebar from "@/components/AISidebar";
 import ConsistencyView from "@/components/ConsistencyView";
 import ReminderWatcher from "@/components/ReminderWatcher";
 import SyncStatusBanner from "@/components/SyncStatusBanner";
+import SerpentFlow from "@/components/SerpentFlow";
 
 const LIFEPLAN_KEY = "serpent-lifeplan-v2";
 
@@ -106,6 +107,7 @@ export default function Index() {
       </div>
       <AISidebar tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />
       <ReminderWatcher reminders={reminders} onUpdate={setReminders} />
+      <SerpentFlow />
     </div>
   );
 }

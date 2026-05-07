@@ -11,6 +11,7 @@ const colorMap: Record<string, string> = {
   "cat-h": "bg-cat-h/20 text-cat-h border-cat-h/30",
   "cat-i": "bg-cat-i/20 text-cat-i border-cat-i/30",
   "cat-j": "bg-cat-j/20 text-cat-j border-cat-j/30",
+  "cat-k": "bg-cat-k/20 text-cat-k border-cat-k/30",
 };
 
 function getColorClass(cat: Category): string {
