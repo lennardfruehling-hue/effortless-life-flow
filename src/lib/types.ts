@@ -1,10 +1,10 @@
 export type CategoryA = "A1" | "A2" | "A3";
 export type CategoryB = "B1" | "B2";
-export type CategorySingle = "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J";
+export type CategorySingle = "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K";
 export type Category = CategoryA | CategoryB | CategorySingle;
 
 export const ALL_CATEGORIES: Category[] = [
-  "A1", "A2", "A3", "B1", "B2", "C", "D", "E", "F", "G", "H", "I", "J",
+  "A1", "A2", "A3", "B1", "B2", "C", "D", "E", "F", "G", "H", "I", "J", "K",
 ];
 
 export const CATEGORY_META: Record<Category, { label: string; description: string; color: string }> = {
@@ -21,6 +21,7 @@ export const CATEGORY_META: Record<Category, { label: string; description: strin
   H: { label: "H · Proud", description: "Things that make me proud", color: "cat-h" },
   I: { label: "I · Avoid", description: "Don't want to know about or touch", color: "cat-i" },
   J: { label: "J · Long Term", description: "Part of bigger evolving projects", color: "cat-j" },
+  K: { label: "K · Non-Negotiable for Célida", description: "Non-negotiable commitments to Célida", color: "cat-k" },
 };
 
 export interface Task {

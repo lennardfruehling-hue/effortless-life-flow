@@ -72,6 +72,7 @@ export default {
           h: "hsl(var(--cat-h))",
           i: "hsl(var(--cat-i))",
           j: "hsl(var(--cat-j))",
+          k: "hsl(var(--cat-k))",
         },
       },
       borderRadius: {
