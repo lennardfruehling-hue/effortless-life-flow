@@ -63,7 +63,7 @@ export default function Sidebar({
               key={mode}
               onClick={() => onChange(mode)}
               title={label}
-              style={{ textShadow: "0 1px 4px rgba(0,0,0,0.85)" }}
+              
               className={`group w-full flex items-center justify-center md:justify-start gap-3 px-2.5 md:px-3 py-2 rounded-lg text-sm font-bold text-white transition-all ${
                 isActive ? "bg-sidebar-accent shadow-sm" : "hover:bg-sidebar-accent/60"
               }`}
