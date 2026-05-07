@@ -93,6 +93,7 @@ export default function Sidebar({
           <span className="hidden md:inline">Sign out</span>
         </button>
       </div>
+      </div>
     </aside>
     {showHousehold && <HouseholdSettings onClose={() => setShowHousehold(false)} />}
     </>
