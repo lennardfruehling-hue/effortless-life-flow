@@ -1,13 +1,21 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronRight } from "lucide-react";
+import {
+  loadFlowState,
+  saveFlowState,
+  SerpentFlowDayState,
+  SerpentPhase,
+} from "@/lib/serpentFlowState";
+import risingSun from "@/assets/serpent-rising-sun.png";
+import sun from "@/assets/serpent-sun.png";
+import halfMoon from "@/assets/serpent-half-moon.png";
 
 type FlowKind = "start" | "midday" | "evening";
 
 interface Step {
   title: string;
   body: string;
-  /** CSS selector of the element this step targets. */
   target?: string;
 }
 
@@ -30,75 +38,31 @@ const FLOWS: Record<FlowKind, { label: string; steps: Step[] }> = {
     ],
   },
   evening: {
-    label: "Evening Check 🐍",
+    label: "Evening Review 🐍",
     steps: [
       { title: "Daily Serpent list · A1", body: "Review and check non-negotiable (Célida · K) items.", target: '[data-tour="nav-consistency"]' },
     ],
   },
 };
 
-const STORAGE_KEY = "serpent-flow-state-v1";
-
-interface FlowState {
-  date: string;
-  startCompleted: boolean;
-  middayCompleted: boolean;
-  eveningCompleted: boolean;
-}
-
-function todayKey() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function loadState(): FlowState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const s = JSON.parse(raw) as FlowState;
-      if (s.date === todayKey()) return s;
-    }
-  } catch {}
-  return { date: todayKey(), startCompleted: false, middayCompleted: false, eveningCompleted: false };
-}
-
-function saveState(s: FlowState) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
-}
-
-interface Rect {
-  top: number;
-  left: number;
-  width: number;
-  height: number;
-}
+interface Rect { top: number; left: number; width: number; height: number; }
 
 function useTargetRect(selector: string | undefined): Rect | null {
   const [rect, setRect] = useState<Rect | null>(null);
-
   useLayoutEffect(() => {
-    if (!selector) {
-      setRect(null);
-      return;
-    }
+    if (!selector) { setRect(null); return; }
     let raf = 0;
     const measure = () => {
       const el = document.querySelector(selector) as HTMLElement | null;
-      if (!el) {
-        setRect(null);
-      } else {
-        const r = el.getBoundingClientRect();
-        setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
-        // ensure it's in view
-        if (r.top < 0 || r.bottom > window.innerHeight) {
-          el.scrollIntoView({ block: "center", behavior: "smooth" });
-        }
+      if (!el) { setRect(null); return; }
+      const r = el.getBoundingClientRect();
+      setRect({ top: r.top, left: r.left, width: r.width, height: r.height });
+      if (r.top < 0 || r.bottom > window.innerHeight) {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
       }
     };
     measure();
-    const onChange = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(measure);
-    };
+    const onChange = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(measure); };
     window.addEventListener("resize", onChange);
     window.addEventListener("scroll", onChange, true);
     const interval = window.setInterval(measure, 500);
@@ -109,18 +73,30 @@ function useTargetRect(selector: string | undefined): Rect | null {
       cancelAnimationFrame(raf);
     };
   }, [selector]);
-
   return rect;
 }
 
+function derivePhase(s: SerpentFlowDayState, active: FlowKind | null): SerpentPhase {
+  if (active === "start") return "planning";
+  if (active === "evening" || s.eveningCompleted) return "review";
+  if (active === "midday" || s.startCompleted) return "action";
+  return "idle";
+}
+
 export default function SerpentFlow() {
-  const [state, setState] = useState<FlowState>(loadState);
+  const [state, setState] = useState<SerpentFlowDayState>(loadFlowState);
   const [active, setActive] = useState<FlowKind | null>(null);
   const [stepIdx, setStepIdx] = useState(0);
+  const [trioOpen, setTrioOpen] = useState(false);
 
-  useEffect(() => saveState(state), [state]);
+  // Persist + broadcast phase whenever inputs change.
+  useEffect(() => {
+    const next = { ...state, phase: derivePhase(state, active) };
+    saveFlowState(next);
+  }, [state, active]);
 
   const startFlow = (kind: FlowKind) => {
+    setTrioOpen(false);
     setActive(kind);
     setStepIdx(0);
   };
@@ -142,15 +118,25 @@ export default function SerpentFlow() {
     }
   };
 
-  const hour = new Date().getHours();
-  const showStart = !state.startCompleted;
-  const showMidday = state.startCompleted && !state.middayCompleted && hour >= 11 && hour < 17;
-  const showEvening = !state.eveningCompleted && hour >= 17;
+  // Auto-prompt sequence: open trio chooser at noon if midday not done, at 17h if evening not done.
+  useEffect(() => {
+    const tick = () => {
+      const h = new Date().getHours();
+      if (active) return;
+      if (!state.middayCompleted && state.startCompleted && h >= 12 && h < 17) {
+        setTrioOpen(true);
+      } else if (!state.eveningCompleted && h >= 17) {
+        setTrioOpen(true);
+      }
+    };
+    tick();
+    const id = window.setInterval(tick, 60_000);
+    return () => clearInterval(id);
+  }, [state, active]);
 
   const currentStep = active ? FLOWS[active].steps[stepIdx] : undefined;
   const targetRect = useTargetRect(currentStep?.target);
 
-  // Compute popover position: prefer right side; fall back below; clamp to viewport.
   const popover = (() => {
     if (!targetRect) return { top: 24, left: window.innerWidth / 2 - 180 };
     const W = 320;
@@ -158,22 +144,27 @@ export default function SerpentFlow() {
     let left = targetRect.left + targetRect.width + margin;
     let top = targetRect.top;
     if (left + W > window.innerWidth - 8) {
-      // place below or above
       left = Math.max(8, Math.min(window.innerWidth - W - 8, targetRect.left));
       top = targetRect.top + targetRect.height + margin;
-      if (top + 180 > window.innerHeight) {
-        top = Math.max(8, targetRect.top - 180 - margin);
-      }
+      if (top + 180 > window.innerHeight) top = Math.max(8, targetRect.top - 180 - margin);
     }
     top = Math.max(8, Math.min(window.innerHeight - 180, top));
     return { top, left };
   })();
 
+  const showStartHero = !state.startCompleted && !active && !trioOpen;
+
+  const TRIO: { kind: FlowKind; img: string; label: string; done: boolean }[] = [
+    { kind: "start",   img: risingSun, label: "Start Serpent",  done: state.startCompleted },
+    { kind: "midday",  img: sun,       label: "Midday Check",   done: state.middayCompleted },
+    { kind: "evening", img: halfMoon,  label: "Evening Review", done: state.eveningCompleted },
+  ];
+
   return (
     <>
-      {/* Floating Start Serpent button — styled to echo the sidebar */}
+      {/* Floating Start Serpent hero button */}
       <AnimatePresence>
-        {showStart && !active && (
+        {showStartHero && (
           <motion.button
             key="start-btn"
             initial={{ opacity: 0, scale: 0.85, y: -10 }}
@@ -193,34 +184,55 @@ export default function SerpentFlow() {
         )}
       </AnimatePresence>
 
-      {/* Midday, Evening & manual relaunch prompts */}
-      <div className="fixed bottom-4 right-4 z-40 flex flex-col gap-2 items-end">
-        {showMidday && !active && (
-          <button
-            onClick={() => startFlow("midday")}
-            className="px-3 py-2 rounded-md bg-cat-a/90 text-white text-xs shadow-lg hover:opacity-90"
+      {/* Persistent serpent button — bottom right */}
+      {!active && (
+        <button
+          onClick={() => setTrioOpen((v) => !v)}
+          title="Serpent flows"
+          className="fixed bottom-4 right-4 z-40 w-12 h-12 rounded-full bg-sidebar/90 border border-amber-300/40 text-white text-xl shadow-lg hover:bg-sidebar transition-colors flex items-center justify-center"
+        >
+          🐍
+        </button>
+      )}
+
+      {/* Trio of circular serpent emblems */}
+      <AnimatePresence>
+        {trioOpen && !active && (
+          <motion.div
+            key="trio"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-20 right-4 z-40 flex items-end gap-3 p-3 rounded-2xl bg-sidebar/90 backdrop-blur border border-amber-300/30 shadow-2xl"
           >
-            🐍 Midday check
-          </button>
+            {TRIO.map(({ kind, img, label, done }) => (
+              <button
+                key={kind}
+                onClick={() => startFlow(kind)}
+                title={label + (done ? " — completed" : "")}
+                className="group flex flex-col items-center gap-1 w-20"
+              >
+                <div className={`relative w-16 h-16 rounded-full overflow-hidden border-2 transition-all ${done ? "border-emerald-400" : "border-amber-300/50 group-hover:border-amber-300"} group-hover:scale-105`}>
+                  <img src={img} alt={label} className="w-full h-full object-contain bg-sidebar" />
+                  {done && (
+                    <div className="absolute inset-0 bg-emerald-500/30 flex items-center justify-center">
+                      <span className="text-white text-2xl">✓</span>
+                    </div>
+                  )}
+                </div>
+                <span className="text-[10px] text-white/90 text-center leading-tight font-medium">{label}</span>
+              </button>
+            ))}
+            <button
+              onClick={() => setTrioOpen(false)}
+              className="ml-1 mb-6 text-white/60 hover:text-white"
+              title="Close"
+            >
+              <X size={16} />
+            </button>
+          </motion.div>
         )}
-        {showEvening && !active && (
-          <button
-            onClick={() => startFlow("evening")}
-            className="px-3 py-2 rounded-md bg-cat-k/90 text-white text-xs shadow-lg hover:opacity-90"
-          >
-            🐍 Evening check
-          </button>
-        )}
-        {!active && (
-          <button
-            onClick={() => startFlow("start")}
-            title="Relaunch Serpent flow"
-            className="w-10 h-10 rounded-full bg-sidebar/90 border border-amber-300/40 text-white text-lg shadow-lg hover:bg-sidebar transition-colors flex items-center justify-center"
-          >
-            🐍
-          </button>
-        )}
-      </div>
+      </AnimatePresence>
 
       {/* Highlight ring + anchored tooltip */}
       <AnimatePresence>
