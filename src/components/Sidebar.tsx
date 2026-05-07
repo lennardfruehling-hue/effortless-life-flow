@@ -1,10 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Task, ViewMode } from "@/lib/types";
 import { ListTodo, Compass, Bell, BookOpen, CalendarDays, ListChecks, LogOut, Users, Flame, Trophy } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import HouseholdSettings from "./HouseholdSettings";
 import { totalPride, prideThisWeek, computeConsistency } from "@/lib/pride";
 import serpentBg from "@/assets/serpent-sidebar.jpg";
+import serpentStrike from "@/assets/serpent-sidebar-strike.jpg";
 
 const NAV_ITEMS: { mode: ViewMode; icon: typeof ListTodo; label: string }[] = [
   { mode: "tasks", icon: ListTodo, label: "Tasks" },
