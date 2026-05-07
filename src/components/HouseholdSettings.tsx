@@ -113,18 +113,47 @@ export default function HouseholdSettings({ onClose }: { onClose: () => void }) 
             </div>
 
             <div>
+              <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-1.5">
+                <UserIcon size={14} className="text-primary" /> Your profile
+              </h3>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="color"
+                  value={myProfile?.color || "#6366f1"}
+                  onChange={(e) => updateMyProfile({ color: e.target.value })}
+                  className="w-10 h-10 rounded border border-border bg-transparent cursor-pointer"
+                  title="Your color"
+                />
+                <input
+                  value={myProfile?.display_name || ""}
+                  onChange={(e) => updateMyProfile({ display_name: e.target.value })}
+                  placeholder="Display name"
+                  className="flex-1 bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            <div>
               <h3 className="text-sm font-semibold text-foreground mb-2">Members ({members.length})</h3>
               <div className="space-y-1.5">
-                {members.map(m => (
-                  <div key={m.user_id} className="flex items-center justify-between bg-secondary/50 border border-border/50 rounded px-3 py-2 text-sm">
-                    <span className="text-foreground font-mono text-xs truncate">
-                      {m.user_id === user?.id ? "You" : m.user_id.slice(0, 8) + "…"}
-                    </span>
-                    <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded ${m.role === "owner" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
-                      {m.role}
-                    </span>
-                  </div>
-                ))}
+                {members.map(m => {
+                  const p = profileById(m.user_id);
+                  const initials = (p?.display_name || "?").split(/\s+/).map(s => s[0]).slice(0, 2).join("").toUpperCase();
+                  return (
+                    <div key={m.user_id} className="flex items-center gap-3 bg-secondary/50 border border-border/50 rounded px-3 py-2 text-sm">
+                      <span
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-semibold"
+                        style={{ background: p?.color || "#6366f1" }}
+                      >{initials}</span>
+                      <span className="text-foreground flex-1 truncate">
+                        {p?.display_name || "Unnamed"} {m.user_id === user?.id && <span className="text-muted-foreground text-xs">(you)</span>}
+                      </span>
+                      <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded ${m.role === "owner" ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+                        {m.role}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
