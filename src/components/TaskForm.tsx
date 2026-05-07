@@ -99,7 +99,17 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
                 {duration >= 60 ? `${Math.floor(duration/60)}h ${duration%60 > 0 ? `${duration%60}m` : ""}` : `${duration}m`}
               </span>
             )}
-          </div>
+        </div>
+
+        <div>
+          <label className="text-sm text-muted-foreground mb-1 block">Due date (optional)</label>
+          <input
+            type="date"
+            value={dueDate}
+            onChange={(e) => setDueDate(e.target.value)}
+            className="w-full bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          />
+        </div>
         </div>
 
         <div>
