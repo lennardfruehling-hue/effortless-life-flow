@@ -42,6 +42,19 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
     return () => window.removeEventListener("lists-updated", handler);
   }, [loadLists, loadItems, activeId]);
 
+  // Realtime: refresh when any household member adds/edits/deletes lists or items
+  useEffect(() => {
+    const ch = supabase
+      .channel("lists-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_lists" }, () => loadLists())
+      .on("postgres_changes", { event: "*", schema: "public", table: "list_items" }, (payload: any) => {
+        const row = payload.new ?? payload.old;
+        if (row?.list_id && row.list_id === activeId) loadItems(activeId);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [loadLists, loadItems, activeId]);
+
   useEffect(() => {
     if (activeId) loadItems(activeId); else setItems([]);
   }, [activeId, loadItems]);
