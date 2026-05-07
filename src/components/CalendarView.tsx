@@ -250,6 +250,36 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
         </div>
       </div>
 
+      {/* Per-user calendar filter */}
+      {members.length > 1 && (
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <Users size={12} className="text-muted-foreground" />
+          <span className="text-[11px] text-muted-foreground mr-1">Show:</span>
+          {members.map((m) => {
+            const hidden = hiddenUserIds.has(m.user_id);
+            const isMe = m.user_id === myId;
+            return (
+              <button
+                key={m.user_id}
+                onClick={() => {
+                  setHiddenUserIds((prev) => {
+                    const n = new Set(prev);
+                    if (n.has(m.user_id)) n.delete(m.user_id); else n.add(m.user_id);
+                    return n;
+                  });
+                }}
+                className={`text-[11px] px-2 py-1 rounded border transition-colors ${
+                  hidden ? "border-border text-muted-foreground line-through" : "border-primary/30 bg-primary/10 text-foreground"
+                }`}
+                title={hidden ? "Click to show" : "Click to hide"}
+              >
+                {m.display_name || "Member"}{isMe ? " (you)" : ""}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex items-center gap-1 mb-4 border-b border-border">
         <button
