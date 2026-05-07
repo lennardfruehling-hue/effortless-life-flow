@@ -176,6 +176,7 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
   const [data, setData] = useState<LifePlanData>(loadData);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [newProjectName, setNewProjectName] = useState("");
+  const [showArchive, setShowArchive] = useState(false);
 
   useEffect(() => { saveData(data); }, [data]);
 
@@ -223,6 +224,20 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
 
   const deleteProject = (id: string) => {
     setData((d) => ({ ...d, projects: d.projects.filter((p) => p.id !== id) }));
+  };
+
+  const archiveProject = (id: string) => {
+    setData((d) => ({
+      ...d,
+      projects: d.projects.map((p) => (p.id === id ? { ...p, archived: true, archivedAt: new Date().toISOString() } : p)),
+    }));
+  };
+
+  const unarchiveProject = (id: string) => {
+    setData((d) => ({
+      ...d,
+      projects: d.projects.map((p) => (p.id === id ? { ...p, archived: false, archivedAt: undefined } : p)),
+    }));
   };
 
   const updateProjectDates = (id: string, field: "startDate" | "endDate", value: string) => {
