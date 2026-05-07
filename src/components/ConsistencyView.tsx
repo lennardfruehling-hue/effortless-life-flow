@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Task } from "@/lib/types";
-import { computeConsistency, ionianProgress, IONIAN_GOAL, totalPride, prideThisWeek } from "@/lib/pride";
-import { Flame, Trophy, Sparkles, Compass } from "lucide-react";
+import { computeConsistency, ionianProgress, IONIAN_GOAL } from "@/lib/pride";
+import { Flame, Trophy, Compass } from "lucide-react";
 
 interface Props {
   tasks: Task[];
@@ -10,8 +10,6 @@ interface Props {
 export default function ConsistencyView({ tasks }: Props) {
   const stats = useMemo(() => computeConsistency(tasks), [tasks]);
   const progress = ionianProgress(stats);
-  const prideTotal = totalPride(tasks);
-  const prideWeek = prideThisWeek(tasks);
   const dailyTasks = tasks.filter((t) => t.recurrence === "daily");
   const weeklyTasks = tasks.filter((t) => t.recurrence === "weekly");
 
@@ -82,11 +80,9 @@ export default function ConsistencyView({ tasks }: Props) {
       </div>
 
       {/* Stat tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 gap-3 mb-6">
         <Tile icon={<Flame size={16} className="text-cat-f" />} label="Current streak" value={`${stats.currentStreak}d`} />
         <Tile icon={<Trophy size={16} className="text-cat-h" />} label="Best streak" value={`${stats.bestStreak}d`} />
-        <Tile icon={<Sparkles size={16} className="text-cat-h" />} label="Pride · all-time" value={String(prideTotal)} />
-        <Tile icon={<Sparkles size={16} className="text-primary" />} label="Pride · this week" value={`+${prideWeek}`} />
       </div>
 
       {/* Heatmap */}
