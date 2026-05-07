@@ -15,6 +15,7 @@ interface Props {
 }
 
 export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) {
+  const { members, byId } = useHouseholdMembers();
   const [lists, setLists] = useState<TaskList[]>([]);
   const [items, setItems] = useState<ListItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
