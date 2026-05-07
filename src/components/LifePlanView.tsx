@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, ChevronDown, ChevronRight, Calendar, ExternalLink, Archive, ArchiveRestore } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Calendar, ExternalLink, Archive, ArchiveRestore, X, Search } from "lucide-react";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { AssigneeAvatar } from "./AssigneePicker";
+import MultiAssigneePicker from "./MultiAssigneePicker";
 import GanttChart from "./GanttChart";
+import { Task } from "@/lib/types";
 
 interface PlanningItem {
   id: string;
@@ -17,7 +19,11 @@ interface ProjectTask {
   deadline: string;
   done: boolean;
   startDate?: string;
+  /** Legacy single-assignee. Prefer `assigneeIds`. */
   assigneeId?: string | null;
+  assigneeIds?: string[];
+  /** If sourced from a saved task, link back so we can sync completion. */
+  linkedTaskId?: string;
 }
 
 interface ProjectGroup {
@@ -38,6 +44,8 @@ interface LifePlanData {
 
 interface LifePlanViewProps {
   onNavigateToTasks?: (projectId: string) => void;
+  tasks?: Task[];
+  onSaveTasks?: (tasks: Task[]) => void;
 }
 
 const STORAGE_KEY = "serpent-lifeplan-v2";
@@ -195,7 +203,7 @@ function GanttBar({ project, globalStart, globalEnd }: { project: ProjectGroup; 
   );
 }
 
-export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
+export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTasks }: LifePlanViewProps) {
   const { members, byId } = useHouseholdMembers();
   const [data, setData] = useState<LifePlanData>(loadData);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
