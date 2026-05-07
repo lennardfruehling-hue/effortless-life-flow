@@ -7,7 +7,7 @@ import serpentBg from "@/assets/serpent-sidebar.jpg";
 
 const NAV_ITEMS: { mode: ViewMode; icon: typeof ListTodo; label: string }[] = [
   { mode: "tasks", icon: ListTodo, label: "Tasks" },
-  { mode: "lifeplan", icon: Compass, label: "Life Plan" },
+  { mode: "lifeplan", icon: Compass, label: "Time Space Probability Life Plan" },
   { mode: "consistency", icon: Flame, label: "Consistency" },
   { mode: "research", icon: BookOpen, label: "Notes" },
   { mode: "lists", icon: ListChecks, label: "Lists" },
