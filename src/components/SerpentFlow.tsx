@@ -7,6 +7,7 @@ import {
   SerpentFlowDayState,
   SerpentPhase,
 } from "@/lib/serpentFlowState";
+import { Task, Reminder, LifePlanProject, DailyScheduleSlot } from "@/lib/types";
 import risingSun from "@/assets/serpent-rising-sun.png";
 import sun from "@/assets/serpent-sun.png";
 import halfMoon from "@/assets/serpent-half-moon.png";
@@ -92,7 +93,14 @@ function derivePhase(s: SerpentFlowDayState, active: FlowKind | null, manual: Se
   return "idle";
 }
 
-export default function SerpentFlow() {
+interface SerpentFlowProps {
+  tasks?: Task[];
+  reminders?: Reminder[];
+  lifePlanProjects?: LifePlanProject[];
+  dailySchedule?: DailyScheduleSlot[];
+}
+
+export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjects = [], dailySchedule = [] }: SerpentFlowProps = {}) {
   const [state, setState] = useState<SerpentFlowDayState>(loadFlowState);
   const [active, setActive] = useState<FlowKind | null>(null);
   const [stepIdx, setStepIdx] = useState(0);
