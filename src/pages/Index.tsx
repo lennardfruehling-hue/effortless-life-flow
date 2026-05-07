@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { ViewMode, Task, Project, Reminder, LifePlanProject, CalendarEvent, DailyScheduleSlot, WeeklyStructureBlock } from "@/lib/types";
+import { useAuth } from "@/hooks/useAuth";
 import { useCloudState } from "@/hooks/useCloudState";
 import { CLOUD_KEYS } from "@/lib/cloudStore";
 import { store } from "@/lib/store";
