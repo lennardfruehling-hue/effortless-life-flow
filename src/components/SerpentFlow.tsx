@@ -184,55 +184,32 @@ export default function SerpentFlow() {
         )}
       </AnimatePresence>
 
-      {/* Persistent serpent button — bottom right */}
+      {/* Permanent trio at bottom center */}
       {!active && (
-        <button
-          onClick={() => setTrioOpen((v) => !v)}
-          title="Serpent flows"
-          className="fixed bottom-4 right-4 z-40 w-12 h-12 rounded-full bg-sidebar/90 border border-amber-300/40 text-white text-xl shadow-lg hover:bg-sidebar transition-colors flex items-center justify-center"
-        >
-          🐍
-        </button>
-      )}
-
-      {/* Trio of circular serpent emblems */}
-      <AnimatePresence>
-        {trioOpen && !active && (
-          <motion.div
-            key="trio"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className="fixed bottom-20 right-4 z-40 flex items-end gap-3 p-3 rounded-2xl bg-sidebar/90 backdrop-blur border border-amber-300/30 shadow-2xl"
-          >
-            {TRIO.map(({ kind, img, label, done }) => (
-              <button
-                key={kind}
-                onClick={() => startFlow(kind)}
-                title={label + (done ? " — completed" : "")}
-                className="group flex flex-col items-center gap-1 w-20"
-              >
-                <div className={`relative w-16 h-16 rounded-full overflow-hidden border-2 transition-all ${done ? "border-emerald-400" : "border-amber-300/50 group-hover:border-amber-300"} group-hover:scale-105`}>
-                  <img src={img} alt={label} className="w-full h-full object-contain bg-sidebar" />
-                  {done && (
-                    <div className="absolute inset-0 bg-emerald-500/30 flex items-center justify-center">
-                      <span className="text-white text-2xl">✓</span>
-                    </div>
-                  )}
-                </div>
-                <span className="text-[10px] text-white/90 text-center leading-tight font-medium">{label}</span>
-              </button>
-            ))}
+        <div className="fixed bottom-3 left-1/2 -translate-x-1/2 z-40 flex items-end gap-4 px-4 py-2 rounded-2xl bg-sidebar/85 backdrop-blur border border-amber-300/30 shadow-xl">
+          {TRIO.map(({ kind, img, label, done }) => (
             <button
-              onClick={() => setTrioOpen(false)}
-              className="ml-1 mb-6 text-white/60 hover:text-white"
-              title="Close"
+              key={kind}
+              onClick={() => startFlow(kind)}
+              title={label + (done ? " — completed" : "")}
+              className="group relative flex flex-col items-center gap-1 w-16"
             >
-              <X size={16} />
+              <div className={`relative w-12 h-12 rounded-full overflow-hidden border-2 transition-all ${done ? "border-emerald-400" : "border-amber-300/50 group-hover:border-amber-300"} group-hover:scale-110`}>
+                <img src={img} alt={label} className="w-full h-full object-contain bg-sidebar" />
+              </div>
+              {done && (
+                <span
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border border-emerald-200 flex items-center justify-center text-[10px] text-white font-bold shadow"
+                  aria-label="completed"
+                >
+                  ✓
+                </span>
+              )}
+              <span className="text-[9px] text-white/90 text-center leading-tight font-medium whitespace-nowrap">{label}</span>
             </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          ))}
+        </div>
+      )}
 
       {/* Highlight ring + anchored tooltip */}
       <AnimatePresence>
