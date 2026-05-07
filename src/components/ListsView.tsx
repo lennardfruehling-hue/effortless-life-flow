@@ -203,7 +203,7 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
                 </select>
               </div>
               <TagPicker kind="list" ownerId={active.id} />
-              {members.length > 1 && (
+              {members.length >= 1 && (
                 <div className="flex items-center gap-1 ml-auto">
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Assignee</span>
                   <AssigneeAvatar member={byId(active.assignee_id)} size="md" />

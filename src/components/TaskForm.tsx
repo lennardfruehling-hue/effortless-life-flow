@@ -193,7 +193,7 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
           </div>
         )}
 
-        {members.length > 1 && (
+        {members.length >= 1 && (
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Assign to</label>
             <select

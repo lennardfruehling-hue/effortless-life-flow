@@ -101,7 +101,7 @@ export default function GanttChart({ tasks, rangeStart, rangeEnd, onChange, onAs
           <div key={t.id} className="grid grid-cols-[160px_24px_1fr] gap-2 items-center text-xs">
             <div className="truncate text-foreground" title={t.label}>{t.label}</div>
             <div className="flex justify-center">
-              {onAssign && members.length > 1 ? (
+              {onAssign && members.length >= 1 ? (
                 <div className="relative">
                   <AssigneeAvatar member={member} />
                   <select
