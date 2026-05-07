@@ -113,6 +113,7 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
       label: title,
     };
     onSaveSlots([...slots, slot].sort((a, b) => toMin(a.startTime) - toMin(b.startTime)));
+    window.dispatchEvent(new CustomEvent("serpent-progress", { detail: "schedule-block-added" }));
   };
 
   // ---- Block move/resize ----
