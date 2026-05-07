@@ -400,6 +400,20 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
                         <div key={task.id} className="flex items-center gap-2 px-4 py-2 border-b border-border/50 last:border-b-0">
                           <input type="checkbox" checked={task.done} onChange={(e) => updateTask(project.id, task.id, "done", e.target.checked)} className="accent-primary flex-shrink-0" />
                           <input value={task.task} onChange={(e) => updateTask(project.id, task.id, "task", e.target.value)} className={`flex-1 bg-transparent text-sm focus:outline-none ${task.done ? "line-through text-muted-foreground" : "text-foreground"}`} placeholder="Task description" />
+                          {members.length > 1 && (
+                            <div className="relative flex-shrink-0">
+                              <AssigneeAvatar member={byId(task.assigneeId)} />
+                              <select
+                                value={task.assigneeId || ""}
+                                onChange={(e) => updateTask(project.id, task.id, "assigneeId" as any, e.target.value || null as any)}
+                                className="absolute inset-0 opacity-0 cursor-pointer"
+                                title="Assign"
+                              >
+                                <option value="">Unassigned</option>
+                                {members.map(m => <option key={m.user_id} value={m.user_id}>{m.display_name || "Member"}</option>)}
+                              </select>
+                            </div>
+                          )}
                           <div className="flex items-center gap-1 flex-shrink-0">
                             <Calendar size={10} className={isOverdue ? "text-destructive" : "text-muted-foreground"} />
                             <input type="date" value={task.deadline} onChange={(e) => updateTask(project.id, task.id, "deadline", e.target.value)} className={`bg-transparent text-xs font-mono focus:outline-none w-28 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`} />
@@ -409,6 +423,34 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
                       );
                     })}
                     <button onClick={() => addTask(project.id)} className="w-full px-4 py-2 text-xs text-muted-foreground hover:text-primary hover:bg-secondary/50 transition-colors text-left">+ Add task</button>
+
+                    {project.tasks.length > 0 && (() => {
+                      const projStart = project.startDate ? new Date(project.startDate) : globalStart;
+                      const projEnd = project.endDate ? new Date(project.endDate) : globalEnd;
+                      const ganttTasks = project.tasks.map(t => ({
+                        id: t.id,
+                        label: t.task || "(untitled)",
+                        startDate: t.startDate,
+                        endDate: t.deadline || new Date().toISOString().slice(0, 10),
+                        done: t.done,
+                        assigneeId: t.assigneeId,
+                      }));
+                      return (
+                        <div className="px-4 py-3 border-t border-border/50 bg-secondary/20">
+                          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Gantt</div>
+                          <GanttChart
+                            tasks={ganttTasks}
+                            rangeStart={projStart}
+                            rangeEnd={projEnd}
+                            onChange={(id, patch) => {
+                              if (patch.startDate !== undefined) updateTask(project.id, id, "startDate" as any, patch.startDate as any);
+                              if (patch.endDate !== undefined) updateTask(project.id, id, "deadline", patch.endDate as any);
+                            }}
+                            onAssign={(id, assigneeId) => updateTask(project.id, id, "assigneeId" as any, assigneeId as any)}
+                          />
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>
