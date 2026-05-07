@@ -7,7 +7,7 @@ import serpentBg from "@/assets/serpent-sidebar.jpg";
 
 const NAV_ITEMS: { mode: ViewMode; icon: typeof ListTodo; label: string }[] = [
   { mode: "tasks", icon: ListTodo, label: "Tasks" },
-  { mode: "lifeplan", icon: Compass, label: "Time Space Probability Life Plan" },
+  { mode: "lifeplan", icon: Compass, label: "Life Plan" },
   { mode: "consistency", icon: Flame, label: "Consistency" },
   { mode: "research", icon: BookOpen, label: "Notes" },
   { mode: "lists", icon: ListChecks, label: "Lists" },
@@ -41,12 +41,14 @@ export default function Sidebar({
         className="pointer-events-none absolute inset-0 bg-gradient-to-b from-sidebar/30 via-sidebar/50 to-sidebar/80"
       />
       <div className="relative flex flex-col h-full">
-      <div className="px-4 pt-5 pb-4">
-        <h1 className="text-base font-semibold text-sidebar-foreground tracking-tight flex items-center gap-2">
-          <span className="text-sidebar-primary text-lg">🐍</span>
-          <span className="hidden md:inline">Serpent List</span>
+      <div className="px-4 pt-6 pb-4 text-center">
+        <h1
+          className="text-2xl text-white tracking-wide"
+          style={{ fontFamily: "'UnifrakturCook', 'UnifrakturMaguntia', 'Cinzel', serif", fontWeight: 700, textShadow: "0 2px 8px rgba(0,0,0,0.6)" }}
+        >
+          🐍 Serpent List
         </h1>
-        <p className="hidden md:block text-[11px] text-muted-foreground mt-1 font-mono tracking-wide">
+        <p className="hidden md:block text-[11px] text-white/80 mt-2 font-mono tracking-wide">
           {taskCount} open tasks
         </p>
       </div>
