@@ -19,6 +19,7 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
   const [location, setLocation] = useState(editTask?.location || "");
   const [hateMagnitude, setHateMagnitude] = useState(editTask?.hateMagnitude || 5);
   const [duration, setDuration] = useState(editTask?.duration || 0);
+  const [dueDate, setDueDate] = useState(editTask?.dueDate || "");
 
   const toggleCat = (cat: Category) =>
     setCategories((prev) =>
@@ -40,6 +41,7 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
       location: location.trim() || undefined,
       hateMagnitude: categories.includes("F") ? hateMagnitude : undefined,
       duration: duration > 0 ? duration : undefined,
+      dueDate: dueDate || undefined,
     };
     onSubmit(task);
   };

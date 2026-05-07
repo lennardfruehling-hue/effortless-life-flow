@@ -35,6 +35,7 @@ export interface Task {
   location?: string;
   hateMagnitude?: number;
   duration?: number;
+  dueDate?: string;
 }
 
 export interface Project {
