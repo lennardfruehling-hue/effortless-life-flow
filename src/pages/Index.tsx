@@ -81,6 +81,8 @@ export default function Index() {
   return (
     <div className="flex min-h-screen bg-background w-full">
       <Sidebar active={view} onChange={setView} taskCount={tasks.filter((t) => !t.completed).length} />
+      <div className="flex-1 min-w-0 flex flex-col">
+        <SyncStatusBanner />
       <main className="flex-1 min-w-0 overflow-x-hidden">
         {view === "tasks" && (
           <TasksView
