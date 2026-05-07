@@ -55,6 +55,19 @@ const BLOCK_MENU: { type: BlockType; label: string; icon: typeof Type }[] = [
   { type: "divider", label: "Divider", icon: Minus },
 ];
 
+// Debounced saver — coalesces rapid keystrokes into one DB write per (table,id,field).
+function useDebouncedSaver() {
+  const timers = useRef<Record<string, number>>({});
+  return useCallback((key: string, fn: () => Promise<unknown> | unknown, delay = 400) => {
+    const existing = timers.current[key];
+    if (existing) window.clearTimeout(existing);
+    timers.current[key] = window.setTimeout(() => {
+      void fn();
+      delete timers.current[key];
+    }, delay) as unknown as number;
+  }, []);
+}
+
 export default function ResearchView({ projects }: Props) {
   const [notes, setNotes] = useState<ResearchNoteRow[]>([]);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
@@ -63,7 +76,7 @@ export default function ResearchView({ projects }: Props) {
   const [filterProject, setFilterProject] = useState<string | "all">("all");
   const [showBlockMenu, setShowBlockMenu] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-  
+  const debounce = useDebouncedSaver();
 
   const loadNotes = useCallback(async () => {
     const { data } = await supabase.from("research_notes").select("*").order("updated_at", { ascending: false });
@@ -109,16 +122,19 @@ export default function ResearchView({ projects }: Props) {
     loadNotes();
   };
 
-  const updateNote = async (patch: Partial<ResearchNoteRow>) => {
+  // Optimistic + debounced — fixes typing lag in headline.
+  const updateNote = (patch: Partial<ResearchNoteRow>) => {
     if (!activeNote) return;
-    await supabase.from("research_notes").update(patch).eq("id", activeNote.id);
-    setNotes(prev => prev.map(n => n.id === activeNote.id ? { ...n, ...patch } as ResearchNoteRow : n));
+    const id = activeNote.id;
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch } as ResearchNoteRow : n));
+    debounce(`note:${id}:${Object.keys(patch).join(",")}`, async () => {
+      await supabase.from("research_notes").update(patch).eq("id", id);
+    });
   };
 
   const addBlock = async (type: BlockType, afterPos?: number) => {
     if (!activeNoteId) return;
     const pos = afterPos !== undefined ? afterPos + 1 : blocks.length;
-    // shift positions
     const toShift = blocks.filter(b => b.position >= pos);
     for (const b of toShift) {
       await supabase.from("note_blocks").update({ position: b.position + 1 }).eq("id", b.id);
@@ -133,9 +149,12 @@ export default function ResearchView({ projects }: Props) {
     setShowBlockMenu(false);
   };
 
-  const updateBlock = async (id: string, patch: Partial<NoteBlock>) => {
+  // Optimistic + debounced for block edits too.
+  const updateBlock = (id: string, patch: Partial<NoteBlock>) => {
     setBlocks(prev => prev.map(b => b.id === id ? { ...b, ...patch } as NoteBlock : b));
-    await supabase.from("note_blocks").update(patch).eq("id", id);
+    debounce(`block:${id}:${Object.keys(patch).join(",")}`, async () => {
+      await supabase.from("note_blocks").update(patch).eq("id", id);
+    });
   };
 
   const deleteBlock = async (id: string) => {
@@ -404,32 +423,23 @@ function BlockEditor({
     case "image":
       return <div className={wrap}>
         <div className="flex-1">
-          {block.file_url && <img src={block.file_url} alt={block.file_name || ""} className="max-w-full rounded border border-border" />}
-          <input value={block.content || ""} onChange={(e) => onUpdate({ content: e.target.value })}
-            placeholder="Caption"
-            className="w-full bg-transparent text-xs text-muted-foreground placeholder:text-muted-foreground focus:outline-none mt-1" />
+          {block.file_url && <img src={block.file_url} alt={block.file_name || ""} className="rounded max-w-full" />}
         </div>
         {handle}
       </div>;
     case "file":
       return <div className={wrap}>
-        <a href={block.file_url || "#"} target="_blank" rel="noreferrer"
-          className="flex-1 flex items-center gap-2 bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground hover:border-primary/40 transition-colors">
+        <a href={block.file_url || "#"} target="_blank" rel="noreferrer" className="flex-1 flex items-center gap-2 bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground hover:bg-secondary/70">
           <Paperclip size={14} className="text-muted-foreground" />
-          <span className="truncate">{block.file_name || "Attachment"}</span>
+          <span className="truncate">{block.file_name || "File"}</span>
         </a>
         {handle}
       </div>;
     default:
       return <div className={wrap}>
-        <AutoTextarea
-          value={block.content || ""}
-          onChange={(v) => onUpdate({ content: v })}
-          onKeyDown={onKey}
-          placeholder="Type something… (Shift+Enter for new line, Enter for new block)"
-          className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none py-1 leading-relaxed"
-          minRows={2}
-        />
+        <AutoTextarea value={block.content || ""} onChange={(v) => onUpdate({ content: v })} onKeyDown={onKey}
+          placeholder="Type '/' for commands…"
+          className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none py-0.5" />
         {handle}
       </div>;
   }
