@@ -46,25 +46,39 @@ export default function Sidebar({
     window.addEventListener("schedule-active-change", handler);
     return () => window.removeEventListener("schedule-active-change", handler);
   }, []);
+  const [flow, setFlow] = useState<SerpentFlowDayState>(loadFlowState);
+  useEffect(() => onFlowStateChange(setFlow), []);
+  // Schedule-active forces "action" backdrop while open, otherwise follow the flow phase.
+  const phase = scheduleActive ? "action" : flow.phase;
+  const trioDone = (flow.startCompleted ? 1 : 0) + (flow.middayCompleted ? 1 : 0) + (flow.eveningCompleted ? 1 : 0);
   return (
     <>
     <aside className="relative w-16 md:w-60 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0 overflow-hidden">
-      {/* Calm serpent backdrop */}
+      {/* Calm serpent backdrop — idle / planning */}
       <img
         src={serpentBg}
         alt=""
         aria-hidden
         className={`pointer-events-none absolute inset-0 w-full h-full object-cover object-center transition-all duration-[1200ms] ease-out ${
-          scheduleActive ? "opacity-0 scale-105" : "opacity-50 scale-100"
+          phase === "action" || phase === "review" ? "opacity-0 scale-105" : "opacity-50 scale-100"
         }`}
       />
-      {/* Striking serpent backdrop — lunges forward when schedule is active */}
+      {/* Striking serpent — In Action */}
       <img
         src={serpentStrike}
         alt=""
         aria-hidden
         className={`pointer-events-none absolute inset-0 w-full h-full object-cover object-center transition-all duration-[1400ms] ease-out ${
-          scheduleActive ? "opacity-70 scale-110" : "opacity-0 scale-100"
+          phase === "action" ? "opacity-70 scale-110" : "opacity-0 scale-100"
+        }`}
+      />
+      {/* Sleeping serpent — In Review */}
+      <img
+        src={serpentSleep}
+        alt=""
+        aria-hidden
+        className={`pointer-events-none absolute inset-0 w-full h-full object-cover object-center transition-all duration-[1400ms] ease-out ${
+          phase === "review" ? "opacity-65 scale-100" : "opacity-0 scale-105"
         }`}
       />
       <div
@@ -83,6 +97,19 @@ export default function Sidebar({
         <p className="hidden md:block text-[11px] text-white/80 mt-2 font-mono tracking-wide">
           {taskCount} open tasks
         </p>
+        {phase !== "idle" && (
+          <div
+            className={`mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+              phase === "planning" ? "bg-amber-500/20 border-amber-300/50 text-amber-100" :
+              phase === "action"   ? "bg-orange-500/25 border-orange-300/60 text-orange-50" :
+                                     "bg-indigo-500/25 border-indigo-300/50 text-indigo-100"
+            }`}
+            title={`Serpent flow: ${phaseLabel(phase)}`}
+          >
+            <span className="text-xs leading-none">🐍</span>
+            <span className="hidden md:inline">{phaseLabel(phase)}</span>
+          </div>
+        )}
       </div>
 
       <div className="flex-1" />
