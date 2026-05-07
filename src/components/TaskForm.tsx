@@ -59,14 +59,14 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
       duration: duration > 0 ? duration : undefined,
       dueDate: dueDate || undefined,
       assigneeId: assigneeId || null,
-      makesProud,
+      makesProud: categories.includes("H"),
       recurrence: recurrence === "none" ? undefined : recurrence,
       linkedListId: linkedListId || undefined,
     };
     onSubmit(task);
   };
 
-  const projectedPride = pridePointsForTask({ ...((editTask || {}) as Task), duration, makesProud, completed: true } as Task);
+  const projectedPride = pridePointsForTask({ ...((editTask || {}) as Task), duration, makesProud: categories.includes("H"), completed: true } as Task);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
@@ -226,22 +226,13 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
           </div>
         )}
 
-        <div className="rounded-md border border-border bg-secondary/40 p-3 space-y-2">
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={makesProud}
-              onChange={(e) => setMakesProud(e.target.checked)}
-              className="accent-primary"
-            />
+        {categories.includes("H") && projectedPride > 0 && (
+          <div className="rounded-md border border-cat-h/30 bg-cat-h/10 p-3 flex items-center gap-2 text-sm">
             <Sparkles size={14} className="text-cat-h" />
-            <span className="text-foreground">Makes me proud</span>
-            {makesProud && projectedPride > 0 && (
-              <span className="ml-auto text-xs font-mono text-cat-h">+{projectedPride} pride</span>
-            )}
-          </label>
-          <p className="text-[11px] text-muted-foreground pl-6">Counts toward your Pride score when completed. Longer tasks earn disproportionately more.</p>
-        </div>
+            <span className="text-foreground">Category H · Proud — counts toward Pride score.</span>
+            <span className="ml-auto text-xs font-mono text-cat-h">+{projectedPride} pride</span>
+          </div>
+        )}
 
         <div>
           <label className="text-sm text-muted-foreground mb-1 block">Recurrence</label>
