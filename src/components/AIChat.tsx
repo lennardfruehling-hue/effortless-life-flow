@@ -40,7 +40,7 @@ interface ChatMessage {
   content: string | Array<{ type: string; text?: string; image_url?: { url: string } }>;
 }
 
-const TASK_COMMAND_REGEX = /(?:add|create|new|save|make|put)\s+(?:a\s+|an\s+|the\s+)?task\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into|on)\s+(?:the\s+|my\s+)?(?:tasks?|list|todo)s?)?(?:[.!?]|$)/i;
+const TASK_COMMAND_REGEX = /(?:add|create|new|save|make|put)\s+(?:(?:a|an|the)[.\s]+)?task\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into|on)\s+(?:the\s+|my\s+)?(?:tasks?|list|todo)s?)?(?:[.!?]|$)/i;
 const PROJECT_COMMAND_REGEX = /(?:add|create|new|save|make|start|put)\s+(?:a\s+|an\s+|the\s+)?project\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into|on)\s+(?:the\s+|my\s+)?(?:projects?|life[- ]?plan|plan))?(?:[.!?]|$)/i;
 const NOTE_COMMAND_REGEX = /(?:add|create|new|save|make|write|put)\s+(?:a\s+|an\s+|the\s+)?(?:research\s+)?note\s+(?:called\s+|named\s+|about\s+|on\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into)\s+(?:the\s+|my\s+)?(?:notes?|research))?(?:[.!?]|$)/i;
 const LIST_COMMAND_REGEX = /(?:add|create|new|save|make|start|build|put)\s+(?:a\s+|an\s+|the\s+)?(?:packing\s+|shopping\s+|todo\s+|to-do\s+)?list\s+(?:called\s+|named\s+|for\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into|on)\s+(?:the\s+|my\s+)?lists?)?(?:[.!?]|$)/i;
@@ -266,6 +266,7 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
 
       // Check for task creation command
       const taskTitle = extractTaskTitle(textInput);
+      let createdTaskTitle: string | null = null;
       if (taskTitle) {
         const categories = extractCategories(assistantContent);
         const projectId = extractProjectId(assistantContent, projects);
@@ -280,6 +281,7 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
             projectId,
           },
         ]);
+        createdTaskTitle = taskTitle;
       }
 
       // Check for note creation command — persist to Cloud
@@ -301,6 +303,7 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
 
       const confirmations: string[] = [];
       if (createdProjectId) confirmations.push(`✅ Project **"${projectName}"** added to your Life Plan.`);
+      if (createdTaskTitle) confirmations.push(`✅ Task **"${createdTaskTitle}"** added.`);
       if (createdNoteTitle) confirmations.push(`✅ Research note **"${createdNoteTitle}"** saved.`);
       if (createdListName) confirmations.push(`✅ List **"${createdListName}"** saved with all items.`);
       const finalContent = confirmations.length > 0
