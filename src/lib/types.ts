@@ -55,6 +55,9 @@ export interface Task {
   lastCompletedPeriod?: string;
   // Optional list to open when starting this task.
   linkedListId?: string | null;
+  /** User id of the household member who created this task. Used for visibility:
+   * a task is visible to its creator and to any assignees only. */
+  createdBy?: string;
 }
 
 export interface Project {

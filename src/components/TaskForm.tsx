@@ -64,9 +64,15 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
       prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
     );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || categories.length === 0) return;
+
+    let createdBy = editTask?.createdBy;
+    if (!createdBy) {
+      const { data } = await supabase.auth.getUser();
+      createdBy = data.user?.id;
+    }
 
     const task: Task = {
       id: editTask?.id || uuid(),
@@ -88,6 +94,7 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
       makesProud: categories.includes("H"),
       recurrence: recurrence === "none" ? undefined : recurrence,
       linkedListId: linkedListId || undefined,
+      createdBy,
     };
     onSubmit(task);
   };

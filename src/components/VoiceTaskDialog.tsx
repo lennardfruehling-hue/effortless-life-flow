@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { v4 as uuid } from "uuid";
 import { Mic, MicOff, X, Volume2, ChevronRight } from "lucide-react";
 import { Task, Category, ALL_CATEGORIES, CATEGORY_META } from "@/lib/types";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Props {
   onClose: () => void;
@@ -189,23 +190,27 @@ export default function VoiceTaskDialog({ onClose, onSave }: Props) {
   useEffect(() => {
     if (!done) return;
     const cats: Category[] = values.categories || [];
-    const task: Task = {
-      id: uuid(),
-      title: values.title,
-      description: values.description,
-      categories: cats,
-      completed: false,
-      createdAt: new Date().toISOString(),
-      duration: values.duration,
-      dueDate: values.dueDate,
-      dueTime: values.dueTime,
-      location: values.location,
-      makesProud: cats.includes("H"),
-      recurrence: values.recurrence && values.recurrence !== "none" ? values.recurrence : undefined,
-      assigneeId: null,
-    };
-    speak(`Task ${task.title} saved.`);
-    onSave(task);
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const task: Task = {
+        id: uuid(),
+        title: values.title,
+        description: values.description,
+        categories: cats,
+        completed: false,
+        createdAt: new Date().toISOString(),
+        duration: values.duration,
+        dueDate: values.dueDate,
+        dueTime: values.dueTime,
+        location: values.location,
+        makesProud: cats.includes("H"),
+        recurrence: values.recurrence && values.recurrence !== "none" ? values.recurrence : undefined,
+        assigneeId: null,
+        createdBy: data.user?.id,
+      };
+      speak(`Task ${task.title} saved.`);
+      onSave(task);
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [done]);
 
