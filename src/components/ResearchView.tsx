@@ -133,13 +133,39 @@ export default function ResearchView({ projects }: Props) {
   }, [activeNoteId, loadBlocks]);
 
   const activeNote = notes.find(n => n.id === activeNoteId);
-  const filteredNotes = filterProject === "all" ? notes : notes.filter(n => n.project_id === filterProject);
+
+  // Build groups
+  const UNCATEGORIZED = "__none__";
+  const groups: { key: string; label: string; color?: string; notes: ResearchNoteRow[] }[] = (() => {
+    if (groupBy === "project") {
+      const map = new Map<string, ResearchNoteRow[]>();
+      notes.forEach(n => {
+        const key = n.project_id || UNCATEGORIZED;
+        (map.get(key) || map.set(key, []).get(key)!).push(n);
+      });
+      const result: { key: string; label: string; notes: ResearchNoteRow[] }[] = [];
+      projects.forEach(p => {
+        if (map.has(p.id)) result.push({ key: p.id, label: p.name, notes: map.get(p.id)! });
+      });
+      if (map.has(UNCATEGORIZED)) result.push({ key: UNCATEGORIZED, label: "No project", notes: map.get(UNCATEGORIZED)! });
+      return result;
+    } else {
+      const result: { key: string; label: string; color?: string; notes: ResearchNoteRow[] }[] = [];
+      allTags.forEach(t => {
+        const inTag = notes.filter(n => (noteTagMap[n.id] || []).includes(t.id));
+        if (inTag.length > 0) result.push({ key: t.id, label: t.name, color: t.color, notes: inTag });
+      });
+      const untagged = notes.filter(n => !(noteTagMap[n.id] && noteTagMap[n.id].length > 0));
+      if (untagged.length > 0) result.push({ key: UNCATEGORIZED, label: "Untagged", notes: untagged });
+      return result;
+    }
+  })();
 
   const createNote = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     const { data } = await supabase
       .from("research_notes")
-      .insert({ title: "Untitled", project_id: filterProject === "all" ? null : filterProject, created_by: user?.id ?? null })
+      .insert({ title: "Untitled", project_id: null, created_by: user?.id ?? null })
       .select().single();
     if (data) {
       await supabase.from("note_blocks").insert({ note_id: data.id, position: 0, block_type: "text", content: "" });
