@@ -266,6 +266,7 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
 
       // Check for task creation command
       const taskTitle = extractTaskTitle(textInput);
+      let createdTaskTitle: string | null = null;
       if (taskTitle) {
         const categories = extractCategories(assistantContent);
         const projectId = extractProjectId(assistantContent, projects);
@@ -280,6 +281,7 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
             projectId,
           },
         ]);
+        createdTaskTitle = taskTitle;
       }
 
       // Check for note creation command — persist to Cloud
