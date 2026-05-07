@@ -105,11 +105,17 @@ async function createListWithItems(name: string, items: string[]) {
 
 // Pull a bullet-list out of an AI response, if any
 function extractBullets(text: string): string[] {
-  const lines = text.split("\n").map(l => l.trim());
-  return lines
-    .filter(l => /^([-*•]|\d+\.)\s+/.test(l))
-    .map(l => l.replace(/^([-*•]|\d+\.)\s+/, "").replace(/\*\*/g, "").trim())
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+  const bulleted = lines
+    .filter(l => /^([-*•]|\d+[.)])\s+/.test(l))
+    .map(l => l.replace(/^([-*•]|\d+[.)])\s+/, "").replace(/\*\*/g, "").trim())
     .filter(Boolean);
+  if (bulleted.length > 0) return bulleted;
+  // Inline numbered like "1) Test 2) Test B 3) Test 3"
+  const inline = Array.from(text.matchAll(/\d+[.)]\s*([^0-9\n][^\n]*?)(?=\s+\d+[.)]\s|$)/g))
+    .map(m => m[1].trim().replace(/[,;.]+$/, ""))
+    .filter(Boolean);
+  return inline;
 }
 
 function extractCategories(content: string): Category[] {
