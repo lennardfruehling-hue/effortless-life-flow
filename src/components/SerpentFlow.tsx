@@ -84,7 +84,8 @@ function useTargetRect(selector: string | undefined): Rect | null {
   return rect;
 }
 
-function derivePhase(s: SerpentFlowDayState, active: FlowKind | null): SerpentPhase {
+function derivePhase(s: SerpentFlowDayState, active: FlowKind | null, manual: SerpentPhase | null): SerpentPhase {
+  if (manual) return manual;
   if (active === "start") return "planning";
   if (active === "evening" || s.eveningCompleted) return "review";
   if (active === "midday" || s.startCompleted) return "action";
@@ -96,12 +97,25 @@ export default function SerpentFlow() {
   const [active, setActive] = useState<FlowKind | null>(null);
   const [stepIdx, setStepIdx] = useState(0);
   const [trioOpen, setTrioOpen] = useState(false);
+  const [manualPhase, setManualPhase] = useState<SerpentPhase | null>(null);
+  // Tracks whether the active step's requirement is satisfied.
+  const [stepSatisfied, setStepSatisfied] = useState(false);
 
   // Persist + broadcast phase whenever inputs change.
   useEffect(() => {
-    const next = { ...state, phase: derivePhase(state, active) };
+    const next = { ...state, phase: derivePhase(state, active, manualPhase) };
     saveFlowState(next);
-  }, [state, active]);
+  }, [state, active, manualPhase]);
+
+  // Listen for manual phase override from the sidebar (user clicks the phase chip).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as SerpentPhase | null;
+      setManualPhase(detail || null);
+    };
+    window.addEventListener("serpent-set-phase", handler);
+    return () => window.removeEventListener("serpent-set-phase", handler);
+  }, []);
 
   const startFlow = (kind: FlowKind) => {
     setTrioOpen(false);
