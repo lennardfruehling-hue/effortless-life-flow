@@ -257,10 +257,13 @@ export async function hydrateFromCloud(userId: string) {
 
 export function clearCloudSync() {
   activeUserId = null;
-  // IMPORTANT: do NOT wipe localStorage here. If the auth session expires
-  // briefly (token refresh, tab focus, etc.) and this runs, we previously
-  // destroyed all the user's local data — and on re-hydrate the (possibly
-  // stale) cloud value would overwrite anything they'd added in the meantime.
-  // Local data is harmless to leave behind; merge-on-hydrate handles it.
+  // Wipe PERSONAL keys from localStorage on sign-out so the next user signing
+  // in on this browser cannot inherit the previous user's tasks/schedule/chat.
+  // Shared (household) keys are safe to leave — hydrate will merge them.
+  for (const key of KEYS) {
+    if (isPersonalKey(key)) {
+      try { localStorage.removeItem(key); } catch {}
+    }
+  }
 }
 
