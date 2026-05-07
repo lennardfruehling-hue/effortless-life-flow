@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { CalendarEvent, Task, WeeklyStructureBlock, DailyScheduleSlot } from "@/lib/types";
-import { ChevronLeft, ChevronRight, Upload, Download, Plus, Trash2, X, CalendarDays, LayoutGrid } from "lucide-react";
+import { ChevronLeft, ChevronRight, Upload, Download, Plus, Trash2, X, CalendarDays, LayoutGrid, Users } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import GoogleCalendarConnect from "./GoogleCalendarConnect";
 import WeeklyStructureView from "./WeeklyStructureView";
+import { useAuth } from "@/hooks/useAuth";
+import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 
 interface CalendarViewProps {
   events: CalendarEvent[];
