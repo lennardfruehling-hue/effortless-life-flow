@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project, DailyScheduleSlot } from "@/lib/types";
 import TaskCard from "@/components/TaskCard";
 import TaskForm from "@/components/TaskForm";
-import DailySchedule from "@/components/DailySchedule";
+import CalendarScheduleDay from "@/components/CalendarScheduleDay";
 import { CategoryBadgeFull } from "@/components/CategoryBadge";
 import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
@@ -142,7 +142,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
       {/* Daily Schedule */}
       {showSchedule && (
         <div className="mb-6">
-          <DailySchedule slots={dailySchedule} tasks={tasks} onSaveSlots={onSaveDailySchedule} />
+          <CalendarScheduleDay slots={dailySchedule} tasks={tasks} onSaveSlots={onSaveDailySchedule} />
         </div>
       )}
 
