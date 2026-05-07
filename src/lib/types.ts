@@ -75,7 +75,7 @@ export interface CalendarEvent {
   start: string;
   end: string;
   allDay?: boolean;
-  source?: "manual" | "ics" | "ai" | "google";
+  source?: "manual" | "ics" | "ai" | "google" | "schedule";
   googleId?: string;
   isPrivate?: boolean;
 }
