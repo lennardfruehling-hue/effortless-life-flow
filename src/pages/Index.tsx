@@ -96,6 +96,7 @@ export default function Index() {
         {view === "lifeplan" && <LifePlanView onNavigateToTasks={navigateToTasksForProject} />}
         {view === "calendar" && <CalendarView events={calendarEvents} onSave={setCalendarEvents} />}
         {view === "reminders" && <RemindersView reminders={reminders} tasks={tasks} onSave={setReminders} />}
+        {view === "consistency" && <ConsistencyView tasks={tasks} />}
         {view === "ai" && <AIChat tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />}
       </main>
       <AISidebar tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />
