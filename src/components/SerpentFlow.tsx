@@ -171,16 +171,22 @@ export default function SerpentFlow() {
 
   return (
     <>
-      {/* Floating Start Serpent button */}
+      {/* Floating Start Serpent button — styled to echo the sidebar */}
       <AnimatePresence>
         {showStart && !active && (
           <motion.button
             key="start-btn"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
+            initial={{ opacity: 0, scale: 0.85, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.85 }}
             onClick={() => startFlow("start")}
-            className="fixed left-1/2 top-1/3 -translate-x-1/2 z-40 px-8 py-5 rounded-full bg-primary text-primary-foreground shadow-2xl text-xl font-semibold flex items-center gap-3 animate-pulse-glow"
+            className="fixed left-1/2 top-1/4 -translate-x-1/2 z-40 px-10 py-4 rounded-full bg-sidebar/90 backdrop-blur border border-amber-300/40 shadow-2xl text-white flex items-center gap-3 hover:bg-sidebar transition-colors animate-pulse-glow"
+            style={{
+              fontFamily: "'Great Vibes', 'Allura', cursive",
+              fontSize: "2rem",
+              lineHeight: 1,
+              boxShadow: "0 10px 40px -10px rgba(255,170,60,0.35), 0 0 0 1px rgba(255,200,120,0.15) inset",
+            }}
           >
             <span className="text-2xl">🐍</span> Start Serpent
           </motion.button>
