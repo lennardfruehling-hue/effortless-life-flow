@@ -180,10 +180,11 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
   };
 
   return (
-    <div className="bg-card border border-border rounded-lg p-4">
+    <div className="bg-card border border-border rounded-lg p-4" data-tour="schedule-panel">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-foreground">Daily Calendar (24h)</h3>
         <button
+          data-tour="email-schedule"
           onClick={handleEmailSchedule}
           className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded border border-border hover:border-primary/30 hover:text-primary text-muted-foreground transition-colors"
           title="Email today's schedule"
