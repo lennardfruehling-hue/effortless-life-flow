@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { CLOUD_KEYS, cloudGet, cloudSet } from "./cloudStore";
+import { CLOUD_KEYS, cloudGet, cloudGetShared, cloudSet, isPersonalKey } from "./cloudStore";
 
 const KEYS = Object.values(CLOUD_KEYS);
 const debounceTimers: Record<string, number> = {};
@@ -36,12 +36,29 @@ function patchLocalStorage() {
   };
 }
 
-/** Pull all known keys from cloud into localStorage. If cloud is empty for a key, push existing local. */
+async function refreshKey(userId: string, key: string) {
+  const cloudVal = isPersonalKey(key)
+    ? await cloudGet<unknown>(userId, key, null as any)
+    : await cloudGetShared<unknown>(key, null as any);
+  const prev = activeUserId;
+  activeUserId = null;
+  if (cloudVal === null || cloudVal === undefined) {
+    localStorage.removeItem(key);
+  } else {
+    localStorage.setItem(key, JSON.stringify(cloudVal));
+  }
+  activeUserId = prev;
+  window.dispatchEvent(new StorageEvent("storage", { key }));
+}
+
+/** Pull all known keys from cloud into localStorage, merging across household members. */
 export async function hydrateFromCloud(userId: string) {
   patchLocalStorage();
   activeUserId = null; // pause sync during hydration
   for (const key of KEYS) {
-    const cloudVal = await cloudGet<unknown>(userId, key, null as any);
+    const cloudVal = isPersonalKey(key)
+      ? await cloudGet<unknown>(userId, key, null as any)
+      : await cloudGetShared<unknown>(key, null as any);
     if (cloudVal !== null && cloudVal !== undefined) {
       localStorage.setItem(key, JSON.stringify(cloudVal));
     } else {
@@ -55,24 +72,28 @@ export async function hydrateFromCloud(userId: string) {
   }
   activeUserId = userId;
 
-  // Realtime updates from other devices
+  // Realtime updates from any household member (RLS restricts visibility to the household).
   supabase
     .channel(`user_data_${userId}`)
     .on(
       "postgres_changes",
-      { event: "*", schema: "public", table: "user_data", filter: `user_id=eq.${userId}` },
+      { event: "*", schema: "public", table: "user_data" },
       (payload: any) => {
         const row = payload.new ?? payload.old;
         if (!row) return;
         const key = row.key as string;
         if (!KEYS.includes(key as any)) return;
-        // suppress sync-back loop
-        const prev = activeUserId;
-        activeUserId = null;
-        if (payload.eventType === "DELETE") localStorage.removeItem(key);
-        else localStorage.setItem(key, JSON.stringify(row.value));
-        activeUserId = prev;
-        window.dispatchEvent(new StorageEvent("storage", { key }));
+        if (isPersonalKey(key)) {
+          if (row.user_id !== userId) return;
+          const prev = activeUserId;
+          activeUserId = null;
+          if (payload.eventType === "DELETE") localStorage.removeItem(key);
+          else localStorage.setItem(key, JSON.stringify(row.value));
+          activeUserId = prev;
+          window.dispatchEvent(new StorageEvent("storage", { key }));
+        } else {
+          void refreshKey(userId, key);
+        }
       }
     )
     .subscribe();

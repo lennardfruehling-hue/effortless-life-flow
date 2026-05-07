@@ -12,6 +12,13 @@ export const CLOUD_KEYS = {
   dailySchedule: "serpent-daily-schedule",
 } as const;
 
+// Per-user-only keys (do NOT merge across household — these are personal).
+const PERSONAL_KEYS: string[] = [
+  CLOUD_KEYS.chatHistory,
+  CLOUD_KEYS.dailySchedule,
+];
+
+/** Get caller's row only (used for personal keys and writes). */
 export async function cloudGet<T>(userId: string, key: string, fallback: T): Promise<T> {
   const { data, error } = await supabase
     .from("user_data")
@@ -23,11 +30,47 @@ export async function cloudGet<T>(userId: string, key: string, fallback: T): Pro
   return (data.value as T) ?? fallback;
 }
 
+/**
+ * Get a household-merged value: combines arrays from every member, deduping by `id` field.
+ * For non-array values, returns the most recently updated one.
+ */
+export async function cloudGetShared<T>(key: string, fallback: T): Promise<T> {
+  const { data, error } = await supabase
+    .from("user_data")
+    .select("value, updated_at, user_id")
+    .eq("key", key)
+    .order("updated_at", { ascending: false });
+  if (error || !data || data.length === 0) return fallback;
+
+  const values = data.map(r => r.value);
+  // If first value is an array, merge all arrays deduping by id.
+  if (Array.isArray(values[0])) {
+    const merged: any[] = [];
+    const seen = new Set<string>();
+    for (const v of values) {
+      if (!Array.isArray(v)) continue;
+      for (const item of v as any[]) {
+        const id = (item && typeof item === "object" && "id" in item) ? String((item as any).id) : JSON.stringify(item);
+        if (seen.has(id)) continue;
+        seen.add(id);
+        merged.push(item);
+      }
+    }
+    return merged as unknown as T;
+  }
+  // Otherwise newest wins.
+  return (values[0] as T) ?? fallback;
+}
+
 export async function cloudSet<T>(userId: string, key: string, value: T): Promise<void> {
   await supabase.from("user_data").upsert(
     { user_id: userId, key, value: value as any, updated_at: new Date().toISOString() },
     { onConflict: "user_id,key" }
   );
+}
+
+export function isPersonalKey(key: string): boolean {
+  return PERSONAL_KEYS.includes(key);
 }
 
 /** Migrate any existing localStorage values to cloud (only if cloud is empty for that key). */
