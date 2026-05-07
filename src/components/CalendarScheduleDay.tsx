@@ -532,6 +532,7 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
               );
             })}
           </div>
+          </div>
           <p className="text-[10px] text-muted-foreground mt-2 flex items-center gap-1">
             <Plus size={10} /> Click empty space to add a custom block · drag to move · drag bottom edge to resize
           </p>
