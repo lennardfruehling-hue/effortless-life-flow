@@ -49,8 +49,8 @@ export async function cloudGetShared<T>(key: string, fallback: T): Promise<T> {
     const seen = new Set<string>();
     for (const v of values) {
       if (!Array.isArray(v)) continue;
-      for (const item of v) {
-        const id = item?.id ?? JSON.stringify(item);
+      for (const item of v as any[]) {
+        const id = (item && typeof item === "object" && "id" in item) ? String((item as any).id) : JSON.stringify(item);
         if (seen.has(id)) continue;
         seen.add(id);
         merged.push(item);
