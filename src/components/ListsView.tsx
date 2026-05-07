@@ -140,7 +140,10 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
                 }`}
               >
                 <span>{list.icon || "📋"}</span>
-                <span className="truncate flex-1">{list.name}</span>
+                <div className="truncate flex-1">
+                  <div className="truncate">{list.name}</div>
+                  <div className="mt-0.5"><TagChips kind="list" ownerId={list.id} /></div>
+                </div>
                 <Trash2
                   size={12}
                   onClick={(e) => { e.stopPropagation(); deleteList(list.id); }}
@@ -176,6 +179,24 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
               <span className="text-xs text-muted-foreground font-mono">
                 {items.filter(i => i.checked).length}/{items.length}
               </span>
+            </div>
+            <div className="flex items-center gap-3 flex-wrap text-xs">
+              <div className="flex items-center gap-1">
+                <Link2 size={12} className="text-muted-foreground" />
+                <select
+                  value={active.project_id || ""}
+                  onChange={async (e) => {
+                    const project_id = e.target.value || null;
+                    setLists(prev => prev.map(l => l.id === active.id ? { ...l, project_id } : l));
+                    await supabase.from("task_lists").update({ project_id }).eq("id", active.id);
+                  }}
+                  className="bg-transparent text-xs text-muted-foreground border-none focus:outline-none cursor-pointer hover:text-foreground"
+                >
+                  <option value="">No project</option>
+                  {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+              <TagPicker kind="list" ownerId={active.id} />
             </div>
 
             {/* Items */}
