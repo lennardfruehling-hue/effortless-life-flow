@@ -96,6 +96,15 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
   const [formEnd, setFormEnd] = useState("");
   const [formAllDay, setFormAllDay] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+  const { members } = useHouseholdMembers();
+  const myId = user?.id;
+  // Per-user visibility filter for calendar. Defaults: show everyone.
+  const [hiddenUserIds, setHiddenUserIds] = useState<Set<string>>(new Set());
+  const visibleEvents = useMemo(
+    () => events.filter((e) => !e.createdBy || !hiddenUserIds.has(e.createdBy)),
+    [events, hiddenUserIds]
+  );
 
   // Auto-populate weekly structure → calendar events for the visible month
   // Generates one CalendarEvent per occurrence (recurring weekly or pinned date),
