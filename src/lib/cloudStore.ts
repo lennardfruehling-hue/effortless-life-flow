@@ -63,8 +63,37 @@ export async function cloudGetShared<T>(key: string, fallback: T): Promise<T> {
 }
 
 export async function cloudSet<T>(userId: string, key: string, value: T): Promise<void> {
+  let toWrite: any = value;
+  // For SHARED array keys, merge with current cloud value so a stale local cache
+  // can never wipe out items added by another device sharing this account.
+  if (!isPersonalKey(key) && Array.isArray(value)) {
+    try {
+      const { data } = await supabase
+        .from("user_data")
+        .select("value")
+        .eq("user_id", userId)
+        .eq("key", key)
+        .maybeSingle();
+      const cloudArr = Array.isArray(data?.value) ? (data!.value as any[]) : [];
+      const localArr = value as any[];
+      const localIds = new Set(
+        localArr
+          .map(it => (it && typeof it === "object" && "id" in it) ? String(it.id) : null)
+          .filter(Boolean) as string[]
+      );
+      // Keep local items as-is (they reflect the user's intent: edits + deletes within local set),
+      // and re-add any cloud items whose id is NOT in local (they're from another device).
+      const extras = cloudArr.filter(it => {
+        if (!it || typeof it !== "object" || !("id" in it)) return false;
+        return !localIds.has(String((it as any).id));
+      });
+      toWrite = [...localArr, ...extras];
+    } catch (e) {
+      console.warn(`[cloud] merge-before-write failed for ${key}`, e);
+    }
+  }
   await supabase.from("user_data").upsert(
-    { user_id: userId, key, value: value as any, updated_at: new Date().toISOString() },
+    { user_id: userId, key, value: toWrite as any, updated_at: new Date().toISOString() },
     { onConflict: "user_id,key" }
   );
 }
