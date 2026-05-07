@@ -30,6 +30,7 @@ export async function cloudGetAllByKey<T>(key: string): Promise<{ user_id: strin
 const PERSONAL_KEYS: string[] = [
   CLOUD_KEYS.chatHistory,
   CLOUD_KEYS.dailySchedule,
+  CLOUD_KEYS.weeklyStructure,
 ];
 
 /** Get caller's row only (used for personal keys and writes). */
