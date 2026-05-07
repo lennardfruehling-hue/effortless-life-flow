@@ -138,16 +138,24 @@ function parseRecurrence(raw: string) {
   return { ok: true, value: "none" };
 }
 
+function parseYesNo(raw: string): { ok: boolean; value?: boolean; error?: string } {
+  const t = raw.toLowerCase().trim();
+  if (!t) return { ok: false, error: "Please say yes or no." };
+  if (/\b(yes|yeah|yep|yup|sure|correct|true|affirmative|aye)\b/.test(t)) return { ok: true, value: true };
+  if (/\b(no|nope|nah|negative|false|skip)\b/.test(t)) return { ok: true, value: false };
+  return { ok: false, error: "Please say yes or no." };
+}
+
+const CATEGORY_STEPS: Step[] = ALL_CATEGORIES.map((cat) => ({
+  key: ("cat_" + cat) as any,
+  prompt: `Is this a ${CATEGORY_META[cat].label} task? ${CATEGORY_META[cat].description}. Yes or no.`,
+  parse: parseYesNo,
+}));
+
 const STEPS: Step[] = [
   { key: "title", prompt: "What is the task?", required: true, parse: parseTitle },
   { key: "description", prompt: "Any extra details? Or say skip.", parse: parseDescription },
-  {
-    key: "categories",
-    prompt:
-      "Which categories? Say letters like A1, B2, C, or words like today, critical, quick, proud.",
-    required: true,
-    parse: parseCategories,
-  },
+  ...CATEGORY_STEPS,
   { key: "duration", prompt: "How long will it take? Say minutes, like 30 minutes, or skip.", parse: parseDuration },
   { key: "dueDate", prompt: "When is it due? Today, tomorrow, a weekday, or skip.", parse: parseDueDate },
   { key: "dueTime", prompt: "What time of day? Like 3 pm, or skip.", parse: parseDueTime },
@@ -189,7 +197,7 @@ export default function VoiceTaskDialog({ onClose, onSave }: Props) {
   // Save when done
   useEffect(() => {
     if (!done) return;
-    const cats: Category[] = values.categories || [];
+    const cats: Category[] = ALL_CATEGORIES.filter((c) => values["cat_" + c] === true);
     (async () => {
       const { data } = await supabase.auth.getUser();
       const task: Task = {
