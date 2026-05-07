@@ -44,6 +44,22 @@ export default function Index() {
     setLifePlanProjects(loadLifePlanProjects());
   }, [view]);
 
+  // Cross-device realtime sync: refresh local state when syncBridge updates localStorage
+  useEffect(() => {
+    const handler = (e: StorageEvent) => {
+      switch (e.key) {
+        case "serpent-tasks": setTasks(store.getTasks()); break;
+        case "serpent-projects": setProjects(store.getProjects()); break;
+        case "serpent-reminders": setReminders(store.getReminders()); break;
+        case "serpent-calendar-events": setCalendarEvents(store.getCalendarEvents()); break;
+        case "serpent-daily-schedule": setDailySchedule(store.getDailySchedule()); break;
+        case "serpent-lifeplan-v2": setLifePlanProjects(loadLifePlanProjects()); break;
+      }
+    };
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }, []);
+
   const allProjects = useMemo(() => {
     const lpAsProjects: Project[] = lifePlanProjects.map((lp) => ({
       id: `lp-${lp.id}`,

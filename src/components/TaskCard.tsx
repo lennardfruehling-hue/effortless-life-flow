@@ -1,6 +1,6 @@
 import { Task } from "@/lib/types";
 import { CategoryBadge } from "./CategoryBadge";
-import { Check, Pencil, Trash2, MapPin } from "lucide-react";
+import { Check, Pencil, Trash2, MapPin, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface TaskCardProps {
@@ -45,6 +45,16 @@ export default function TaskCard({ task, onToggle, onEdit, onDelete }: TaskCardP
           {task.categories.map((cat) => (
             <CategoryBadge key={cat} category={cat} small />
           ))}
+          {task.dueDate && (() => {
+            const today = new Date(); today.setHours(0,0,0,0);
+            const due = new Date(task.dueDate);
+            const overdue = due < today && !task.completed;
+            return (
+              <span className={`inline-flex items-center gap-0.5 text-[10px] font-mono ${overdue ? "text-destructive" : "text-muted-foreground"}`}>
+                <Calendar size={10} /> {task.dueDate}
+              </span>
+            );
+          })()}
           {task.location && (
             <span className="inline-flex items-center gap-0.5 text-[10px] text-cat-d">
               <MapPin size={10} /> {task.location}
