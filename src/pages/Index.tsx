@@ -12,6 +12,7 @@ import AIChat from "@/components/AIChat";
 import AISidebar from "@/components/AISidebar";
 import ConsistencyView from "@/components/ConsistencyView";
 import ReminderWatcher from "@/components/ReminderWatcher";
+import SyncStatusBanner from "@/components/SyncStatusBanner";
 
 const LIFEPLAN_KEY = "serpent-lifeplan-v2";
 
@@ -80,6 +81,8 @@ export default function Index() {
   return (
     <div className="flex min-h-screen bg-background w-full">
       <Sidebar active={view} onChange={setView} taskCount={tasks.filter((t) => !t.completed).length} />
+      <div className="flex-1 min-w-0 flex flex-col">
+        <SyncStatusBanner />
       <main className="flex-1 min-w-0 overflow-x-hidden">
         {view === "tasks" && (
           <TasksView
@@ -100,6 +103,7 @@ export default function Index() {
         {view === "consistency" && <ConsistencyView tasks={tasks} />}
         {view === "ai" && <AIChat tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />}
       </main>
+      </div>
       <AISidebar tasks={tasks} projects={allProjects} onSaveTasks={setTasks} onSaveProjects={setProjects} />
       <ReminderWatcher reminders={reminders} onUpdate={setReminders} />
     </div>
