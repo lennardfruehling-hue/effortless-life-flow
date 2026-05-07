@@ -28,13 +28,25 @@ function snap(min: number): number {
   return Math.round(min / SNAP_MIN) * SNAP_MIN;
 }
 
+type RecurFilter = "all" | "daily" | "weekly" | "none";
+
 export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ id: string; mode: "move" | "resize"; offsetMin: number; origStart: number; origEnd: number } | null>(null);
+  const [filter, setFilter] = useState<RecurFilter>("all");
   const [nowMin, setNowMin] = useState(() => {
     const n = new Date();
     return n.getHours() * 60 + n.getMinutes();
   });
+
+  // Scroll to current time on mount
+  useEffect(() => {
+    if (!scrollRef.current) return;
+    const target = Math.max(0, (nowMin / 60) * HOUR_PX - scrollRef.current.clientHeight / 3);
+    scrollRef.current.scrollTo({ top: target });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => {
