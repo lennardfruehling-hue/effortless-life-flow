@@ -125,12 +125,27 @@ export default function ConsistencyView({ tasks }: Props) {
           <p className="text-sm text-muted-foreground">No daily tasks yet. Add one in the Tasks view and set Recurrence to Daily.</p>
         ) : (
           <ul className="space-y-1.5">
-            {dailyTasks.map((t) => (
-              <li key={t.id} className="flex items-center gap-2 text-sm">
-                <span className={`w-2 h-2 rounded-full ${t.completed ? "bg-primary" : "bg-muted-foreground/30"}`} />
-                <span className={t.completed ? "line-through text-muted-foreground" : "text-foreground"}>{t.title}</span>
-              </li>
-            ))}
+            {[...dailyTasks]
+              .sort((a, b) => (a.dueTime || "99:99").localeCompare(b.dueTime || "99:99"))
+              .map((t) => {
+                const now = new Date();
+                const nowHM = `${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
+                const overdue = !!t.dueTime && !t.completed && t.dueTime < nowHM;
+                return (
+                  <li key={t.id} className="flex items-center gap-2 text-sm">
+                    <span className={`w-2 h-2 rounded-full ${t.completed ? "bg-primary" : overdue ? "bg-destructive" : "bg-muted-foreground/30"}`} />
+                    {t.dueTime && (
+                      <span className={`text-[11px] font-mono tabular-nums ${overdue ? "text-destructive" : "text-muted-foreground"}`}>
+                        {t.dueTime}
+                      </span>
+                    )}
+                    <span className={t.completed ? "line-through text-muted-foreground" : overdue ? "text-destructive font-medium" : "text-foreground"}>
+                      {t.title}
+                    </span>
+                    {overdue && <span className="ml-auto text-[10px] uppercase tracking-wider text-destructive font-mono">overdue</span>}
+                  </li>
+                );
+              })}
           </ul>
         )}
       </section>
