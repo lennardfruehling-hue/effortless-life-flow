@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Plus, Trash2, ChevronDown, ChevronRight, Calendar, ExternalLink } from "lucide-react";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { AssigneeAvatar } from "./AssigneePicker";
+import GanttChart from "./GanttChart";
 
 interface PlanningItem {
   id: string;
