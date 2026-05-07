@@ -237,7 +237,7 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
     const scheduledIds = new Set(slots.map((s) => s.taskId).filter(Boolean));
     const base = tasks.filter((t) => !t.completed && !scheduledIds.has(t.id));
     if (filter === "all") return base;
-    if (filter === "none") return base.filter((t) => !t.recurrence || t.recurrence === "none");
+    if (filter === "none") return base.filter((t) => !t.recurrence);
     return base.filter((t) => t.recurrence === filter);
   }, [tasks, slots, filter]);
 
