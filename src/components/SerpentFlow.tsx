@@ -211,34 +211,6 @@ export default function SerpentFlow() {
         </div>
       )}
 
-      {/* (legacy popover removed) */}
-      <AnimatePresence>
-        {false && (
-          <motion.div key="trio-old">
-            {TRIO.map(({ kind, img, label, done }) => (
-              <div key={kind}>
-                <div>
-                  <img src={img} alt={label} />
-                  {done && (
-                    <div>
-                      <span>✓</span>
-                    </div>
-                  )}
-                </div>
-                <span className="text-[10px] text-white/90 text-center leading-tight font-medium">{label}</span>
-              </button>
-            ))}
-            <button
-              onClick={() => setTrioOpen(false)}
-              className="ml-1 mb-6 text-white/60 hover:text-white"
-              title="Close"
-            >
-              <X size={16} />
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Highlight ring + anchored tooltip */}
       <AnimatePresence>
         {active && currentStep && (
