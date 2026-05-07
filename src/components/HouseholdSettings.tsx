@@ -14,6 +14,7 @@ export default function HouseholdSettings({ onClose }: { onClose: () => void }) 
   const [household, setHousehold] = useState<Household | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [invites, setInvites] = useState<Invite[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -21,15 +22,27 @@ export default function HouseholdSettings({ onClose }: { onClose: () => void }) 
 
   const load = async () => {
     setLoading(true);
-    const [hh, mm, ii] = await Promise.all([
+    const [hh, mm, ii, pp] = await Promise.all([
       supabase.from("households").select("*").maybeSingle(),
       supabase.from("household_members").select("*").order("joined_at"),
       supabase.from("household_invites").select("*").eq("accepted", false).order("created_at", { ascending: false }),
+      supabase.from("profiles").select("user_id, display_name, color"),
     ]);
     if (hh.data) setHousehold(hh.data as Household);
     if (mm.data) setMembers(mm.data as Member[]);
     if (ii.data) setInvites(ii.data as Invite[]);
+    if (pp.data) setProfiles(pp.data as Profile[]);
     setLoading(false);
+  };
+
+  const myProfile = profiles.find(p => p.user_id === user?.id);
+  const profileById = (id: string) => profiles.find(p => p.user_id === id);
+
+  const updateMyProfile = async (patch: Partial<Profile>) => {
+    if (!user) return;
+    setProfiles(prev => prev.map(p => p.user_id === user.id ? { ...p, ...patch } : p));
+    await supabase.from("profiles").upsert({ user_id: user.id, ...patch }, { onConflict: "user_id" });
+    window.dispatchEvent(new Event("household-updated"));
   };
 
   useEffect(() => { load(); }, []);
