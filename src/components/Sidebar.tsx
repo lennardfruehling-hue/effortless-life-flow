@@ -23,7 +23,9 @@ export default function Sidebar({
   taskCount: number;
 }) {
   const { user, signOut } = useAuth();
+  const [showHousehold, setShowHousehold] = useState(false);
   return (
+    <>
     <aside className="w-16 md:w-60 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0">
       <div className="px-4 pt-5 pb-4">
         <h1 className="text-base font-semibold text-sidebar-foreground tracking-tight flex items-center gap-2">
@@ -56,12 +58,20 @@ export default function Sidebar({
         })}
       </nav>
 
-      <div className="p-3 border-t border-sidebar-border">
+      <div className="p-3 border-t border-sidebar-border space-y-1">
         {user && (
           <p className="hidden md:block text-[10px] text-muted-foreground font-mono truncate mb-1.5 px-1" title={user.email ?? ""}>
             {user.email}
           </p>
         )}
+        <button
+          onClick={() => setShowHousehold(true)}
+          title="Household"
+          className="w-full flex items-center justify-center md:justify-start gap-2.5 px-2.5 md:px-3 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors"
+        >
+          <Users size={16} strokeWidth={1.75} />
+          <span className="hidden md:inline">Household</span>
+        </button>
         <button
           onClick={signOut}
           title="Sign out"
@@ -72,5 +82,7 @@ export default function Sidebar({
         </button>
       </div>
     </aside>
+    {showHousehold && <HouseholdSettings onClose={() => setShowHousehold(false)} />}
+    </>
   );
 }
