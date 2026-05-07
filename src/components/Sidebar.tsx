@@ -1,10 +1,10 @@
-import { useState } from "react";
-import { ViewMode } from "@/lib/types";
-import { ListTodo, Compass, Bell, BookOpen, CalendarDays, ListChecks, LogOut, Users, Flame } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Task, ViewMode } from "@/lib/types";
+import { ListTodo, Compass, Bell, BookOpen, CalendarDays, ListChecks, LogOut, Users, Flame, Trophy } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import HouseholdSettings from "./HouseholdSettings";
+import { totalPride, prideThisWeek, computeConsistency } from "@/lib/pride";
 import serpentBg from "@/assets/serpent-sidebar.jpg";
-import serpentLogo from "@/assets/serpent-logo.png";
 
 const NAV_ITEMS: { mode: ViewMode; icon: typeof ListTodo; label: string }[] = [
   { mode: "tasks", icon: ListTodo, label: "Tasks" },
@@ -20,13 +20,23 @@ export default function Sidebar({
   active,
   onChange,
   taskCount,
+  tasks,
 }: {
   active: ViewMode;
   onChange: (v: ViewMode) => void;
   taskCount: number;
+  tasks?: Task[];
 }) {
   const { user, signOut } = useAuth();
   const [showHousehold, setShowHousehold] = useState(false);
+  const { pride, weekPride, streak } = useMemo(() => {
+    const t = tasks ?? [];
+    return {
+      pride: totalPride(t),
+      weekPride: prideThisWeek(t),
+      streak: computeConsistency(t).currentStreak,
+    };
+  }, [tasks]);
   return (
     <>
     <aside className="relative w-16 md:w-60 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0 overflow-hidden">
@@ -76,6 +86,20 @@ export default function Sidebar({
       </nav>
 
       <div className="p-3 border-t border-sidebar-border space-y-1">
+        <button
+          onClick={() => onChange("consistency")}
+          title={`Pride ${pride} · ${weekPride} this week · ${streak}-day streak`}
+          className="w-full flex items-center justify-center md:justify-between gap-2 px-2.5 md:px-3 py-2 rounded-lg bg-sidebar-accent/40 hover:bg-sidebar-accent/70 transition-colors mb-1"
+        >
+          <span className="flex items-center gap-1.5 text-white">
+            <Trophy size={15} className="text-amber-300" strokeWidth={2.25} />
+            <span className="hidden md:inline text-xs font-bold tabular-nums">{pride}</span>
+          </span>
+          <span className="hidden md:flex items-center gap-1 text-white">
+            <Flame size={14} className="text-orange-400" strokeWidth={2.25} />
+            <span className="text-xs font-bold tabular-nums">{streak}</span>
+          </span>
+        </button>
         {user && (
           <p className="hidden md:block text-[10px] text-muted-foreground font-mono truncate mb-1.5 px-1" title={user.email ?? ""}>
             {user.email}
