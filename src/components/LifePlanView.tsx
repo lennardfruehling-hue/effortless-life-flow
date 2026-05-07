@@ -289,7 +289,7 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
   return (
     <div className="flex-1 p-6 overflow-y-auto scrollbar-thin">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-foreground">Life Plan</h2>
+        <h2 className="text-2xl font-bold text-foreground">Time Space Probability Life Plan</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
           {totalTasks} tasks across {activeProjects.length} projects · {doneTasks} completed
           {archivedProjects.length > 0 && ` · ${archivedProjects.length} archived`}
