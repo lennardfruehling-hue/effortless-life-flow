@@ -231,6 +231,9 @@ export default function VoiceTaskDialog({ onClose, onSave }: Props) {
     setStepIdx((i) => i + 1);
   };
 
+  const finalTextRef = useRef("");
+  const advancedRef = useRef(false);
+
   const startListening = () => {
     if (!supported) {
       setStatusMsg("Voice recognition not supported in this browser. Type your answer below.");
@@ -240,21 +243,35 @@ export default function VoiceTaskDialog({ onClose, onSave }: Props) {
     const rec = new SR();
     rec.lang = "en-US";
     rec.interimResults = true;
-    rec.continuous = false;
-    let finalText = "";
+    rec.continuous = true;
+    finalTextRef.current = "";
+    advancedRef.current = false;
     rec.onresult = (e: any) => {
       let interim = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
-        if (r.isFinal) finalText += r[0].transcript;
+        if (r.isFinal) finalTextRef.current += r[0].transcript + " ";
         else interim += r[0].transcript;
       }
-      setTranscript(finalText || interim);
+      const combined = (finalTextRef.current + interim).trim();
+      setTranscript(combined);
+
+      // Detect "next" trigger to advance
+      if (/\b(next|done|continue|that's it|thats it)\b\.?\s*$/i.test(combined) && !advancedRef.current) {
+        advancedRef.current = true;
+        const cleaned = combined.replace(/\b(next|done|continue|that's it|thats it)\b\.?\s*$/i, "").trim();
+        try { rec.stop(); } catch {}
+        if (cleaned) submitAnswer(cleaned);
+        else if (!step.required) submitAnswer("skip");
+        else {
+          setStatusMsg("This field is required. Please say something before 'next'.");
+          speak("This field is required. " + step.prompt);
+          advancedRef.current = false;
+        }
+      }
     };
     rec.onend = () => {
       setListening(false);
-      const text = (finalText || transcript).trim();
-      if (text) submitAnswer(text);
     };
     rec.onerror = () => setListening(false);
     recognitionRef.current = rec;
