@@ -30,6 +30,11 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
   const [categories, setCategories] = useState<Category[]>(editTask?.categories || []);
   const [projectId, setProjectId] = useState(editTask?.projectId || "");
   const [location, setLocation] = useState(editTask?.location || "");
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(
+    editTask?.locationLat != null && editTask?.locationLon != null
+      ? { lat: editTask.locationLat, lon: editTask.locationLon }
+      : null
+  );
   const [hateMagnitude, setHateMagnitude] = useState(editTask?.hateMagnitude || 5);
   const [duration, setDuration] = useState(editTask?.duration || 0);
   const [dueDate, setDueDate] = useState(editTask?.dueDate || "");
@@ -65,6 +70,8 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
       createdAt: editTask?.createdAt || new Date().toISOString(),
       projectId: projectId || undefined,
       location: location.trim() || undefined,
+      locationLat: locationCoords?.lat,
+      locationLon: locationCoords?.lon,
       hateMagnitude: categories.includes("F") ? hateMagnitude : undefined,
       duration: duration > 0 ? duration : undefined,
       dueDate: dueDate || undefined,
