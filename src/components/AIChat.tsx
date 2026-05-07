@@ -363,6 +363,7 @@ ${projectList || "No projects"}
 7. **Analyze images** - OCR, extract text, read documents, interpret screenshots
 8. **Save research notes** - when user says "save a note about X" or "write a note on X", produce a markdown body (use # for headings, - for bullets) that will become a Notion-style note
 9. **Build lists** - when user says "make a packing list for Tokyo", reply with a clear bulleted list (one item per line starting with "-"); items will be saved automatically
+10. **Add calendar entries** - when user says "add a calendar entry/event/item today at 7:30pm called 'Datenight'", the app saves it directly to the in-app calendar. Confirm naturally — DO NOT tell the user you can't, and DO NOT offer Google Calendar links or .ics files. Just confirm what was added (title + date/time).
 
 ## Serpent System Rules
 - A1 tasks are done FIRST (today, urgent)
