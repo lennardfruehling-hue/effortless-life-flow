@@ -183,7 +183,7 @@ export default function ResearchView({ projects }: Props) {
   return (
     <div className="flex-1 flex h-screen overflow-hidden">
       {/* Notes sidebar */}
-      <div className="w-72 border-r border-border bg-card/50 flex flex-col">
+      <div className="w-56 lg:w-72 flex-shrink-0 border-r border-border bg-card/50 flex flex-col">
         <div className="p-4 border-b border-border">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
