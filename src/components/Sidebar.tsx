@@ -86,6 +86,20 @@ export default function Sidebar({
       </nav>
 
       <div className="p-3 border-t border-sidebar-border space-y-1">
+        <button
+          onClick={() => onChange("consistency")}
+          title={`Pride ${pride} · ${weekPride} this week · ${streak}-day streak`}
+          className="w-full flex items-center justify-center md:justify-between gap-2 px-2.5 md:px-3 py-2 rounded-lg bg-sidebar-accent/40 hover:bg-sidebar-accent/70 transition-colors mb-1"
+        >
+          <span className="flex items-center gap-1.5 text-white">
+            <Trophy size={15} className="text-amber-300" strokeWidth={2.25} />
+            <span className="hidden md:inline text-xs font-bold tabular-nums">{pride}</span>
+          </span>
+          <span className="hidden md:flex items-center gap-1 text-white">
+            <Flame size={14} className="text-orange-400" strokeWidth={2.25} />
+            <span className="text-xs font-bold tabular-nums">{streak}</span>
+          </span>
+        </button>
         {user && (
           <p className="hidden md:block text-[10px] text-muted-foreground font-mono truncate mb-1.5 px-1" title={user.email ?? ""}>
             {user.email}
