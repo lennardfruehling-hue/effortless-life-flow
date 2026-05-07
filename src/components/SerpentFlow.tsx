@@ -307,11 +307,19 @@ export default function SerpentFlow() {
                 </button>
               </div>
               <p className="text-xs text-muted-foreground mb-3">{currentStep.body}</p>
+              {!stepSatisfied && currentStep.hint && (
+                <p className="text-[11px] text-amber-600 dark:text-amber-300 mb-2 italic">⏳ {currentStep.hint}</p>
+              )}
               <button
                 onClick={next}
-                className="w-full flex items-center justify-center gap-1 bg-primary text-primary-foreground rounded px-3 py-2 text-xs font-medium hover:opacity-90"
+                disabled={!stepSatisfied}
+                className={`w-full flex items-center justify-center gap-1 rounded px-3 py-2 text-xs font-medium transition ${
+                  stepSatisfied
+                    ? "bg-primary text-primary-foreground hover:opacity-90"
+                    : "bg-muted text-muted-foreground cursor-not-allowed"
+                }`}
               >
-                {stepIdx + 1 >= FLOWS[active].steps.length ? "Complete" : "Next"} <ChevronRight size={14} />
+                {stepSatisfied ? (stepIdx + 1 >= FLOWS[active].steps.length ? "Complete" : "Next") : "Locked"} <ChevronRight size={14} />
               </button>
             </motion.div>
           </>
