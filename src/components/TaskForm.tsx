@@ -59,7 +59,7 @@ export default function TaskForm({ projects, onSubmit, onClose, editTask }: Task
       duration: duration > 0 ? duration : undefined,
       dueDate: dueDate || undefined,
       assigneeId: assigneeId || null,
-      makesProud,
+      makesProud: categories.includes("H"),
       recurrence: recurrence === "none" ? undefined : recurrence,
       linkedListId: linkedListId || undefined,
     };
