@@ -274,21 +274,25 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
     }));
   };
 
-  // Global date range for GANTT
-  const allDates = data.projects.flatMap(p => [p.startDate, p.endDate, ...p.tasks.map(t => t.deadline)].filter(Boolean)) as string[];
+  const activeProjects = data.projects.filter((p) => !p.archived);
+  const archivedProjects = data.projects.filter((p) => p.archived);
+
+  // Global date range for GANTT (active only)
+  const allDates = activeProjects.flatMap(p => [p.startDate, p.endDate, ...p.tasks.map(t => t.deadline)].filter(Boolean)) as string[];
   const globalStart = allDates.length > 0 ? new Date(allDates.sort()[0]) : new Date();
   const globalEndRaw = allDates.length > 0 ? new Date(allDates.sort().reverse()[0]) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
   const globalEnd = new Date(Math.max(globalEndRaw.getTime(), globalStart.getTime() + 30 * 24 * 60 * 60 * 1000));
 
-  const totalTasks = data.projects.reduce((sum, p) => sum + p.tasks.length, 0);
-  const doneTasks = data.projects.reduce((sum, p) => sum + p.tasks.filter((t) => t.done).length, 0);
+  const totalTasks = activeProjects.reduce((sum, p) => sum + p.tasks.length, 0);
+  const doneTasks = activeProjects.reduce((sum, p) => sum + p.tasks.filter((t) => t.done).length, 0);
 
   return (
     <div className="flex-1 p-6 overflow-y-auto scrollbar-thin">
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-foreground">Life Plan</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          {totalTasks} tasks across {data.projects.length} projects · {doneTasks} completed
+          {totalTasks} tasks across {activeProjects.length} projects · {doneTasks} completed
+          {archivedProjects.length > 0 && ` · ${archivedProjects.length} archived`}
         </p>
       </div>
 
@@ -301,7 +305,7 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
             <span className="text-destructive/60">Today</span>
             <span>{globalEnd.toLocaleDateString("en", { month: "short", year: "numeric" })}</span>
           </div>
-          {data.projects.map(project => (
+          {activeProjects.map(project => (
             <div key={project.id} className="flex items-center gap-3">
               <span className="text-xs text-foreground truncate w-32 flex-shrink-0">{project.name}</span>
               <div className="flex-1">
@@ -364,7 +368,7 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
         </div>
 
         <div className="space-y-3">
-          {data.projects.map((project) => {
+          {activeProjects.map((project) => {
             const isCollapsed = collapsedGroups.has(project.id);
             const done = project.tasks.filter((t) => t.done).length;
             const total = project.tasks.length;
