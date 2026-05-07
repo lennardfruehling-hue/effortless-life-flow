@@ -1,19 +1,21 @@
 import { Task } from "./types";
 
 /**
- * Pride score — only counts tasks marked makesProud=true.
+ * Pride score — every completed task earns points; "Makes me proud" doubles them.
  * Curve: longer tasks reward disproportionately more.
  *   Base: 1pt per 3 minutes (15min => 5pts).
- *   Bonus: ×1.25 if duration > 30min, ×1.6 if > 60min, ×2 if > 120min.
+ *   Duration bonus: ×1.25 if > 30min, ×1.6 if > 60min, ×2 if > 120min.
+ *   Proud bonus: ×2 on top when makesProud=true.
  */
 export function pridePointsForTask(t: Task): number {
-  if (!t.makesProud || !t.completed) return 0;
+  if (!t.completed) return 0;
   const minutes = t.duration && t.duration > 0 ? t.duration : 15;
   const base = minutes / 3;
   let mult = 1;
   if (minutes > 120) mult = 2;
   else if (minutes > 60) mult = 1.6;
   else if (minutes > 30) mult = 1.25;
+  if (t.makesProud) mult *= 2;
   return Math.round(base * mult);
 }
 
