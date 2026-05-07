@@ -262,6 +262,19 @@ export default function SerpentFlow() {
               <span className="text-[9px] text-white/90 text-center leading-tight font-medium whitespace-nowrap">{label}</span>
             </button>
           ))}
+          <button
+            onClick={() => {
+              if (!confirm("Reset today's Serpent flow? Start, Midday and Evening will be marked uncompleted and the phase cleared.")) return;
+              setState((s) => ({ ...s, startCompleted: false, middayCompleted: false, eveningCompleted: false }));
+              setManualPhase(null);
+              setActive(null);
+              setStepIdx(0);
+            }}
+            title="Reset today's Serpent status"
+            className="ml-2 self-center w-8 h-8 rounded-full bg-white/5 border border-white/15 text-white/70 hover:text-white hover:border-white/40 transition flex items-center justify-center text-sm"
+          >
+            ↻
+          </button>
         </div>
       )}
 
