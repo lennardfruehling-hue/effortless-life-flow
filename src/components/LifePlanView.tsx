@@ -142,28 +142,53 @@ function getDefaultData(): LifePlanData {
 }
 
 function GanttBar({ project, globalStart, globalEnd }: { project: ProjectGroup; globalStart: Date; globalEnd: Date }) {
-  const totalDays = Math.max(1, (globalEnd.getTime() - globalStart.getTime()) / (1000 * 60 * 60 * 24));
-  const projStart = project.startDate ? new Date(project.startDate) : globalStart;
-  const projEnd = project.endDate ? new Date(project.endDate) : globalEnd;
-  const startOffset = Math.max(0, (projStart.getTime() - globalStart.getTime()) / (1000 * 60 * 60 * 24));
-  const duration = Math.max(1, (projEnd.getTime() - projStart.getTime()) / (1000 * 60 * 60 * 24));
-  const leftPct = (startOffset / totalDays) * 100;
-  const widthPct = Math.min((duration / totalDays) * 100, 100 - leftPct);
+  const DAY = 1000 * 60 * 60 * 24;
+  const totalDays = Math.max(1, (globalEnd.getTime() - globalStart.getTime()) / DAY);
+
+  // Derive project range from its own dates, falling back to its task deadlines
+  // (NOT to the global range — that's what made bars look too long).
+  const taskDates = project.tasks
+    .flatMap(t => [t.startDate, t.deadline])
+    .filter(Boolean) as string[];
+  const sortedTaskDates = [...taskDates].sort();
+  const fallbackStart = sortedTaskDates[0];
+  const fallbackEnd = sortedTaskDates[sortedTaskDates.length - 1];
+
+  const startStr = project.startDate || fallbackStart;
+  const endStr = project.endDate || fallbackEnd || startStr;
   const done = project.tasks.filter(t => t.done).length;
   const total = project.tasks.length;
   const progress = total > 0 ? (done / total) * 100 : 0;
-  const todayOffset = (new Date().getTime() - globalStart.getTime()) / (1000 * 60 * 60 * 24);
+  const todayOffset = (new Date().getTime() - globalStart.getTime()) / DAY;
   const todayPct = (todayOffset / totalDays) * 100;
+
+  if (!startStr || !endStr) {
+    return (
+      <div className="relative h-7 bg-secondary/50 rounded flex items-center justify-center">
+        <span className="text-[10px] text-muted-foreground italic">No dates set</span>
+      </div>
+    );
+  }
+
+  const projStart = new Date(startStr);
+  let projEnd = new Date(endStr);
+  if (projEnd.getTime() < projStart.getTime()) projEnd = projStart;
+
+  const startOffset = (projStart.getTime() - globalStart.getTime()) / DAY;
+  const duration = Math.max(1, (projEnd.getTime() - projStart.getTime()) / DAY);
+  const leftPct = Math.max(0, (startOffset / totalDays) * 100);
+  const rawWidthPct = (duration / totalDays) * 100;
+  const widthPct = Math.max(0.5, Math.min(rawWidthPct, 100 - leftPct));
 
   return (
     <div className="relative h-7 bg-secondary/50 rounded">
-      {/* Today marker */}
       {todayPct >= 0 && todayPct <= 100 && (
         <div className="absolute top-0 bottom-0 w-px bg-destructive/40 z-10" style={{ left: `${todayPct}%` }} />
       )}
       <div
         className="absolute top-1 bottom-1 rounded bg-primary/20 border border-primary/30 overflow-hidden"
         style={{ left: `${leftPct}%`, width: `${widthPct}%`, minWidth: "2px" }}
+        title={`${startStr} → ${endStr}`}
       >
         <div className="h-full bg-primary/50 rounded transition-all" style={{ width: `${progress}%` }} />
       </div>
