@@ -165,7 +165,23 @@ export async function hydrateFromCloud(userId: string) {
         try { localParsed = JSON.parse(localRaw); } catch { localParsed = null; }
       }
 
-      // Decide the merged value.
+      // PERSONAL keys: cloud is authoritative. Never merge in localStorage,
+      // because it may belong to a previously signed-in user on this browser.
+      if (isPersonalKey(key)) {
+        const serialized = cloudVal === null || cloudVal === undefined ? null : JSON.stringify(cloudVal);
+        if (serialized === null) {
+          if (localRaw !== null) {
+            try { localStorage.removeItem(key); } catch {}
+          }
+        } else if (serialized !== localRaw) {
+          safeSetItem(key, serialized);
+        }
+        lastPushedHash[key] = serialized ?? "null";
+        suppressPush(key);
+        return;
+      }
+
+      // SHARED keys: merge cloud + local so local-only items survive.
       let merged: any = null;
       if (Array.isArray(cloudVal) || Array.isArray(localParsed)) {
         const a = Array.isArray(cloudVal) ? cloudVal as any[] : [];
@@ -183,12 +199,10 @@ export async function hydrateFromCloud(userId: string) {
       if (serialized !== localRaw) {
         safeSetItem(key, serialized);
       }
-      // If merged differs from cloud (i.e. we contributed local-only items, or
-      // cloud was empty), push the merged value back so it persists.
       const cloudSerialized = cloudVal === null || cloudVal === undefined ? null : JSON.stringify(cloudVal);
       if (cloudSerialized !== serialized) {
         needsPush.push(key);
-        lastPushedHash[key] = ""; // force a real push
+        lastPushedHash[key] = "";
       } else {
         lastPushedHash[key] = serialized;
         suppressPush(key);
