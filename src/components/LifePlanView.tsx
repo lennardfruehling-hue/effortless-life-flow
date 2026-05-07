@@ -209,6 +209,8 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [newProjectName, setNewProjectName] = useState("");
   const [showArchive, setShowArchive] = useState(false);
+  const [pickerProjectId, setPickerProjectId] = useState<string | null>(null);
+  const [pickerQuery, setPickerQuery] = useState("");
 
   useEffect(() => { saveData(data); }, [data]);
 
