@@ -91,7 +91,7 @@ export default function Index() {
           />
         )}
         {view === "research" && <ResearchTabs projects={allProjects} />}
-        {view === "lists" && <ListsView tasks={tasks} onSaveTasks={setTasks} />}
+        {view === "lists" && <ListsView tasks={tasks} onSaveTasks={setTasks} projects={projects} />}
         {view === "lifeplan" && <LifePlanView onNavigateToTasks={navigateToTasksForProject} />}
         {view === "calendar" && <CalendarView events={calendarEvents} onSave={setCalendarEvents} />}
         {view === "reminders" && <RemindersView reminders={reminders} tasks={tasks} onSave={setReminders} />}
