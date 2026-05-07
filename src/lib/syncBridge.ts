@@ -15,11 +15,14 @@ function suppressPush(key: string, ms = 3000) {
 
 function pushDebounced(userId: string, key: string, raw: string | null) {
   if (debounceTimers[key]) window.clearTimeout(debounceTimers[key]);
-  debounceTimers[key] = window.setTimeout(() => {
+  debounceTimers[key] = window.setTimeout(async () => {
     // Drop pushes that are echoes of a value we just hydrated from cloud.
     if (Date.now() < (suppressUntil[key] ?? 0)) {
       const hash = raw ?? "null";
-      if (lastPushedHash[key] === hash) return;
+      if (lastPushedHash[key] === hash) {
+        delete debounceTimers[key];
+        return;
+      }
     }
     let value: any = null;
     if (raw !== null) {
@@ -30,7 +33,11 @@ function pushDebounced(userId: string, key: string, raw: string | null) {
       }
     }
     lastPushedHash[key] = raw ?? "null";
-    cloudSet(userId, key, value);
+    try {
+      await cloudSet(userId, key, value);
+    } finally {
+      delete debounceTimers[key];
+    }
   }, 500) as unknown as number;
 }
 
