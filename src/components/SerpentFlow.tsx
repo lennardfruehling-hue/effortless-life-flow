@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronRight } from "lucide-react";
+import { X, ChevronRight, ChevronDown, ChevronUp } from "lucide-react";
 import {
   loadFlowState,
   saveFlowState,
