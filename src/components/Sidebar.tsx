@@ -20,13 +20,23 @@ export default function Sidebar({
   active,
   onChange,
   taskCount,
+  tasks,
 }: {
   active: ViewMode;
   onChange: (v: ViewMode) => void;
   taskCount: number;
+  tasks?: Task[];
 }) {
   const { user, signOut } = useAuth();
   const [showHousehold, setShowHousehold] = useState(false);
+  const { pride, weekPride, streak } = useMemo(() => {
+    const t = tasks ?? [];
+    return {
+      pride: totalPride(t),
+      weekPride: prideThisWeek(t),
+      streak: computeConsistency(t).currentStreak,
+    };
+  }, [tasks]);
   return (
     <>
     <aside className="relative w-16 md:w-60 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0 overflow-hidden">
