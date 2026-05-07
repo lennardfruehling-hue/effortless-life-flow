@@ -75,12 +75,14 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
     const content = newItem.trim();
     let linkedTaskId: string | null = null;
     if (alsoCreateTask) {
+      const { data: userData } = await supabase.auth.getUser();
       const newTask: Task = {
         id: uuid(),
         title: content,
         categories: ["A3"],
         completed: false,
         createdAt: new Date().toISOString(),
+        createdBy: userData.user?.id,
       };
       onSaveTasks(prev => [...prev, newTask]);
       linkedTaskId = newTask.id;
