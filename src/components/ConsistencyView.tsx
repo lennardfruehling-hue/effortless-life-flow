@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Task } from "@/lib/types";
-import { computeConsistency, ionianProgress, IONIAN_GOAL, totalPride, prideThisWeek } from "@/lib/pride";
+import { computeConsistency, ionianProgress, IONIAN_GOAL } from "@/lib/pride";
 import { Flame, Trophy, Sparkles, Compass } from "lucide-react";
 
 interface Props {
