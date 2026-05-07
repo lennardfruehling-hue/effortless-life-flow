@@ -82,7 +82,8 @@ function getFirstDayOfWeek(year: number, month: number) {
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-export default function CalendarView({ events, onSave }: CalendarViewProps) {
+export default function CalendarView({ events, onSave, tasks = [], weeklyStructure = [], onSaveWeeklyStructure, dailySchedule = [], onSaveDailySchedule }: CalendarViewProps) {
+  const [tab, setTab] = useState<"month" | "week">("month");
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
