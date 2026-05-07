@@ -97,19 +97,26 @@ export default function Sidebar({
         <p className="hidden md:block text-[11px] text-white/80 mt-2 font-mono tracking-wide">
           {taskCount} open tasks
         </p>
-        {phase !== "idle" && (
-          <div
-            className={`mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-              phase === "planning" ? "bg-amber-500/20 border-amber-300/50 text-amber-100" :
-              phase === "action"   ? "bg-orange-500/25 border-orange-300/60 text-orange-50" :
-                                     "bg-indigo-500/25 border-indigo-300/50 text-indigo-100"
-            }`}
-            title={`Serpent flow: ${phaseLabel(phase)}`}
-          >
-            <span className="text-xs leading-none">🐍</span>
-            <span className="hidden md:inline">{phaseLabel(phase)}</span>
-          </div>
-        )}
+        <div className="mt-2 flex items-center gap-1">
+          {(["planning", "action", "review"] as const).map((p) => {
+            const isOn = phase === p;
+            const styles =
+              p === "planning" ? "bg-amber-500/25 border-amber-300/60 text-amber-50" :
+              p === "action"   ? "bg-orange-500/30 border-orange-300/70 text-orange-50" :
+                                 "bg-indigo-500/30 border-indigo-300/60 text-indigo-50";
+            const off = "bg-white/5 border-white/15 text-white/50 hover:text-white/80 hover:border-white/30";
+            return (
+              <button
+                key={p}
+                onClick={() => window.dispatchEvent(new CustomEvent("serpent-set-phase", { detail: isOn ? null : p }))}
+                title={`Force phase: ${phaseLabel(p)}${isOn ? " (click to clear)" : ""}`}
+                className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border transition ${isOn ? styles : off}`}
+              >
+                {p === "planning" ? "Plan" : p === "action" ? "Act" : "Review"}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <div className="flex-1" />
