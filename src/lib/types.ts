@@ -89,6 +89,8 @@ export interface CalendarEvent {
   source?: "manual" | "ics" | "ai" | "google" | "schedule";
   googleId?: string;
   isPrivate?: boolean;
+  /** Household member who created this event. Used by the calendar's per-user filter. */
+  createdBy?: string;
 }
 
 /**
