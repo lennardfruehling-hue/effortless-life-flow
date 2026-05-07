@@ -398,40 +398,77 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
         </div>
       </div>
 
-      <div className="grid grid-cols-[160px_1fr] gap-3">
+      <div className="grid grid-cols-[180px_1fr] gap-3">
         {/* Task palette */}
         <div className="border-r border-border pr-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-2">Drag tasks →</p>
-          <div className="space-y-1.5 max-h-[600px] overflow-y-auto scrollbar-thin">
-            {unscheduledTasks.length === 0 && <p className="text-[11px] text-muted-foreground italic">No unscheduled tasks</p>}
-            {unscheduledTasks.map((t) => (
-              <div
-                key={t.id}
-                draggable
-                onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
-                className="cursor-grab active:cursor-grabbing p-2 rounded border border-border bg-secondary/40 hover:border-primary/40 hover:bg-secondary text-xs"
+          <div className="flex flex-wrap gap-1 mb-2">
+            {(["all", "daily", "weekly", "none"] as RecurFilter[]).map((f) => (
+              <button
+                key={f}
+                onClick={() => setFilter(f)}
+                className={`text-[10px] font-mono px-1.5 py-0.5 rounded border transition-colors ${
+                  filter === f
+                    ? "bg-primary/20 text-primary border-primary/40"
+                    : "text-muted-foreground border-border hover:border-primary/30"
+                }`}
               >
-                <div className="text-foreground line-clamp-2 mb-1">{t.title}</div>
-                <div className="flex flex-wrap gap-0.5">
-                  {t.categories.slice(0, 3).map((c) => (
-                    <CategoryBadge key={c} category={c} small />
-                  ))}
-                </div>
-                {t.duration && <div className="text-[10px] text-muted-foreground font-mono mt-0.5">{t.duration}m</div>}
-              </div>
+                {f === "none" ? "one-off" : f}
+              </button>
             ))}
+          </div>
+          <div className="space-y-2 max-h-[600px] overflow-y-auto scrollbar-thin">
+            {unscheduledTasks.length === 0 && <p className="text-[11px] text-muted-foreground italic">No tasks</p>}
+            {(["daily", "weekly", "none"] as const)
+              .filter((g) => filter === "all" || (g === "none" ? filter === "none" : filter === g))
+              .map((group) => {
+                const items = unscheduledTasks.filter((t) =>
+                  group === "none" ? !t.recurrence : t.recurrence === group
+                );
+                if (items.length === 0) return null;
+                const labels: Record<string, string> = { daily: "Daily", weekly: "Weekly", none: "One-off" };
+                return (
+                  <div key={group}>
+                    <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-mono mb-1">
+                      {labels[group]} · {items.length}
+                    </div>
+                    <div className="space-y-1.5">
+                      {items.map((t) => (
+                        <div
+                          key={t.id}
+                          draggable
+                          onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
+                          className="cursor-grab active:cursor-grabbing p-2 rounded border border-border bg-secondary/40 hover:border-primary/40 hover:bg-secondary text-xs"
+                        >
+                          <div className="text-foreground line-clamp-2 mb-1">{t.title}</div>
+                          <div className="flex flex-wrap gap-0.5">
+                            {t.categories.slice(0, 3).map((c) => (
+                              <CategoryBadge key={c} category={c} small />
+                            ))}
+                          </div>
+                          {t.duration && <div className="text-[10px] text-muted-foreground font-mono mt-0.5">{t.duration}m</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         </div>
 
-        {/* 24h grid */}
+        {/* 24h grid (scrollable, opens at current time) */}
         <div className="relative">
+          <div
+            ref={scrollRef}
+            className="relative max-h-[600px] overflow-y-auto scrollbar-thin rounded border border-border bg-secondary/20"
+          >
           <div
             ref={gridRef}
             data-bg="1"
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDropTask}
             onClick={handleGridClick}
-            className="relative bg-secondary/20 rounded border border-border overflow-hidden"
+            className="relative"
             style={{ height: 24 * HOUR_PX }}
           >
             {/* hour lines */}
