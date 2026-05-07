@@ -44,6 +44,7 @@ const TASK_COMMAND_REGEX = /(?:add|create|new|save|make|put)\s+(?:(?:a|an|the)[.
 const PROJECT_COMMAND_REGEX = /(?:add|create|new|save|make|start|put)\s+(?:a\s+|an\s+|the\s+)?project\s+(?:called\s+|named\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into|on)\s+(?:the\s+|my\s+)?(?:projects?|life[- ]?plan|plan))?(?:[.!?]|$)/i;
 const NOTE_COMMAND_REGEX = /(?:add|create|new|save|make|write|put)\s+(?:a\s+|an\s+|the\s+)?(?:research\s+)?note\s+(?:called\s+|named\s+|about\s+|on\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^.!?\n]+?))(?:\s+(?:to|in|into)\s+(?:the\s+|my\s+)?(?:notes?|research))?(?:[.!?]|$)/i;
 const LIST_COMMAND_REGEX = /(?:add|create|new|save|make|start|build|put)\s+(?:a\s+|an\s+|the\s+)?(?:packing\s+|shopping\s+|todo\s+|to-do\s+)?list\s+(?:called\s+|named\s+|for\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^,;:.!?\n]+?))(?:\s+(?:with|having|containing|to|in|into|on)\b|[,;:.!?\n]|$)/i;
+const EVENT_COMMAND_REGEX = /(?:add|create|new|schedule|put|book)\s+(?:a\s+|an\s+|the\s+)?(?:calendar\s+)?(?:event|meeting|appointment|reminder)\s+(?:called\s+|named\s+|for\s+|titled\s+)?(?:["\u201C\u201D'](.+?)["\u201C\u201D']|([^,;:.!?\n]+?))(?:\s+(?:on|at|for)\s+|[,;:.!?\n]|$)/i;
 const CATEGORY_CODE_REGEX = /\b(A1|A2|A3|B1|B2|C|D|E|F|G|H|I|J)\b(?=\s*:|\b)/g;
 const LIFE_PLAN_PROJECT_REGEX = /\b(lp-[a-z0-9]+)\b/i;
 
