@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { CalendarEvent } from "@/lib/types";
 import { ChevronLeft, ChevronRight, Upload, Download, Plus, Trash2, X } from "lucide-react";
 import { v4 as uuid } from "uuid";
+import GoogleCalendarConnect from "./GoogleCalendarConnect";
 
 interface CalendarViewProps {
   events: CalendarEvent[];
@@ -164,6 +165,7 @@ export default function CalendarView({ events, onSave }: CalendarViewProps) {
           <button onClick={handleExport} disabled={events.length === 0} className="flex items-center gap-1.5 text-xs px-3 py-2 border border-border rounded-md text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30">
             <Download size={14} /> Export ICS
           </button>
+          <GoogleCalendarConnect events={events} onSave={onSave} />
           <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-2 rounded-md text-xs font-medium hover:opacity-90 transition-opacity">
             <Plus size={14} /> Add Event
           </button>

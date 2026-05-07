@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, ChevronDown, ChevronRight, Calendar, ExternalLink } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Calendar, ExternalLink, Archive, ArchiveRestore } from "lucide-react";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { AssigneeAvatar } from "./AssigneePicker";
 import GanttChart from "./GanttChart";
@@ -26,6 +26,8 @@ interface ProjectGroup {
   tasks: ProjectTask[];
   startDate?: string;
   endDate?: string;
+  archived?: boolean;
+  archivedAt?: string;
 }
 
 interface LifePlanData {
@@ -174,6 +176,7 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
   const [data, setData] = useState<LifePlanData>(loadData);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [newProjectName, setNewProjectName] = useState("");
+  const [showArchive, setShowArchive] = useState(false);
 
   useEffect(() => { saveData(data); }, [data]);
 
@@ -223,6 +226,20 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
     setData((d) => ({ ...d, projects: d.projects.filter((p) => p.id !== id) }));
   };
 
+  const archiveProject = (id: string) => {
+    setData((d) => ({
+      ...d,
+      projects: d.projects.map((p) => (p.id === id ? { ...p, archived: true, archivedAt: new Date().toISOString() } : p)),
+    }));
+  };
+
+  const unarchiveProject = (id: string) => {
+    setData((d) => ({
+      ...d,
+      projects: d.projects.map((p) => (p.id === id ? { ...p, archived: false, archivedAt: undefined } : p)),
+    }));
+  };
+
   const updateProjectDates = (id: string, field: "startDate" | "endDate", value: string) => {
     setData((d) => ({
       ...d,
@@ -257,21 +274,25 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
     }));
   };
 
-  // Global date range for GANTT
-  const allDates = data.projects.flatMap(p => [p.startDate, p.endDate, ...p.tasks.map(t => t.deadline)].filter(Boolean)) as string[];
+  const activeProjects = data.projects.filter((p) => !p.archived);
+  const archivedProjects = data.projects.filter((p) => p.archived);
+
+  // Global date range for GANTT (active only)
+  const allDates = activeProjects.flatMap(p => [p.startDate, p.endDate, ...p.tasks.map(t => t.deadline)].filter(Boolean)) as string[];
   const globalStart = allDates.length > 0 ? new Date(allDates.sort()[0]) : new Date();
   const globalEndRaw = allDates.length > 0 ? new Date(allDates.sort().reverse()[0]) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
   const globalEnd = new Date(Math.max(globalEndRaw.getTime(), globalStart.getTime() + 30 * 24 * 60 * 60 * 1000));
 
-  const totalTasks = data.projects.reduce((sum, p) => sum + p.tasks.length, 0);
-  const doneTasks = data.projects.reduce((sum, p) => sum + p.tasks.filter((t) => t.done).length, 0);
+  const totalTasks = activeProjects.reduce((sum, p) => sum + p.tasks.length, 0);
+  const doneTasks = activeProjects.reduce((sum, p) => sum + p.tasks.filter((t) => t.done).length, 0);
 
   return (
     <div className="flex-1 p-6 overflow-y-auto scrollbar-thin">
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-foreground">Life Plan</h2>
         <p className="text-sm text-muted-foreground mt-0.5">
-          {totalTasks} tasks across {data.projects.length} projects · {doneTasks} completed
+          {totalTasks} tasks across {activeProjects.length} projects · {doneTasks} completed
+          {archivedProjects.length > 0 && ` · ${archivedProjects.length} archived`}
         </p>
       </div>
 
@@ -284,7 +305,7 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
             <span className="text-destructive/60">Today</span>
             <span>{globalEnd.toLocaleDateString("en", { month: "short", year: "numeric" })}</span>
           </div>
-          {data.projects.map(project => (
+          {activeProjects.map(project => (
             <div key={project.id} className="flex items-center gap-3">
               <span className="text-xs text-foreground truncate w-32 flex-shrink-0">{project.name}</span>
               <div className="flex-1">
@@ -347,7 +368,7 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
         </div>
 
         <div className="space-y-3">
-          {data.projects.map((project) => {
+          {activeProjects.map((project) => {
             const isCollapsed = collapsedGroups.has(project.id);
             const done = project.tasks.filter((t) => t.done).length;
             const total = project.tasks.length;
@@ -372,7 +393,10 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
                   <div className="w-16 h-1.5 bg-secondary rounded-full overflow-hidden ml-2">
                     <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progress}%` }} />
                   </div>
-                  <button onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }} className="text-muted-foreground hover:text-destructive ml-2">
+                  <button onClick={(e) => { e.stopPropagation(); archiveProject(project.id); }} className="text-muted-foreground hover:text-primary ml-2" title="Archive project">
+                    <Archive size={12} />
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); deleteProject(project.id); }} className="text-muted-foreground hover:text-destructive ml-1" title="Delete project">
                     <Trash2 size={12} />
                   </button>
                 </div>
@@ -458,6 +482,55 @@ export default function LifePlanView({ onNavigateToTasks }: LifePlanViewProps) {
             );
           })}
         </div>
+      </section>
+
+      {/* Archive */}
+      <section className="mb-8">
+        <button
+          onClick={() => setShowArchive((v) => !v)}
+          className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 hover:text-foreground transition-colors"
+        >
+          {showArchive ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          <Archive size={14} /> Archive ({archivedProjects.length})
+        </button>
+        {showArchive && (
+          archivedProjects.length === 0 ? (
+            <p className="text-xs text-muted-foreground">No archived projects yet. Archive a project to mark it as completed.</p>
+          ) : (
+            <div className="space-y-2">
+              {archivedProjects.map((project) => {
+                const done = project.tasks.filter((t) => t.done).length;
+                const total = project.tasks.length;
+                return (
+                  <div key={project.id} className="bg-card/60 border border-border rounded-lg px-4 py-3 flex items-center gap-2">
+                    <Archive size={12} className="text-muted-foreground flex-shrink-0" />
+                    <span className="text-sm text-muted-foreground flex-1 truncate">{project.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-mono">{done}/{total}</span>
+                    {project.archivedAt && (
+                      <span className="text-[10px] text-muted-foreground font-mono ml-2">
+                        {new Date(project.archivedAt).toLocaleDateString()}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => unarchiveProject(project.id)}
+                      className="text-muted-foreground hover:text-primary ml-2"
+                      title="Restore project"
+                    >
+                      <ArchiveRestore size={12} />
+                    </button>
+                    <button
+                      onClick={() => deleteProject(project.id)}
+                      className="text-muted-foreground hover:text-destructive ml-1"
+                      title="Delete permanently"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )
+        )}
       </section>
 
       {/* Free-form notes */}
