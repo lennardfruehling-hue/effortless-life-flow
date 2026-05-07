@@ -179,6 +179,37 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex items-center gap-1 mb-4 border-b border-border">
+        <button
+          onClick={() => setTab("month")}
+          className={`flex items-center gap-1.5 text-xs px-3 py-2 border-b-2 -mb-px transition-colors ${
+            tab === "month" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <LayoutGrid size={12} /> Month
+        </button>
+        <button
+          onClick={() => setTab("week")}
+          className={`flex items-center gap-1.5 text-xs px-3 py-2 border-b-2 -mb-px transition-colors ${
+            tab === "week" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <CalendarDays size={12} /> Weekly Structure
+        </button>
+      </div>
+
+      {tab === "week" && onSaveWeeklyStructure && onSaveDailySchedule && (
+        <WeeklyStructureView
+          blocks={weeklyStructure}
+          onSave={onSaveWeeklyStructure}
+          tasks={tasks}
+          dailySchedule={dailySchedule}
+          onSaveDailySchedule={onSaveDailySchedule}
+        />
+      )}
+
+      {tab === "month" && (<>
       {/* Month nav */}
       <div className="flex items-center justify-between mb-4">
         <button onClick={prev} className="p-1 text-muted-foreground hover:text-foreground"><ChevronLeft size={20} /></button>
@@ -240,6 +271,7 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
           )}
         </div>
       )}
+      </>)}
 
       {/* Add event modal */}
       {showForm && (
