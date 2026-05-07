@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { TaskList, ListItem, Task, Project } from "@/lib/types";
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuid } from "uuid";
-import { Plus, Trash2, ListChecks, CheckSquare, Square, Link2, Loader2, X, Search, ListTodo } from "lucide-react";
+import { Plus, Trash2, ListChecks, CheckSquare, Square, Link2, Loader2, X, Search, ListTodo, Lock, Unlock } from "lucide-react";
 import TagPicker, { TagChips } from "./TagPicker";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { AssigneeAvatar } from "./AssigneePicker";
@@ -211,6 +211,14 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
                 </select>
               </div>
               <TagPicker kind="list" ownerId={active.id} />
+              <button
+                onClick={togglePrivate}
+                title={active.is_private ? "Private to you — click to share with household" : "Shared with household — click to make private"}
+                className={`flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors ${active.is_private ? "border-primary/40 text-primary bg-primary/10" : "border-border text-muted-foreground hover:text-foreground"}`}
+              >
+                {active.is_private ? <Lock size={11} /> : <Unlock size={11} />}
+                {active.is_private ? "Private" : "Shared"}
+              </button>
               {members.length >= 1 && (
                 <div className="flex items-center gap-1 ml-auto">
                   <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Assignee</span>
