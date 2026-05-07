@@ -38,8 +38,18 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
   const [showCompleted, setShowCompleted] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
 
+  // Reset recurring tasks when their period rolls over
+  useEffect(() => {
+    const { tasks: reset, changed } = applyRecurrenceReset(tasks);
+    if (changed) onSave(reset);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const dailyTasks = useMemo(() => tasks.filter((t) => t.recurrence === "daily"), [tasks]);
+  const weeklyTasks = useMemo(() => tasks.filter((t) => t.recurrence === "weekly"), [tasks]);
+
   const filteredTasks = useMemo(() => {
-    let list = tasks;
+    let list = tasks.filter((t) => !t.recurrence); // recurring shown in their own groups
     if (filterProjectId) list = list.filter((t) => t.projectId === filterProjectId);
     if (filterCat) list = list.filter((t) => t.categories.includes(filterCat));
     if (!showCompleted) list = list.filter((t) => !t.completed);
@@ -58,11 +68,17 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
 
   const handleToggle = (id: string) => {
     onSave(
-      tasks.map((t) =>
-        t.id === id
-          ? { ...t, completed: !t.completed, completedAt: !t.completed ? new Date().toISOString() : undefined }
-          : t
-      )
+      tasks.map((t) => {
+        if (t.id !== id) return t;
+        const nowCompleted = !t.completed;
+        const period = t.recurrence === "weekly" ? weekKey() : todayKey();
+        return {
+          ...t,
+          completed: nowCompleted,
+          completedAt: nowCompleted ? new Date().toISOString() : undefined,
+          lastCompletedPeriod: t.recurrence && nowCompleted ? period : t.lastCompletedPeriod,
+        };
+      })
     );
   };
 
@@ -73,6 +89,8 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
   const todayCount = tasks.filter((t) => !t.completed && t.categories.includes("A1")).length;
   const activeCount = tasks.filter((t) => !t.completed).length;
   const filterProject = filterProjectId ? projects.find(p => p.id === filterProjectId) : null;
+  const prideTotal = totalPride(tasks);
+  const prideWeek = prideThisWeek(tasks);
 
   return (
     <div className="flex-1 p-4 md:p-6 overflow-y-auto scrollbar-thin min-w-0">
