@@ -1,5 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plus, Trash2, ChevronDown, ChevronRight, Calendar, ExternalLink } from "lucide-react";
+import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
+import { AssigneeAvatar } from "./AssigneePicker";
 
 interface PlanningItem {
   id: string;
@@ -13,6 +15,8 @@ interface ProjectTask {
   task: string;
   deadline: string;
   done: boolean;
+  startDate?: string;
+  assigneeId?: string | null;
 }
 
 interface ProjectGroup {
