@@ -80,11 +80,9 @@ export default function ConsistencyView({ tasks }: Props) {
       </div>
 
       {/* Stat tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 gap-3 mb-6">
         <Tile icon={<Flame size={16} className="text-cat-f" />} label="Current streak" value={`${stats.currentStreak}d`} />
         <Tile icon={<Trophy size={16} className="text-cat-h" />} label="Best streak" value={`${stats.bestStreak}d`} />
-        <Tile icon={<Sparkles size={16} className="text-cat-h" />} label="Pride · all-time" value={String(prideTotal)} />
-        <Tile icon={<Sparkles size={16} className="text-primary" />} label="Pride · this week" value={`+${prideWeek}`} />
       </div>
 
       {/* Heatmap */}
