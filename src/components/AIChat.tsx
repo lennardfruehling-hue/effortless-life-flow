@@ -270,6 +270,8 @@ function extractRecurring(input: string): "daily" | "weekly" | "monthly" | undef
   if (/\b(every\s+month|monthly|each\s+month)\b/.test(l)) return "monthly";
   return undefined;
 }
+
+function addCalendarEvent(title: string, dt: { start: string; end: string; allDay: boolean }) {
   try {
     const KEY = "serpent-calendar-events";
     const raw = localStorage.getItem(KEY);
