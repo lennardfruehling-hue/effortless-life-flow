@@ -1,6 +1,7 @@
 import { Task } from "@/lib/types";
 import { CategoryBadge } from "./CategoryBadge";
-import { Check, Pencil, Trash2, MapPin, Calendar } from "lucide-react";
+import { Check, Pencil, Trash2, MapPin, Calendar, Sparkles, Repeat } from "lucide-react";
+import { pridePointsForTask } from "@/lib/pride";
 import { motion } from "framer-motion";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { AssigneeAvatar } from "./AssigneePicker";
