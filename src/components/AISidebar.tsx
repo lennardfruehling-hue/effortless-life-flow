@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Bot, ChevronRight, ChevronLeft } from "lucide-react";
+import { Bot, ChevronRight, ChevronLeft, Mic } from "lucide-react";
 import { Task, Project } from "@/lib/types";
 import AIChat from "./AIChat";
+import VoiceTaskDialog from "./VoiceTaskDialog";
 
 interface Props {
   tasks: Task[];
@@ -14,35 +15,61 @@ export default function AISidebar({ tasks, projects, onSaveTasks, onSaveProjects
   const [open, setOpen] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 1024 : true,
   );
+  const [voiceOpen, setVoiceOpen] = useState(false);
+
+  const handleVoiceSave = (task: Task) => {
+    onSaveTasks((prev) => [task, ...prev]);
+    setVoiceOpen(false);
+  };
 
   if (!open) {
     return (
-      <div className="flex flex-col items-center border-l border-border bg-sidebar w-12 flex-shrink-0">
-        <button
-          onClick={() => setOpen(true)}
-          className="mt-4 p-2 text-muted-foreground hover:text-primary"
-          title="Open AI Assistant"
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <Bot size={20} className="text-primary/60 mt-3" />
-      </div>
+      <>
+        <div className="flex flex-col items-center border-l border-border bg-sidebar w-12 flex-shrink-0">
+          <button
+            onClick={() => setOpen(true)}
+            className="mt-4 p-2 text-muted-foreground hover:text-primary"
+            title="Open AI Assistant"
+          >
+            <ChevronLeft size={18} />
+          </button>
+          <Bot size={20} className="text-primary/60 mt-3" />
+          <button
+            onClick={() => setVoiceOpen(true)}
+            className="mt-3 p-2 text-muted-foreground hover:text-primary"
+            title="Add task by voice"
+          >
+            <Mic size={18} />
+          </button>
+        </div>
+        {voiceOpen && <VoiceTaskDialog onClose={() => setVoiceOpen(false)} onSave={handleVoiceSave} />}
+      </>
     );
   }
 
   return (
+    <>
     <aside className="flex flex-col border-l border-border bg-sidebar w-[320px] flex-shrink-0 h-screen sticky top-0">
       <div className="flex items-center justify-between px-3 py-2 border-b border-border">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
           <Bot size={16} className="text-primary" /> AI Assistant
         </div>
-        <button
-          onClick={() => setOpen(false)}
-          className="p-1 text-muted-foreground hover:text-foreground"
-          title="Collapse"
-        >
-          <ChevronRight size={16} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setVoiceOpen(true)}
+            className="p-1 text-muted-foreground hover:text-primary"
+            title="Add task by voice"
+          >
+            <Mic size={16} />
+          </button>
+          <button
+            onClick={() => setOpen(false)}
+            className="p-1 text-muted-foreground hover:text-foreground"
+            title="Collapse"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
       </div>
       <div className="flex-1 overflow-hidden">
         <AIChat
@@ -53,5 +80,7 @@ export default function AISidebar({ tasks, projects, onSaveTasks, onSaveProjects
         />
       </div>
     </aside>
+    {voiceOpen && <VoiceTaskDialog onClose={() => setVoiceOpen(false)} onSave={handleVoiceSave} />}
+    </>
   );
 }
