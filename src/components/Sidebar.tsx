@@ -38,20 +38,38 @@ export default function Sidebar({
       streak: computeConsistency(t).currentStreak,
     };
   }, [tasks]);
+  const [scheduleActive, setScheduleActive] = useState(false);
+  useEffect(() => {
+    const handler = (e: Event) => setScheduleActive(!!(e as CustomEvent).detail);
+    window.addEventListener("schedule-active-change", handler);
+    return () => window.removeEventListener("schedule-active-change", handler);
+  }, []);
   return (
     <>
     <aside className="relative w-16 md:w-60 flex-shrink-0 bg-sidebar border-r border-sidebar-border flex flex-col h-screen sticky top-0 overflow-hidden">
-      {/* Mythic serpent background */}
+      {/* Calm serpent backdrop */}
       <img
         src={serpentBg}
         alt=""
         aria-hidden
-        className="pointer-events-none absolute inset-0 w-full h-full object-cover object-center opacity-50"
+        className={`pointer-events-none absolute inset-0 w-full h-full object-cover object-center transition-all duration-[1200ms] ease-out ${
+          scheduleActive ? "opacity-0 scale-105" : "opacity-50 scale-100"
+        }`}
+      />
+      {/* Striking serpent backdrop — lunges forward when schedule is active */}
+      <img
+        src={serpentStrike}
+        alt=""
+        aria-hidden
+        className={`pointer-events-none absolute inset-0 w-full h-full object-cover object-center transition-all duration-[1400ms] ease-out ${
+          scheduleActive ? "opacity-70 scale-110" : "opacity-0 scale-100"
+        }`}
       />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-sidebar/40"
       />
+
       <div className="relative flex flex-col h-full">
       <div className="px-4 pt-3 pb-3 flex flex-col items-center text-center">
         <h1
