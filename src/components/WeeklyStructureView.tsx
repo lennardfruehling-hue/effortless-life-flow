@@ -115,17 +115,20 @@ export default function WeeklyStructureView({ blocks, onSave, tasks, dailySchedu
     const day = Math.max(0, Math.min(6, Math.floor(x / colW)));
     const startMin = snap(Math.max(0, Math.min(1440 - 30, (y / SLOT_PX) * SNAP_MIN)));
     const dur = task.duration && task.duration >= 15 ? task.duration : 60;
-    const block: WeeklyStructureBlock = {
+    const isDaily = task.recurrence === "daily";
+    const days = isDaily ? [0, 1, 2, 3, 4, 5, 6] : [day];
+    const newBlocks: WeeklyStructureBlock[] = days.map((dow) => ({
       id: uuid(),
-      dayOfWeek: day,
+      dayOfWeek: dow,
       startTime: toHHMM(startMin),
       endTime: toHHMM(Math.min(1440, startMin + dur)),
       taskId: task.id,
       taskCategories: task.categories,
-      source: task.recurrence === "weekly" ? "recurring" : "task",
+      source: isDaily || task.recurrence === "weekly" ? "recurring" : "task",
       recurring: true,
-    };
-    onSave([...blocks, block]);
+    }));
+    onSave([...blocks, ...newBlocks]);
+    if (isDaily) toast.success(`Added "${task.title}" to all 7 days — edit each day individually`);
   };
 
   const handleGridClick = (e: React.MouseEvent) => {
