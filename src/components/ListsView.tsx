@@ -144,7 +144,10 @@ export default function ListsView({ tasks, onSaveTasks, projects = [] }: Props) 
               >
                 <span>{list.icon || "📋"}</span>
                 <div className="truncate flex-1">
-                  <div className="truncate">{list.name}</div>
+                  <div className="truncate flex items-center gap-1.5">
+                    {list.name}
+                    {list.assignee_id && <AssigneeAvatar member={byId(list.assignee_id)} />}
+                  </div>
                   <div className="mt-0.5"><TagChips kind="list" ownerId={list.id} /></div>
                 </div>
                 <Trash2
