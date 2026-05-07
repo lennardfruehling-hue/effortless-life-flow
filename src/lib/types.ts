@@ -82,10 +82,12 @@ export interface CalendarEvent {
 
 export interface DailyScheduleSlot {
   id: string;
-  startTime: string;
-  endTime: string;
+  startTime: string; // "HH:MM"
+  endTime: string;   // "HH:MM"
   taskId?: string;
   label?: string;
+  taskCategories?: Category[]; // snapshot for visual badges
+  alarmFired?: boolean; // overdue alarm tracking
 }
 
 export interface LifePlanProject {
