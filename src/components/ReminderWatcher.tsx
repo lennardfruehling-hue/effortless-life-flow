@@ -39,7 +39,66 @@ function periodKey(r: Reminder): string {
   return `${r.id}-${d.toISOString()}`;
 }
 
-/** Plays a loud, attention-grabbing alarm using Web Audio (no asset needed). */
+/** Snake hiss: filtered white noise with a slow swell. */
+function scheduleHiss(ctx: AudioContext, start: number, duration: number) {
+  const sampleRate = ctx.sampleRate;
+  const buffer = ctx.createBuffer(1, Math.floor(sampleRate * duration), sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  // Bandpass-ish: highpass + lowpass to make it sssss-like
+  const hp = ctx.createBiquadFilter();
+  hp.type = "highpass";
+  hp.frequency.value = 3500;
+  const lp = ctx.createBiquadFilter();
+  lp.type = "lowpass";
+  lp.frequency.value = 9000;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, start);
+  g.gain.exponentialRampToValueAtTime(0.55, start + 0.15);
+  g.gain.setValueAtTime(0.55, start + duration - 0.25);
+  g.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  src.connect(hp); hp.connect(lp); lp.connect(g); g.connect(ctx.destination);
+  src.start(start);
+  src.stop(start + duration);
+}
+
+/** Single typewriter key: short noise click + mechanical thunk. */
+function scheduleTypeKey(ctx: AudioContext, start: number) {
+  // click (short noise burst)
+  const dur = 0.04;
+  const sr = ctx.sampleRate;
+  const buf = ctx.createBuffer(1, Math.floor(sr * dur), sr);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const bp = ctx.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.value = 2200;
+  bp.Q.value = 4;
+  const g = ctx.createGain();
+  g.gain.value = 0.5;
+  src.connect(bp); bp.connect(g); g.connect(ctx.destination);
+  src.start(start);
+  src.stop(start + dur);
+
+  // mechanical thunk (low square thump)
+  const o = ctx.createOscillator();
+  const og = ctx.createGain();
+  o.type = "square";
+  o.frequency.setValueAtTime(180, start);
+  o.frequency.exponentialRampToValueAtTime(80, start + 0.05);
+  og.gain.setValueAtTime(0.0001, start);
+  og.gain.exponentialRampToValueAtTime(0.4, start + 0.005);
+  og.gain.exponentialRampToValueAtTime(0.0001, start + 0.08);
+  o.connect(og); og.connect(ctx.destination);
+  o.start(start);
+  o.stop(start + 0.1);
+}
+
+/** Plays a long, repetitive snake-hiss + typewriter alarm (~10s). */
 function playAlarm(audioCtxRef: React.MutableRefObject<AudioContext | null>) {
   try {
     if (!audioCtxRef.current) {
@@ -47,24 +106,32 @@ function playAlarm(audioCtxRef: React.MutableRefObject<AudioContext | null>) {
     }
     const ctx = audioCtxRef.current;
     if (ctx.state === "suspended") ctx.resume();
+    const start = ctx.currentTime;
 
-    // 4 alternating beeps at high volume
-    const now = ctx.currentTime;
-    const freqs = [880, 660, 880, 660];
-    freqs.forEach((f, i) => {
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = "square";
-      o.frequency.value = f;
-      g.gain.value = 0.001;
-      o.connect(g);
-      g.connect(ctx.destination);
-      const t = now + i * 0.45;
-      g.gain.exponentialRampToValueAtTime(0.5, t + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-      o.start(t);
-      o.stop(t + 0.42);
-    });
+    // 4 cycles of: hiss (1.6s) + 6 typewriter keys (~0.9s) = ~2.5s each → ~10s total
+    const cycleLen = 2.5;
+    const cycles = 4;
+    for (let c = 0; c < cycles; c++) {
+      const t0 = start + c * cycleLen;
+      scheduleHiss(ctx, t0, 1.6);
+      // typewriter run at end of cycle
+      for (let k = 0; k < 6; k++) {
+        scheduleTypeKey(ctx, t0 + 1.55 + k * 0.13);
+      }
+      // carriage-return ding at end of last cycle
+      if (c === cycles - 1) {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = "sine";
+        o.frequency.value = 1760;
+        g.gain.setValueAtTime(0.0001, t0 + 2.4);
+        g.gain.exponentialRampToValueAtTime(0.5, t0 + 2.42);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 3.0);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(t0 + 2.4);
+        o.stop(t0 + 3.05);
+      }
+    }
   } catch (e) {
     console.warn("alarm failed", e);
   }
