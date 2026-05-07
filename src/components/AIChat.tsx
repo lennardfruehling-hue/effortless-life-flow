@@ -122,6 +122,111 @@ async function createListWithItems(name: string, items: string[]) {
   return data.id as string;
 }
 
+// ===== Calendar event parsing =====
+const MONTHS_MAP: Record<string, number> = {
+  jan:0,january:0,feb:1,february:1,mar:2,march:2,apr:3,april:3,may:4,jun:5,june:5,
+  jul:6,july:6,aug:7,august:7,sep:8,sept:8,september:8,oct:9,october:9,nov:10,november:10,dec:11,december:11,
+};
+
+function parseEventDateTime(input: string, ref = new Date()): { start: string; end: string; allDay: boolean } | null {
+  const lower = input.toLowerCase();
+  let date: Date | null = null;
+
+  // today / tomorrow
+  if (/\btoday\b/.test(lower)) date = new Date(ref);
+  else if (/\btomorrow\b/.test(lower)) { date = new Date(ref); date.setDate(date.getDate() + 1); }
+
+  // ISO date YYYY-MM-DD
+  if (!date) {
+    const iso = lower.match(/(\d{4})-(\d{2})-(\d{2})/);
+    if (iso) date = new Date(+iso[1], +iso[2]-1, +iso[3]);
+  }
+
+  // "Month D" or "D Month" optionally with year
+  if (!date) {
+    const md = lower.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\s+(\d{1,2})(?:[,\s]+(\d{4}))?/);
+    if (md) {
+      const m = MONTHS_MAP[md[1]];
+      const d = +md[2];
+      const y = md[3] ? +md[3] : ref.getFullYear();
+      date = new Date(y, m, d);
+    }
+  }
+  if (!date) {
+    const dm = lower.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*(?:[,\s]+(\d{4}))?/);
+    if (dm) {
+      const d = +dm[1];
+      const m = MONTHS_MAP[dm[2]];
+      const y = dm[3] ? +dm[3] : ref.getFullYear();
+      date = new Date(y, m, d);
+    }
+  }
+
+  // weekday — next occurrence
+  if (!date) {
+    const days = ["sunday","monday","tuesday","wednesday","thursday","friday","saturday"];
+    for (let i = 0; i < days.length; i++) {
+      if (new RegExp(`\\b${days[i]}\\b`).test(lower)) {
+        date = new Date(ref);
+        const diff = (i - date.getDay() + 7) % 7 || 7;
+        date.setDate(date.getDate() + diff);
+        break;
+      }
+    }
+  }
+
+  if (!date) return null;
+
+  // time: "at 3pm", "at 14:30", "at 3:30 pm"
+  const tm = lower.match(/\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/) || lower.match(/\b(\d{1,2}):(\d{2})\s*(am|pm)?\b/);
+  let allDay = true;
+  if (tm) {
+    let h = +tm[1];
+    const min = tm[2] ? +tm[2] : 0;
+    const ampm = tm[3];
+    if (ampm === "pm" && h < 12) h += 12;
+    if (ampm === "am" && h === 12) h = 0;
+    date.setHours(h, min, 0, 0);
+    allDay = false;
+  }
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const fmtDate = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}`;
+  if (allDay) return { start: `${fmtDate}T00:00`, end: `${fmtDate}T23:59`, allDay: true };
+  const startStr = `${fmtDate}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  const end = new Date(date); end.setHours(end.getHours() + 1);
+  const endStr = `${fmtDate}T${pad(end.getHours())}:${pad(end.getMinutes())}`;
+  return { start: startStr, end: endStr, allDay: false };
+}
+
+function extractEventTitle(input: string) {
+  const m = input.trim().match(EVENT_COMMAND_REGEX);
+  return m ? (m[1] || m[2] || "").trim().replace(/\s+(on|at|for)\s+.*$/i, "") : "";
+}
+
+function addCalendarEvent(title: string, dt: { start: string; end: string; allDay: boolean }) {
+  try {
+    const KEY = "serpent-calendar-events";
+    const raw = localStorage.getItem(KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    const ev = {
+      id: uuid(),
+      title,
+      start: dt.start,
+      end: dt.end,
+      allDay: dt.allDay,
+      source: "ai",
+    };
+    arr.push(ev);
+    localStorage.setItem(KEY, JSON.stringify(arr));
+    window.dispatchEvent(new StorageEvent("storage", { key: KEY }));
+    return ev.id;
+  } catch (e) {
+    console.error("Failed to add calendar event:", e);
+    return null;
+  }
+}
+
 // Pull a bullet-list out of an AI response, if any
 function extractBullets(text: string): string[] {
   const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
