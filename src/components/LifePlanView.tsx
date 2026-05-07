@@ -290,6 +290,56 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
     }));
   };
 
+  const addTaskFromExisting = (projectId: string, t: Task) => {
+    const lpProjectId = `lp-${projectId}`;
+    setData((d) => ({
+      ...d,
+      projects: d.projects.map((p) =>
+        p.id === projectId
+          ? {
+              ...p,
+              tasks: [
+                ...p.tasks,
+                {
+                  id: uid(),
+                  task: t.title,
+                  deadline: t.dueDate || "",
+                  done: !!t.completed,
+                  startDate: t.createdAt ? t.createdAt.slice(0, 10) : undefined,
+                  assigneeId: t.assigneeId ?? null,
+                  assigneeIds:
+                    t.assigneeIds && t.assigneeIds.length > 0
+                      ? t.assigneeIds
+                      : t.assigneeId
+                        ? [t.assigneeId]
+                        : undefined,
+                  linkedTaskId: t.id,
+                },
+              ],
+            }
+          : p
+      ),
+    }));
+    // Also link the saved task to this Life Plan project so they show under "linked tasks"
+    if (onSaveTasks && (!t.projectId || t.projectId !== lpProjectId)) {
+      onSaveTasks(tasks.map((x) => (x.id === t.id ? { ...x, projectId: lpProjectId } : x)));
+    }
+    setPickerProjectId(null);
+    setPickerQuery("");
+  };
+
+  /** Tasks not already linked to this project. */
+  const availableTasksFor = (projectId: string): Task[] => {
+    const lpId = `lp-${projectId}`;
+    const proj = data.projects.find((p) => p.id === projectId);
+    const linked = new Set((proj?.tasks || []).map((t) => t.linkedTaskId).filter(Boolean) as string[]);
+    return tasks.filter(
+      (t) =>
+        !linked.has(t.id) &&
+        (t.projectId === lpId || !t.projectId || t.projectId === undefined)
+    );
+  };
+
   const updateTask = (projectId: string, taskId: string, field: keyof ProjectTask, value: string | boolean) => {
     setData((d) => ({
       ...d,
