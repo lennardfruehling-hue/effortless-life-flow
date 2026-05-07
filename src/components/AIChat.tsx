@@ -440,11 +440,23 @@ export default function AIChat({ tasks, projects, onSaveTasks, onSaveProjects }:
         if (id) createdListName = listName;
       }
 
+      // Check for calendar event command
+      let createdEventTitle: string | null = null;
+      const eventTitle = extractEventTitle(textInput);
+      if (eventTitle) {
+        const dt = parseEventDateTime(textInput);
+        if (dt) {
+          const id = addCalendarEvent(eventTitle, dt);
+          if (id) createdEventTitle = `${eventTitle} (${dt.allDay ? dt.start.slice(0,10) : dt.start.replace("T", " ")})`;
+        }
+      }
+
       const confirmations: string[] = [];
       if (createdProjectId) confirmations.push(`✅ Project **"${projectName}"** added to your Life Plan.`);
       if (createdTaskTitle) confirmations.push(`✅ Task **"${createdTaskTitle}"** added.`);
       if (createdNoteTitle) confirmations.push(`✅ Research note **"${createdNoteTitle}"** saved.`);
       if (createdListName) confirmations.push(`✅ List **"${createdListName}"** saved with all items.`);
+      if (createdEventTitle) confirmations.push(`📅 Calendar event **"${createdEventTitle}"** added.`);
       const finalContent = confirmations.length > 0
         ? `${assistantContent}\n\n${confirmations.join("\n")}`
         : assistantContent;
