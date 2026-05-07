@@ -64,6 +64,31 @@ function extractNoteTopic(input: string) {
   return match ? (match[1] || match[2] || "").trim() : "";
 }
 
+/** Loose intent detector — true for short confirmations like "save it as a note",
+ * "add as a note", "pin it", "file this as a note", "yes, save and pin", etc. */
+const NOTE_INTENT_REGEX = /\b(save|add|pin|file|store|keep|put|make)\b[^.\n]{0,40}\b(note|notes|checklist|research)\b/i;
+const PIN_INTENT_REGEX = /\b(pin|file|save and pin|save & pin)\b[^.\n]{0,30}\b(it|this|that|under|here|to|in)\b/i;
+const AFFIRMATION_REGEX = /^\s*(yes|yep|yeah|sure|please do|ok|okay|do it|go ahead|sounds good|👍|y)\b/i;
+
+function hasNoteIntent(input: string) {
+  return NOTE_INTENT_REGEX.test(input) || PIN_INTENT_REGEX.test(input);
+}
+
+/** Try to pull a sensible title from a chunk of markdown / text. */
+function deriveTitleFromContent(text: string): string {
+  if (!text) return "";
+  const lines = text.split("\n").map(l => l.trim()).filter(Boolean);
+  // First markdown heading
+  const heading = lines.find(l => /^#{1,3}\s+/.test(l));
+  if (heading) return heading.replace(/^#{1,3}\s+/, "").replace(/\*\*/g, "").trim().slice(0, 120);
+  // First bold line "**Title**"
+  const bold = lines.find(l => /^\*\*[^*]+\*\*/.test(l));
+  if (bold) return bold.replace(/\*\*/g, "").replace(/[:.]+$/, "").trim().slice(0, 120);
+  // First short non-bullet line that looks title-ish
+  const titleish = lines.find(l => l.length <= 80 && !/^([-*•]|\d+[.)])\s+/.test(l) && /[A-Za-z]/.test(l));
+  return (titleish || "Saved Note").slice(0, 120);
+}
+
 function extractListName(input: string) {
   const match = input.trim().match(LIST_COMMAND_REGEX);
   if (match) return (match[1] || match[2] || "").trim();
