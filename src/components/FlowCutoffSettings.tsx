@@ -4,16 +4,21 @@ import { FlowCutoffs, loadCutoffs, saveCutoffs, DEFAULT_CUTOFFS, loadPhaseToggle
 
 export default function FlowCutoffSettings({ onClose }: { onClose: () => void }) {
   const [cutoffs, setCutoffs] = useState<FlowCutoffs>(() => loadCutoffs());
+  const [showPhaseToggle, setShowPhaseToggle] = useState<boolean>(() => loadPhaseToggleVisible());
 
   const update = (k: keyof FlowCutoffs, v: string) =>
     setCutoffs((prev) => ({ ...prev, [k]: v }));
 
   const handleSave = () => {
     saveCutoffs(cutoffs);
+    savePhaseToggleVisible(showPhaseToggle);
     onClose();
   };
 
-  const handleReset = () => setCutoffs({ ...DEFAULT_CUTOFFS });
+  const handleReset = () => {
+    setCutoffs({ ...DEFAULT_CUTOFFS });
+    setShowPhaseToggle(true);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
