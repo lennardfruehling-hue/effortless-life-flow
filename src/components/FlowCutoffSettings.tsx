@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, Clock } from "lucide-react";
-import { FlowCutoffs, loadCutoffs, saveCutoffs, DEFAULT_CUTOFFS } from "@/lib/flowSettings";
+import { FlowCutoffs, loadCutoffs, saveCutoffs, DEFAULT_CUTOFFS, loadPhaseToggleVisible, savePhaseToggleVisible } from "@/lib/flowSettings";
 
 export default function FlowCutoffSettings({ onClose }: { onClose: () => void }) {
   const [cutoffs, setCutoffs] = useState<FlowCutoffs>(() => loadCutoffs());
