@@ -198,6 +198,15 @@ export async function hydrateFromCloud(userId: string) {
       const serialized = JSON.stringify(merged);
       if (serialized !== localRaw) {
         safeSetItem(key, serialized);
+        // Notify in-tab listeners (e.g. LifePlanView) that a shared key
+        // was hydrated from cloud AFTER they mounted with defaults — without
+        // this, the next local edit would push defaults over the real value.
+        try {
+          window.dispatchEvent(new StorageEvent("storage", { key }));
+          if (key === CLOUD_KEYS.lifeplanV2) {
+            window.dispatchEvent(new Event("lifeplan-updated"));
+          }
+        } catch {}
       }
       const cloudSerialized = cloudVal === null || cloudVal === undefined ? null : JSON.stringify(cloudVal);
       if (cloudSerialized !== serialized) {
