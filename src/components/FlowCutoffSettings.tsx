@@ -1,19 +1,24 @@
 import { useState } from "react";
 import { X, Clock } from "lucide-react";
-import { FlowCutoffs, loadCutoffs, saveCutoffs, DEFAULT_CUTOFFS } from "@/lib/flowSettings";
+import { FlowCutoffs, loadCutoffs, saveCutoffs, DEFAULT_CUTOFFS, loadPhaseToggleVisible, savePhaseToggleVisible } from "@/lib/flowSettings";
 
 export default function FlowCutoffSettings({ onClose }: { onClose: () => void }) {
   const [cutoffs, setCutoffs] = useState<FlowCutoffs>(() => loadCutoffs());
+  const [showPhaseToggle, setShowPhaseToggle] = useState<boolean>(() => loadPhaseToggleVisible());
 
   const update = (k: keyof FlowCutoffs, v: string) =>
     setCutoffs((prev) => ({ ...prev, [k]: v }));
 
   const handleSave = () => {
     saveCutoffs(cutoffs);
+    savePhaseToggleVisible(showPhaseToggle);
     onClose();
   };
 
-  const handleReset = () => setCutoffs({ ...DEFAULT_CUTOFFS });
+  const handleReset = () => {
+    setCutoffs({ ...DEFAULT_CUTOFFS });
+    setShowPhaseToggle(true);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm p-4">
@@ -46,6 +51,21 @@ export default function FlowCutoffSettings({ onClose }: { onClose: () => void })
             <p className="text-[10px] text-muted-foreground mt-1">{row.hint}</p>
           </div>
         ))}
+
+        <label className="flex items-start gap-3 pt-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={showPhaseToggle}
+            onChange={(e) => setShowPhaseToggle(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-primary"
+          />
+          <span className="flex-1">
+            <span className="block text-sm text-foreground">Show Plan / Act / Review toggle in sidebar</span>
+            <span className="block text-[10px] text-muted-foreground mt-0.5">
+              Uncheck to hide the phase override pills under the Serpent List title.
+            </span>
+          </span>
+        </label>
 
         <div className="flex gap-3 pt-2">
           <button

@@ -49,3 +49,33 @@ export function onCutoffsChange(cb: (c: FlowCutoffs) => void): () => void {
     window.removeEventListener("storage", storage);
   };
 }
+
+// ---- Phase toggle visibility (Plan/Act/Review pills in the sidebar) ----
+const PHASE_TOGGLE_KEY = "serpent-phase-toggle-visible";
+const PHASE_TOGGLE_EVENT = "serpent-phase-toggle-visibility-changed";
+
+export function loadPhaseToggleVisible(): boolean {
+  try {
+    const raw = localStorage.getItem(PHASE_TOGGLE_KEY);
+    if (raw === null) return true;
+    return raw === "true";
+  } catch {
+    return true;
+  }
+}
+
+export function savePhaseToggleVisible(v: boolean) {
+  localStorage.setItem(PHASE_TOGGLE_KEY, String(v));
+  window.dispatchEvent(new CustomEvent(PHASE_TOGGLE_EVENT, { detail: v }));
+}
+
+export function onPhaseToggleVisibleChange(cb: (v: boolean) => void): () => void {
+  const handler = () => cb(loadPhaseToggleVisible());
+  window.addEventListener(PHASE_TOGGLE_EVENT, handler as EventListener);
+  const storage = (e: StorageEvent) => { if (e.key === PHASE_TOGGLE_KEY) cb(loadPhaseToggleVisible()); };
+  window.addEventListener("storage", storage);
+  return () => {
+    window.removeEventListener(PHASE_TOGGLE_EVENT, handler as EventListener);
+    window.removeEventListener("storage", storage);
+  };
+}
