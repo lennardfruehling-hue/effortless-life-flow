@@ -219,7 +219,10 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
     saveData(data);
   }, [data]);
 
-  // Reload when external sources (cloud sync, AI chat) update the Life Plan
+  // Reload when external sources (cloud sync, AI chat) update the Life Plan.
+  // The syncBridge now fires "lifeplan-updated" + a same-tab "storage" event
+  // after cloud hydrate writes the shared key, so we pick up the real value
+  // even if it landed AFTER this component mounted with the seeded defaults.
   useEffect(() => {
     const reload = () => {
       const fresh = loadData();
