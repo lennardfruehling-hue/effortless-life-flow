@@ -52,6 +52,21 @@ export default function FlowCutoffSettings({ onClose }: { onClose: () => void })
           </div>
         ))}
 
+        <label className="flex items-start gap-3 pt-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={showPhaseToggle}
+            onChange={(e) => setShowPhaseToggle(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-primary"
+          />
+          <span className="flex-1">
+            <span className="block text-sm text-foreground">Show Plan / Act / Review toggle in sidebar</span>
+            <span className="block text-[10px] text-muted-foreground mt-0.5">
+              Uncheck to hide the phase override pills under the Serpent List title.
+            </span>
+          </span>
+        </label>
+
         <div className="flex gap-3 pt-2">
           <button
             onClick={handleSave}
