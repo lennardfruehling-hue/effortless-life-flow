@@ -102,26 +102,28 @@ export default function Sidebar({
         <p className="hidden md:block text-[11px] text-white/80 mt-2 font-mono tracking-wide">
           {taskCount} open tasks
         </p>
-        <div className="mt-2 flex items-center gap-1">
-          {(["planning", "action", "review"] as const).map((p) => {
-            const isOn = phase === p;
-            const styles =
-              p === "planning" ? "bg-amber-500/25 border-amber-300/60 text-amber-50" :
-              p === "action"   ? "bg-orange-500/30 border-orange-300/70 text-orange-50" :
-                                 "bg-indigo-500/30 border-indigo-300/60 text-indigo-50";
-            const off = "bg-white/5 border-white/15 text-white/50 hover:text-white/80 hover:border-white/30";
-            return (
-              <button
-                key={p}
-                onClick={() => window.dispatchEvent(new CustomEvent("serpent-set-phase", { detail: isOn ? null : p }))}
-                title={`Force phase: ${phaseLabel(p)}${isOn ? " (click to clear)" : ""}`}
-                className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border transition ${isOn ? styles : off}`}
-              >
-                {p === "planning" ? "Plan" : p === "action" ? "Act" : "Review"}
-              </button>
-            );
-          })}
-        </div>
+        {phaseTogglesVisible && (
+          <div className="mt-2 flex items-center gap-1">
+            {(["planning", "action", "review"] as const).map((p) => {
+              const isOn = phase === p;
+              const styles =
+                p === "planning" ? "bg-amber-500/25 border-amber-300/60 text-amber-50" :
+                p === "action"   ? "bg-orange-500/30 border-orange-300/70 text-orange-50" :
+                                   "bg-indigo-500/30 border-indigo-300/60 text-indigo-50";
+              const off = "bg-white/5 border-white/15 text-white/50 hover:text-white/80 hover:border-white/30";
+              return (
+                <button
+                  key={p}
+                  onClick={() => window.dispatchEvent(new CustomEvent("serpent-set-phase", { detail: isOn ? null : p }))}
+                  title={`Force phase: ${phaseLabel(p)}${isOn ? " (click to clear)" : ""}`}
+                  className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border transition ${isOn ? styles : off}`}
+                >
+                  {p === "planning" ? "Plan" : p === "action" ? "Act" : "Review"}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <div className="flex-1" />
