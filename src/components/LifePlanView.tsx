@@ -207,10 +207,6 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
   const { members, byId } = useHouseholdMembers();
   const [data, setData] = useState<LifePlanData>(() => loadData() ?? getDefaultData());
   const hadStoredData = useRef<boolean>(loadData() !== null);
-  // True only once the user (or a cloud hydrate) has produced real data.
-  // Prevents the seeded defaults from being written back over a cloud value
-  // that hasn't finished hydrating into localStorage yet.
-  const userDirty = useRef<boolean>(loadData() !== null);
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const [newProjectName, setNewProjectName] = useState("");
   const [showArchive, setShowArchive] = useState(false);
@@ -218,21 +214,19 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
   const [pickerQuery, setPickerQuery] = useState("");
 
   useEffect(() => {
-    // Don't write defaults over a (possibly still-hydrating) cloud value.
+    // Don't write defaults over a (possibly still-hydrating) cloud value on first mount.
     if (!hadStoredData.current) { hadStoredData.current = true; return; }
-    if (!userDirty.current) return;
     saveData(data);
   }, [data]);
 
-  // Reload when external sources (cloud sync, AI chat) update the Life Plan
+  // Reload when external sources (cloud sync, AI chat) update the Life Plan.
+  // The syncBridge now fires "lifeplan-updated" + a same-tab "storage" event
+  // after cloud hydrate writes the shared key, so we pick up the real value
+  // even if it landed AFTER this component mounted with the seeded defaults.
   useEffect(() => {
     const reload = () => {
       const fresh = loadData();
-      if (fresh) {
-        hadStoredData.current = true;
-        userDirty.current = true;
-        setData(fresh);
-      }
+      if (fresh) { hadStoredData.current = true; setData(fresh); }
     };
     window.addEventListener("lifeplan-updated", reload);
     window.addEventListener("storage", reload);
