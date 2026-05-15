@@ -9,6 +9,7 @@ import serpentBg from "@/assets/serpent-sidebar.jpg";
 import serpentStrike from "@/assets/serpent-sidebar-strike.jpg";
 import serpentSleep from "@/assets/serpent-sidebar-sleep.jpg";
 import { loadFlowState, onFlowStateChange, phaseLabel, SerpentFlowDayState } from "@/lib/serpentFlowState";
+import { loadPhaseToggleVisible, onPhaseToggleVisibleChange } from "@/lib/flowSettings";
 
 const NAV_ITEMS: { mode: ViewMode; icon: typeof ListTodo; label: string }[] = [
   { mode: "tasks", icon: ListTodo, label: "Tasks" },
