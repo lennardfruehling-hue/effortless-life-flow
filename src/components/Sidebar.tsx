@@ -51,6 +51,8 @@ export default function Sidebar({
   }, []);
   const [flow, setFlow] = useState<SerpentFlowDayState>(loadFlowState);
   useEffect(() => onFlowStateChange(setFlow), []);
+  const [phaseTogglesVisible, setPhaseTogglesVisible] = useState<boolean>(loadPhaseToggleVisible);
+  useEffect(() => onPhaseToggleVisibleChange(setPhaseTogglesVisible), []);
   // Schedule-active forces "action" backdrop while open, otherwise follow the flow phase.
   const phase = scheduleActive ? "action" : flow.phase;
   const trioDone = (flow.startCompleted ? 1 : 0) + (flow.middayCompleted ? 1 : 0) + (flow.eveningCompleted ? 1 : 0);
