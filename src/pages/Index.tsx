@@ -145,7 +145,15 @@ export default function Index() {
             onClearProjectFilter={() => setTaskFilterProject(undefined)}
           />
         )}
-        {view === "research" && <ResearchTabs projects={allProjects} />}
+        {view === "research" && (
+          <ResearchTabs
+            projects={allProjects}
+            tasks={visibleTasks}
+            onSaveTasks={setVisibleTasks as any}
+            reminders={reminders}
+            onSaveReminders={setReminders}
+          />
+        )}
         {view === "lists" && <ListsView tasks={visibleTasks} onSaveTasks={setVisibleTasks} projects={allProjects} />}
         {view === "lifeplan" && <LifePlanView onNavigateToTasks={navigateToTasksForProject} tasks={visibleTasks} onSaveTasks={setVisibleTasks as any} />}
         {view === "calendar" && (
