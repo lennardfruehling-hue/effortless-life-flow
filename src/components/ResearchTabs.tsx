@@ -1,19 +1,29 @@
 import { useState } from "react";
-import { BookOpen, Mail, NotebookPen } from "lucide-react";
-import { Project } from "@/lib/types";
+import { BookOpen, Mail, NotebookPen, Car } from "lucide-react";
+import { Project, Task, Reminder } from "@/lib/types";
 import ResearchView from "./ResearchView";
 import GmailView from "./GmailView";
 import OneNoteView from "./OneNoteView";
+import CarMaintenanceView from "./CarMaintenanceView";
 
-type Sub = "notes" | "gmail" | "onenote";
+type Sub = "notes" | "car" | "gmail" | "onenote";
 
 const TABS: { id: Sub; label: string; icon: typeof BookOpen }[] = [
   { id: "notes", label: "Notes", icon: BookOpen },
+  { id: "car", label: "Car", icon: Car },
   { id: "gmail", label: "Gmail", icon: Mail },
   { id: "onenote", label: "OneNote", icon: NotebookPen },
 ];
 
-export default function ResearchTabs({ projects }: { projects: Project[] }) {
+interface Props {
+  projects: Project[];
+  tasks: Task[];
+  onSaveTasks: (t: Task[]) => void;
+  reminders: Reminder[];
+  onSaveReminders: (r: Reminder[]) => void;
+}
+
+export default function ResearchTabs({ projects, tasks, onSaveTasks, reminders, onSaveReminders }: Props) {
   const [sub, setSub] = useState<Sub>("notes");
 
   return (
@@ -37,6 +47,14 @@ export default function ResearchTabs({ projects }: { projects: Project[] }) {
 
       <div className="flex-1 overflow-hidden">
         {sub === "notes" && <ResearchView projects={projects} />}
+        {sub === "car" && (
+          <CarMaintenanceView
+            tasks={tasks}
+            onSaveTasks={onSaveTasks}
+            reminders={reminders}
+            onSaveReminders={onSaveReminders}
+          />
+        )}
         {sub === "gmail" && <GmailView />}
         {sub === "onenote" && <OneNoteView />}
       </div>
