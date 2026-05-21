@@ -11,6 +11,7 @@ export const CLOUD_KEYS = {
   calendarEvents: "serpent-calendar-events",
   dailySchedule: "serpent-daily-schedule",
   weeklyStructure: "serpent-weekly-structure",
+  cars: "serpent-cars",
 } as const;
 
 /**
