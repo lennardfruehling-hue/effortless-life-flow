@@ -311,6 +311,21 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
           )}
         </div>
 
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsBabyRelated((v) => !v)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono border transition-colors ${
+              isBabyRelated
+                ? "bg-pink-500/20 text-pink-400 border-pink-500/30"
+                : "text-muted-foreground border-border hover:border-primary/20"
+            }`}
+          >
+            <Baby size={14} />
+            {isBabyRelated ? "Baby task" : "Mark as baby task"}
+          </button>
+        </div>
+
         {lists.length > 0 && (
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Linked list (optional)</label>
