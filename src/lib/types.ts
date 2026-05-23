@@ -58,6 +58,8 @@ export interface Task {
   /** User id of the household member who created this task. Used for visibility:
    * a task is visible to its creator and to any assignees only. */
   createdBy?: string;
+  /** Mark task as baby-related — surfaces a baby icon on the card. */
+  isBabyRelated?: boolean;
 }
 
 export interface Project {

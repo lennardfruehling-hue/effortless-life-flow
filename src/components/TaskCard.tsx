@@ -1,6 +1,6 @@
 import { Task } from "@/lib/types";
 import { CategoryBadge } from "./CategoryBadge";
-import { Check, Pencil, Trash2, MapPin, Calendar, Sparkles, Repeat } from "lucide-react";
+import { Check, Pencil, Trash2, MapPin, Calendar, Sparkles, Repeat, Baby } from "lucide-react";
 import { pridePointsForTask } from "@/lib/pride";
 import { motion } from "framer-motion";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
@@ -82,6 +82,11 @@ export default function TaskCard({ task, onToggle, onEdit, onDelete }: TaskCardP
           {task.makesProud && (
             <span className="inline-flex items-center gap-0.5 text-[10px] text-cat-h font-mono" title={`+${pridePointsForTask({ ...task, completed: true })} pride`}>
               <Sparkles size={10} /> +{pridePointsForTask({ ...task, completed: true })}
+            </span>
+          )}
+          {task.isBabyRelated && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-pink-400 font-mono" title="Baby-related task">
+              <Baby size={10} /> baby
             </span>
           )}
           <span className="text-[10px] text-muted-foreground font-mono ml-auto">

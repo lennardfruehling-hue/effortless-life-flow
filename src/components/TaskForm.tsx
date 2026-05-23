@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project } from "@/lib/types";
 import { CategoryBadgeFull } from "./CategoryBadge";
 import { v4 as uuid } from "uuid";
-import { X, Sparkles } from "lucide-react";
+import { X, Sparkles, Baby } from "lucide-react";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import AssigneePicker from "./AssigneePicker";
 import MultiAssigneePicker from "./MultiAssigneePicker";
@@ -52,6 +52,7 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
   const [linkedListId, setLinkedListId] = useState<string>(editTask?.linkedListId ?? "");
   const [lists, setLists] = useState<{ id: string; name: string }[]>([]);
   const { members } = useHouseholdMembers();
+  const [isBabyRelated, setIsBabyRelated] = useState<boolean>(editTask?.isBabyRelated ?? false);
 
   useEffect(() => {
     supabase.from("task_lists").select("id,name").order("updated_at", { ascending: false }).then(({ data }) => {
@@ -95,6 +96,7 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
       recurrence: recurrence === "none" ? undefined : recurrence,
       linkedListId: linkedListId || undefined,
       createdBy,
+      isBabyRelated,
     };
     onSubmit(task);
   };
@@ -307,6 +309,21 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
           {recurrence !== "none" && (
             <p className="text-[11px] text-muted-foreground mt-1">Auto-resets every {recurrence === "daily" ? "day" : "week"} and feeds your consistency streak.</p>
           )}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsBabyRelated((v) => !v)}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-mono border transition-colors ${
+              isBabyRelated
+                ? "bg-pink-500/20 text-pink-400 border-pink-500/30"
+                : "text-muted-foreground border-border hover:border-primary/20"
+            }`}
+          >
+            <Baby size={14} />
+            {isBabyRelated ? "Baby task" : "Mark as baby task"}
+          </button>
         </div>
 
         {lists.length > 0 && (
