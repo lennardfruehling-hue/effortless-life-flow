@@ -19,6 +19,7 @@ function suppressPush(key: string, ms = 3000) {
 }
 
 function pushDebounced(userId: string, key: string, raw: string | null) {
+  pendingValue[key] = raw;
   if (debounceTimers[key]) window.clearTimeout(debounceTimers[key]);
   debounceTimers[key] = window.setTimeout(async () => {
     // Drop pushes that are echoes of a value we just hydrated from cloud.
@@ -26,6 +27,7 @@ function pushDebounced(userId: string, key: string, raw: string | null) {
       const hash = raw ?? "null";
       if (lastPushedHash[key] === hash) {
         delete debounceTimers[key];
+        delete pendingValue[key];
         return;
       }
     }
@@ -42,9 +44,40 @@ function pushDebounced(userId: string, key: string, raw: string | null) {
       await cloudSet(userId, key, value);
     } finally {
       delete debounceTimers[key];
+      delete pendingValue[key];
     }
   }, 500) as unknown as number;
 }
+
+/** Fire-and-forget flush of every queued debounced push. Used on pagehide / visibility change. */
+function flushAllPending() {
+  if (!activeUserId) return;
+  const userId = activeUserId;
+  for (const key of Object.keys(debounceTimers)) {
+    window.clearTimeout(debounceTimers[key]);
+    delete debounceTimers[key];
+    const raw = pendingValue[key] ?? localStorage.getItem(key);
+    delete pendingValue[key];
+    let value: any = null;
+    if (raw !== null) {
+      try { value = JSON.parse(raw); } catch { value = raw; }
+    }
+    lastPushedHash[key] = raw ?? "null";
+    // Don't await — pagehide doesn't give us time. The browser will keep the
+    // fetch alive long enough for a single POST in practice.
+    void cloudSet(userId, key, value);
+  }
+}
+
+if (typeof window !== "undefined") {
+  const flush = () => { try { flushAllPending(); } catch {} };
+  window.addEventListener("pagehide", flush);
+  window.addEventListener("beforeunload", flush);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flush();
+  });
+}
+
 
 function patchLocalStorage() {
   if (patched) return;
