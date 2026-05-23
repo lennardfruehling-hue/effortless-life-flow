@@ -84,6 +84,11 @@ export default function TaskCard({ task, onToggle, onEdit, onDelete }: TaskCardP
               <Sparkles size={10} /> +{pridePointsForTask({ ...task, completed: true })}
             </span>
           )}
+          {task.isBabyRelated && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] text-pink-400 font-mono" title="Baby-related task">
+              <Baby size={10} /> baby
+            </span>
+          )}
           <span className="text-[10px] text-muted-foreground font-mono ml-auto">
             ×{task.categories.length}
           </span>

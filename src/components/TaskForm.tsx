@@ -52,6 +52,7 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
   const [linkedListId, setLinkedListId] = useState<string>(editTask?.linkedListId ?? "");
   const [lists, setLists] = useState<{ id: string; name: string }[]>([]);
   const { members } = useHouseholdMembers();
+  const [isBabyRelated, setIsBabyRelated] = useState<boolean>(editTask?.isBabyRelated ?? false);
 
   useEffect(() => {
     supabase.from("task_lists").select("id,name").order("updated_at", { ascending: false }).then(({ data }) => {
@@ -95,6 +96,7 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
       recurrence: recurrence === "none" ? undefined : recurrence,
       linkedListId: linkedListId || undefined,
       createdBy,
+      isBabyRelated,
     };
     onSubmit(task);
   };
