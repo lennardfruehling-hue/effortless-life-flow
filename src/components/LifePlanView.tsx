@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, ChevronDown, ChevronRight, Calendar, ExternalLink, Archive, ArchiveRestore, X, Search } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Calendar, ExternalLink, Archive, ArchiveRestore, X, Search, Send } from "lucide-react";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { AssigneeAvatar } from "./AssigneePicker";
 import MultiAssigneePicker from "./MultiAssigneePicker";
 import GanttChart from "./GanttChart";
-import { Task } from "@/lib/types";
+import TaskForm from "./TaskForm";
+import { Task, Project } from "@/lib/types";
+import { v4 as uuidv4 } from "uuid";
+
 
 interface PlanningItem {
   id: string;
