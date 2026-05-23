@@ -208,7 +208,7 @@ function GanttBar({ project, globalStart, globalEnd }: { project: ProjectGroup; 
   );
 }
 
-export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTasks }: LifePlanViewProps) {
+export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTasks, projects = [] }: LifePlanViewProps) {
   const { members, byId } = useHouseholdMembers();
   const [data, setData] = useState<LifePlanData>(() => loadData() ?? getDefaultData());
   const hadStoredData = useRef<boolean>(loadData() !== null);
@@ -217,6 +217,8 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
   const [showArchive, setShowArchive] = useState(false);
   const [pickerProjectId, setPickerProjectId] = useState<string | null>(null);
   const [pickerQuery, setPickerQuery] = useState("");
+  const [pushDraft, setPushDraft] = useState<{ projectId: string; subtaskId: string; task: Task } | null>(null);
+
 
   useEffect(() => {
     // Don't write defaults over a (possibly still-hydrating) cloud value on first mount.
