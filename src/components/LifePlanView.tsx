@@ -735,6 +735,18 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
           className="w-full bg-card border border-border rounded-lg p-4 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary resize-none scrollbar-thin leading-relaxed"
         />
       </section>
+
+      {/* Push-to-tasks: regular new-task dialog pre-filled from the Life Plan subtask */}
+      {pushDraft && (
+        <TaskForm
+          projects={projects}
+          tasks={tasks}
+          editTask={pushDraft.task}
+          onSubmit={handlePushSubmit}
+          onClose={() => setPushDraft(null)}
+        />
+      )}
+
       {/* Saved-tasks picker modal */}
       {pickerProjectId && (() => {
         const proj = data.projects.find((p) => p.id === pickerProjectId);
