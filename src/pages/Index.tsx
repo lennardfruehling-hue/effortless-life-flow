@@ -155,7 +155,7 @@ export default function Index() {
           />
         )}
         {view === "lists" && <ListsView tasks={visibleTasks} onSaveTasks={setVisibleTasks} projects={allProjects} />}
-        {view === "lifeplan" && <LifePlanView onNavigateToTasks={navigateToTasksForProject} tasks={visibleTasks} onSaveTasks={setVisibleTasks as any} />}
+        {view === "lifeplan" && <LifePlanView onNavigateToTasks={navigateToTasksForProject} tasks={visibleTasks} onSaveTasks={setVisibleTasks as any} projects={allProjects} />}
         {view === "calendar" && (
           <CalendarView
             events={calendarEvents}
