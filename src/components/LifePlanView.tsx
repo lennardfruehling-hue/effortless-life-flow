@@ -606,6 +606,18 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
                             <Calendar size={10} className={isOverdue ? "text-destructive" : "text-muted-foreground"} />
                             <input type="date" value={task.deadline} onChange={(e) => updateTask(project.id, task.id, "deadline", e.target.value)} className={`bg-transparent text-xs font-mono focus:outline-none w-28 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`} />
                           </div>
+                          {onSaveTasks && !task.linkedTaskId && (
+                            <button
+                              onClick={() => openPushDialog(project.id, task)}
+                              className="text-muted-foreground hover:text-primary flex-shrink-0"
+                              title="Push to tasks — opens the new-task dialog"
+                            >
+                              <Send size={12} />
+                            </button>
+                          )}
+                          {task.linkedTaskId && (
+                            <span className="text-[10px] text-primary/70 font-mono flex-shrink-0" title="Already pushed as a task">↗</span>
+                          )}
                           <button onClick={() => deleteTask(project.id, task.id)} className="text-muted-foreground hover:text-destructive flex-shrink-0"><Trash2 size={12} /></button>
                         </div>
                       );
