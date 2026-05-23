@@ -1,10 +1,13 @@
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, ChevronDown, ChevronRight, Calendar, ExternalLink, Archive, ArchiveRestore, X, Search } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronRight, Calendar, ExternalLink, Archive, ArchiveRestore, X, Search, Send } from "lucide-react";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { AssigneeAvatar } from "./AssigneePicker";
 import MultiAssigneePicker from "./MultiAssigneePicker";
 import GanttChart from "./GanttChart";
-import { Task } from "@/lib/types";
+import TaskForm from "./TaskForm";
+import { Task, Project } from "@/lib/types";
+import { v4 as uuidv4 } from "uuid";
+
 
 interface PlanningItem {
   id: string;
@@ -46,7 +49,9 @@ interface LifePlanViewProps {
   onNavigateToTasks?: (projectId: string) => void;
   tasks?: Task[];
   onSaveTasks?: (tasks: Task[]) => void;
+  projects?: Project[];
 }
+
 
 const STORAGE_KEY = "serpent-lifeplan-v2";
 
@@ -203,7 +208,7 @@ function GanttBar({ project, globalStart, globalEnd }: { project: ProjectGroup; 
   );
 }
 
-export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTasks }: LifePlanViewProps) {
+export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTasks, projects = [] }: LifePlanViewProps) {
   const { members, byId } = useHouseholdMembers();
   const [data, setData] = useState<LifePlanData>(() => loadData() ?? getDefaultData());
   const hadStoredData = useRef<boolean>(loadData() !== null);
@@ -212,6 +217,8 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
   const [showArchive, setShowArchive] = useState(false);
   const [pickerProjectId, setPickerProjectId] = useState<string | null>(null);
   const [pickerQuery, setPickerQuery] = useState("");
+  const [pushDraft, setPushDraft] = useState<{ projectId: string; subtaskId: string; task: Task } | null>(null);
+
 
   useEffect(() => {
     // Don't write defaults over a (possibly still-hydrating) cloud value on first mount.
@@ -368,6 +375,50 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
       ),
     }));
   };
+
+  /** Open the regular task dialog pre-filled with this subtask so the user can configure + push it. */
+  const openPushDialog = (projectId: string, sub: ProjectTask) => {
+    const proj = data.projects.find((p) => p.id === projectId);
+    const draft: Task = {
+      id: uuidv4(),
+      title: sub.task || proj?.name || "",
+      description: proj ? `From Life Plan project: ${proj.name}` : undefined,
+      categories: ["J"],
+      completed: !!sub.done,
+      createdAt: new Date().toISOString(),
+      projectId: `lp-${projectId}`,
+      dueDate: sub.deadline || undefined,
+      assigneeId: sub.assigneeId ?? null,
+      assigneeIds:
+        sub.assigneeIds && sub.assigneeIds.length > 0
+          ? sub.assigneeIds
+          : sub.assigneeId
+            ? [sub.assigneeId]
+            : undefined,
+    };
+    setPushDraft({ projectId, subtaskId: sub.id, task: draft });
+  };
+
+  const handlePushSubmit = (task: Task) => {
+    if (!pushDraft || !onSaveTasks) { setPushDraft(null); return; }
+    onSaveTasks([...tasks, task]);
+    // Link the subtask back to the newly created task so completion can sync.
+    setData((d) => ({
+      ...d,
+      projects: d.projects.map((p) =>
+        p.id === pushDraft.projectId
+          ? {
+              ...p,
+              tasks: p.tasks.map((t) =>
+                t.id === pushDraft.subtaskId ? { ...t, linkedTaskId: task.id } : t
+              ),
+            }
+          : p
+      ),
+    }));
+    setPushDraft(null);
+  };
+
 
   const activeProjects = data.projects.filter((p) => !p.archived);
   const archivedProjects = data.projects.filter((p) => p.archived);
@@ -555,6 +606,18 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
                             <Calendar size={10} className={isOverdue ? "text-destructive" : "text-muted-foreground"} />
                             <input type="date" value={task.deadline} onChange={(e) => updateTask(project.id, task.id, "deadline", e.target.value)} className={`bg-transparent text-xs font-mono focus:outline-none w-28 ${isOverdue ? "text-destructive" : "text-muted-foreground"}`} />
                           </div>
+                          {onSaveTasks && !task.linkedTaskId && (
+                            <button
+                              onClick={() => openPushDialog(project.id, task)}
+                              className="text-muted-foreground hover:text-primary flex-shrink-0"
+                              title="Push to tasks — opens the new-task dialog"
+                            >
+                              <Send size={12} />
+                            </button>
+                          )}
+                          {task.linkedTaskId && (
+                            <span className="text-[10px] text-primary/70 font-mono flex-shrink-0" title="Already pushed as a task">↗</span>
+                          )}
                           <button onClick={() => deleteTask(project.id, task.id)} className="text-muted-foreground hover:text-destructive flex-shrink-0"><Trash2 size={12} /></button>
                         </div>
                       );
@@ -672,6 +735,18 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
           className="w-full bg-card border border-border rounded-lg p-4 text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary resize-none scrollbar-thin leading-relaxed"
         />
       </section>
+
+      {/* Push-to-tasks: regular new-task dialog pre-filled from the Life Plan subtask */}
+      {pushDraft && (
+        <TaskForm
+          projects={projects}
+          tasks={tasks}
+          editTask={pushDraft.task}
+          onSubmit={handlePushSubmit}
+          onClose={() => setPushDraft(null)}
+        />
+      )}
+
       {/* Saved-tasks picker modal */}
       {pickerProjectId && (() => {
         const proj = data.projects.find((p) => p.id === pickerProjectId);
