@@ -3,12 +3,15 @@ import { CLOUD_KEYS, cloudGet, cloudGetShared, cloudSet, isPersonalKey } from ".
 
 const KEYS = Object.values(CLOUD_KEYS);
 const debounceTimers: Record<string, number> = {};
+/** Pending raw value per key so we can flush synchronously on pagehide. */
+const pendingValue: Record<string, string | null> = {};
 const suppressUntil: Record<string, number> = {};
 const lastPushedHash: Record<string, string> = {};
 let patched = false;
 let activeUserId: string | null = null;
 /** Keys that were modified locally before sync was active — flush them once a user is set. */
 const pendingKeys = new Set<string>();
+
 
 // Mark a key as "just received from cloud" so we don't immediately echo it back.
 function suppressPush(key: string, ms = 3000) {
