@@ -49,7 +49,9 @@ interface LifePlanViewProps {
   onNavigateToTasks?: (projectId: string) => void;
   tasks?: Task[];
   onSaveTasks?: (tasks: Task[]) => void;
+  projects?: Project[];
 }
+
 
 const STORAGE_KEY = "serpent-lifeplan-v2";
 
