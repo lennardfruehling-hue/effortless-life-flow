@@ -376,6 +376,50 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
     }));
   };
 
+  /** Open the regular task dialog pre-filled with this subtask so the user can configure + push it. */
+  const openPushDialog = (projectId: string, sub: ProjectTask) => {
+    const proj = data.projects.find((p) => p.id === projectId);
+    const draft: Task = {
+      id: uuidv4(),
+      title: sub.task || proj?.name || "",
+      description: proj ? `From Life Plan project: ${proj.name}` : undefined,
+      categories: ["J"],
+      completed: !!sub.done,
+      createdAt: new Date().toISOString(),
+      projectId: `lp-${projectId}`,
+      dueDate: sub.deadline || undefined,
+      assigneeId: sub.assigneeId ?? null,
+      assigneeIds:
+        sub.assigneeIds && sub.assigneeIds.length > 0
+          ? sub.assigneeIds
+          : sub.assigneeId
+            ? [sub.assigneeId]
+            : undefined,
+    };
+    setPushDraft({ projectId, subtaskId: sub.id, task: draft });
+  };
+
+  const handlePushSubmit = (task: Task) => {
+    if (!pushDraft || !onSaveTasks) { setPushDraft(null); return; }
+    onSaveTasks([...tasks, task]);
+    // Link the subtask back to the newly created task so completion can sync.
+    setData((d) => ({
+      ...d,
+      projects: d.projects.map((p) =>
+        p.id === pushDraft.projectId
+          ? {
+              ...p,
+              tasks: p.tasks.map((t) =>
+                t.id === pushDraft.subtaskId ? { ...t, linkedTaskId: task.id } : t
+              ),
+            }
+          : p
+      ),
+    }));
+    setPushDraft(null);
+  };
+
+
   const activeProjects = data.projects.filter((p) => !p.archived);
   const archivedProjects = data.projects.filter((p) => p.archived);
 
