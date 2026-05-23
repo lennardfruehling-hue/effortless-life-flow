@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project } from "@/lib/types";
 import { CategoryBadgeFull } from "./CategoryBadge";
 import { v4 as uuid } from "uuid";
-import { X, Sparkles } from "lucide-react";
+import { X, Sparkles, Baby } from "lucide-react";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import AssigneePicker from "./AssigneePicker";
 import MultiAssigneePicker from "./MultiAssigneePicker";
