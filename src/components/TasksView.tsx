@@ -205,6 +205,9 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
           <p className="text-xs text-muted-foreground mt-1">{CATEGORY_META[filterCat].description}</p>
         </div>
       )}
+      {/* Serpent prioritised daily list */}
+      <SerpentDailyList tasks={tasks} onToggle={handleToggle} />
+
 
       {/* Daily / Weekly recurring groups */}
       {(dailyTasks.length > 0 || weeklyTasks.length > 0) && (
