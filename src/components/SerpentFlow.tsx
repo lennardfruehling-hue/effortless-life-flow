@@ -613,6 +613,57 @@ function FlowTrioDock({
         </div>
       )}
 
+      {/* Notifications summary row: tasks/notes assigned to me */}
+      {hasNotifs && (
+        <button
+          onClick={() => setShowNotifs(s => !s)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-1.5 border-b border-white/10 text-xs font-medium text-indigo-100"
+          title="Open notifications"
+        >
+          <span className="flex items-center gap-1.5">
+            <UserPlus size={13} className="text-indigo-200" />
+            {notifCount} new {notifCount === 1 ? "assignment" : "assignments"}
+          </span>
+          <ChevronUp size={12} className={`transition-transform ${showNotifs ? "rotate-180" : ""}`} />
+        </button>
+      )}
+
+      {/* Notifications panel */}
+      {hasNotifs && showNotifs && (
+        <div className="px-3 py-2 border-b border-white/10 max-h-64 overflow-y-auto scrollbar-thin space-y-1 min-w-[300px]">
+          <div className="flex items-center justify-between px-1 pb-1">
+            <span className="text-[9px] uppercase tracking-wider font-mono text-white/60">Assigned to you</span>
+            <button
+              onClick={dismissAll}
+              className="text-[10px] text-white/60 hover:text-white underline-offset-2 hover:underline"
+              title="Dismiss all"
+            >
+              Clear all
+            </button>
+          </div>
+          {notifications.map(n => {
+            const Icon = n.kind === "task" ? ListTodo : FileText;
+            return (
+              <div key={n.id} className="flex items-start gap-2 px-2 py-1.5 rounded text-xs bg-indigo-500/15 group">
+                <Icon size={12} className="text-indigo-200 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="truncate font-medium text-white">{n.label}</div>
+                  {n.detail && <div className="text-[10px] text-white/70 truncate">{n.detail}</div>}
+                </div>
+                <span className="text-[9px] uppercase tracking-wider font-mono text-white/60">{n.kind}</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); dismiss(n.id); }}
+                  className="text-white/40 hover:text-white transition opacity-60 group-hover:opacity-100"
+                  title="Dismiss"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Main row: flow trio + reset + collapse */}
       <div className="flex items-end gap-4 px-4 py-2">
         {trio.map(({ kind, img, label, done }) => (
