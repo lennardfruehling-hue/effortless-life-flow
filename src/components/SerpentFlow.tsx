@@ -549,16 +549,24 @@ function FlowTrioDock({
 
   if (collapsed) {
     const doneCount = trio.filter(t => t.done).length;
+    const pillLabel = alarmActive
+      ? `${alertCount} alert${alertCount === 1 ? "" : "s"}`
+      : hasNotifs
+      ? `${notifCount} new`
+      : `Flow ${doneCount}/3`;
+    const pillIcon = alarmActive
+      ? <Bell size={14} className="text-red-200" />
+      : hasNotifs
+      ? <UserPlus size={14} className="text-indigo-200" />
+      : <span>🐍</span>;
     return (
       <button
         onClick={() => setCollapsed(false)}
-        title={alarmActive ? `${alertCount} alert${alertCount === 1 ? "" : "s"}` : "Show alarm center"}
-        className={`fixed bottom-0 left-1/2 -translate-x-1/2 z-40 px-4 py-1 rounded-t-lg backdrop-blur border border-b-0 shadow-lg flex items-center gap-2 hover:opacity-90 transition ${dockTone} ${hasOverdue ? "animate-pulse" : ""}`}
+        title={alarmActive ? `${alertCount} alert${alertCount === 1 ? "" : "s"}` : hasNotifs ? `${notifCount} new assignment${notifCount === 1 ? "" : "s"}` : "Show command center"}
+        className={`fixed bottom-0 left-1/2 -translate-x-1/2 z-40 px-4 py-1 rounded-t-lg backdrop-blur border border-b-0 shadow-lg flex items-center gap-2 hover:opacity-90 transition ${dockTone} ${hasOverdue || hasNotifs ? "animate-pulse" : ""}`}
       >
-        {alarmActive ? <Bell size={14} className="text-red-200" /> : <span>🐍</span>}
-        <span className="text-xs font-mono uppercase tracking-wider">
-          {alarmActive ? `${alertCount} alert${alertCount === 1 ? "" : "s"}` : `Flow ${doneCount}/3`}
-        </span>
+        {pillIcon}
+        <span className="text-xs font-mono uppercase tracking-wider">{pillLabel}</span>
         <ChevronUp size={14} />
       </button>
     );
