@@ -519,11 +519,32 @@ function FlowTrioDock({
     lastAlarmIdsRef.current = currentIds;
   }, [alerts]);
 
+  // Surface new assignment notifications with a soft chime
+  useEffect(() => {
+    const currentIds = new Set(notifications.map(n => n.id));
+    const lastIds = lastNotifIdsRef.current;
+    let hasNew = false;
+    for (const id of currentIds) if (!lastIds.has(id)) { hasNew = true; break; }
+    if (hasNew && currentIds.size > 0 && lastIds.size > 0) {
+      playAlertChime(audioRef);
+      try {
+        if ("Notification" in window && Notification.permission === "granted") {
+          const sample = notifications[0];
+          if (sample) new Notification(sample.kind === "task" ? "📋 Task assigned to you" : "📝 Note shared with you", { body: sample.label, tag: sample.id });
+        }
+      } catch {}
+    }
+    lastNotifIdsRef.current = currentIds;
+  }, [notifications]);
+
   const alertCount = alerts.length;
   const alarmActive = alertCount > 0;
+  const hasNotifs = notifCount > 0;
   // Faded red palette when alarming, default sidebar otherwise
   const dockTone = alarmActive
     ? "bg-red-950/70 border-red-400/40 text-red-50"
+    : hasNotifs
+    ? "bg-indigo-950/70 border-indigo-400/40 text-indigo-50"
     : "bg-sidebar/85 border-amber-300/30 text-white";
 
   if (collapsed) {
