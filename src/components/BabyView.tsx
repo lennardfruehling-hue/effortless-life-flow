@@ -1200,7 +1200,7 @@ function FoodSmart({
     return c;
   }, [entries]);
 
-  const logEntries = entries.filter(e => e.date && !e.dayOfWeek === false || (e.dayOfWeek === undefined && e.date));
+  const logEntries = entries.filter(e => e.date && e.dayOfWeek === undefined);
   const addLog = (title: string, mealType: MealType) => {
     onChange([{ id: uuid(), title, mealType, date: format(new Date(), "yyyy-MM-dd"), time: format(new Date(), "HH:mm") }, ...entries]);
   };
