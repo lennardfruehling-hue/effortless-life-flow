@@ -3,6 +3,7 @@ import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project, DailyScheduleSl
 import TaskCard from "@/components/TaskCard";
 import TaskForm from "@/components/TaskForm";
 import CalendarScheduleDay from "@/components/CalendarScheduleDay";
+import SerpentDailyList from "@/components/SerpentDailyList";
 import { CategoryBadgeFull } from "@/components/CategoryBadge";
 import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
@@ -204,6 +205,9 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
           <p className="text-xs text-muted-foreground mt-1">{CATEGORY_META[filterCat].description}</p>
         </div>
       )}
+      {/* Serpent prioritised daily list */}
+      <SerpentDailyList tasks={tasks} onToggle={handleToggle} />
+
 
       {/* Daily / Weekly recurring groups */}
       {(dailyTasks.length > 0 || weeklyTasks.length > 0) && (
