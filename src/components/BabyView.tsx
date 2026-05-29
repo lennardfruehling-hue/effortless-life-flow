@@ -14,6 +14,11 @@ import {
 
 // ---------------- Data shape ----------------
 
+export type Sentiment = "positive" | "negative" | "neutral";
+export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
+export type Language = "german" | "english" | "spanish";
+export type ActivityKind = "play" | "language" | "music" | "motor" | "cognitive" | "social" | "creative";
+
 interface BabyEntry {
   id: string;
   title: string;
@@ -30,6 +35,19 @@ interface BabyEntry {
   filePath?: string;
   fileName?: string;
   fileType?: string;
+  // smart fields
+  sentiment?: Sentiment;
+  mealType?: MealType;
+  dayOfWeek?: number;
+  nutrition?: string[];
+  calories?: number;
+  language?: Language;
+  activityKind?: ActivityKind;
+  durationMin?: number;
+  vaccineKey?: string;
+  administered?: boolean;
+  doctor?: string;
+  location?: string;
 }
 
 type SectionId =
@@ -37,6 +55,7 @@ type SectionId =
   | "play" | "toys" | "food" | "documents" | "education";
 
 interface BabyData {
+  birthDate?: string;
   vaccines: BabyEntry[];
   appointments: BabyEntry[];
   milestones: BabyEntry[];
@@ -52,6 +71,52 @@ interface BabyData {
 const DEFAULT_DATA: BabyData = {
   vaccines: [], appointments: [], milestones: [], health: [], growth: [],
   play: [], toys: { listId: null }, food: [], documents: [], education: [],
+};
+
+// ---------------- Reference data ----------------
+
+/** WHO/EU-style core schedule (months from birth). Editable list. */
+const VACCINE_SCHEDULE: { key: string; name: string; ageMonths: number; notes?: string }[] = [
+  { key: "hepB-birth", name: "Hepatitis B (birth dose)", ageMonths: 0 },
+  { key: "6in1-2m", name: "6-in-1 (DTaP-IPV-Hib-HepB) #1", ageMonths: 2 },
+  { key: "pcv-2m", name: "Pneumococcal (PCV) #1", ageMonths: 2 },
+  { key: "rota-2m", name: "Rotavirus #1", ageMonths: 2 },
+  { key: "menB-2m", name: "Meningococcal B #1", ageMonths: 2 },
+  { key: "6in1-4m", name: "6-in-1 #2", ageMonths: 4 },
+  { key: "rota-4m", name: "Rotavirus #2", ageMonths: 4 },
+  { key: "menB-4m", name: "Meningococcal B #2", ageMonths: 4 },
+  { key: "6in1-6m", name: "6-in-1 #3", ageMonths: 6 },
+  { key: "pcv-6m", name: "Pneumococcal (PCV) #2", ageMonths: 6 },
+  { key: "menC-12m", name: "Meningococcal C", ageMonths: 12 },
+  { key: "mmr-12m", name: "MMR #1", ageMonths: 12 },
+  { key: "hib-13m", name: "Hib/MenC booster", ageMonths: 13 },
+  { key: "pcv-13m", name: "PCV booster", ageMonths: 13 },
+  { key: "menB-13m", name: "Meningococcal B booster", ageMonths: 13 },
+  { key: "mmr-3y", name: "MMR #2", ageMonths: 36 },
+  { key: "4in1-3y", name: "4-in-1 pre-school booster", ageMonths: 40 },
+  { key: "hpv-12y", name: "HPV", ageMonths: 144 },
+  { key: "tdap-14y", name: "Tdap/IPV teen booster", ageMonths: 168 },
+];
+
+const NUTRITION_TAGS = ["protein", "iron", "dairy", "veg", "fruit", "grain", "omega-3", "calcium", "fibre"];
+
+/** Recommended growth cadence given baby age in months. */
+function growthCadence(ageMonths: number): { label: string; days: number } {
+  if (ageMonths < 6) return { label: "Weekly", days: 7 };
+  if (ageMonths < 12) return { label: "Bi-weekly", days: 14 };
+  if (ageMonths < 72) return { label: "Monthly", days: 30 };
+  return { label: "Yearly", days: 365 };
+}
+
+function ageInMonths(birth: string | undefined, at: Date = new Date()): number | null {
+  if (!birth) return null;
+  const b = parseISO(birth);
+  return (at.getFullYear() - b.getFullYear()) * 12 + (at.getMonth() - b.getMonth());
+}
+
+const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MEAL_LABELS: Record<MealType, string> = {
+  breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snack",
 };
 
 interface SectionDef {
