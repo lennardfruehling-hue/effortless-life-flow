@@ -5,11 +5,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Task, Project, ResearchNoteRow, TaskList } from "@/lib/types";
 import { v4 as uuid } from "uuid";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, addDays, differenceInDays } from "date-fns";
 import {
   Baby, Syringe, CalendarClock, Star, Heart, Ruler, ToyBrick,
   Gift, UtensilsCrossed, FileText, GraduationCap, Plus, Trash2,
   Link2, Upload, X, CheckSquare, Square, ExternalLink,
+  Smile, Frown, Meh, Cake, Languages, Activity, AlertCircle, Clock,
 } from "lucide-react";
 
 // ---------------- Data shape ----------------
