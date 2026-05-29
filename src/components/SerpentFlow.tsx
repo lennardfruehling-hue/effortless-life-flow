@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronRight, ChevronDown, ChevronUp, Bell, AlertTriangle, Clock, Compass } from "lucide-react";
+import { X, ChevronRight, ChevronDown, ChevronUp, Bell, AlertTriangle, Clock, Compass, UserPlus, FileText, ListTodo } from "lucide-react";
+import { useAssignmentNotifications } from "@/hooks/useAssignmentNotifications";
 import {
   loadFlowState,
   saveFlowState,
