@@ -278,13 +278,68 @@ export default function BabyView({ projects, tasks, onSaveTasks }: Props) {
 
       {/* Main panel */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-6 py-6 space-y-5">
+        <div className="max-w-5xl mx-auto px-6 py-6 space-y-5">
+          <BirthDateHeader
+            birthDate={safe.birthDate}
+            onChange={(birthDate) => setData({ ...safe, birthDate })}
+          />
+
           <div className="flex items-center gap-2">
             <sectionDef.icon size={22} className="text-primary" />
             <h1 className="text-2xl font-bold">{sectionDef.label}</h1>
           </div>
 
-          {sectionDef.list ? (
+          {active === "vaccines" && (
+            <VaccinesSmart
+              birthDate={safe.birthDate}
+              entries={safe.vaccines}
+              onChange={(next) => updateSection("vaccines", next)}
+            />
+          )}
+
+          {active === "appointments" && (
+            <AppointmentsSmart
+              entries={safe.appointments}
+              notes={notes}
+              userId={user?.id ?? null}
+              onChange={(next) => updateSection("appointments", next)}
+            />
+          )}
+
+          {active === "milestones" && (
+            <MilestonesSmart
+              entries={safe.milestones}
+              notes={notes}
+              userId={user?.id ?? null}
+              onChange={(next) => updateSection("milestones", next)}
+            />
+          )}
+
+          {active === "growth" && (
+            <GrowthSmart
+              birthDate={safe.birthDate}
+              entries={safe.growth}
+              notes={notes}
+              userId={user?.id ?? null}
+              onChange={(next) => updateSection("growth", next)}
+            />
+          )}
+
+          {active === "food" && (
+            <FoodSmart
+              entries={safe.food}
+              onChange={(next) => updateSection("food", next)}
+            />
+          )}
+
+          {active === "education" && (
+            <EducationSmart
+              entries={safe.education}
+              onChange={(next) => updateSection("education", next)}
+            />
+          )}
+
+          {active === "toys" && (
             <ToysSection
               listId={safe.toys.listId}
               lists={lists}
@@ -301,7 +356,9 @@ export default function BabyView({ projects, tasks, onSaveTasks }: Props) {
                 }
               }}
             />
-          ) : (
+          )}
+
+          {(active === "health" || active === "documents" || active === "play") && (
             <EntryListSection
               section={sectionDef}
               entries={(safe[sectionDef.id] as BabyEntry[]) ?? []}
@@ -315,6 +372,31 @@ export default function BabyView({ projects, tasks, onSaveTasks }: Props) {
     </div>
   );
 }
+
+// ---------------- Birth-date header ----------------
+function BirthDateHeader({ birthDate, onChange }: { birthDate?: string; onChange: (v: string) => void }) {
+  const months = ageInMonths(birthDate);
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/60">
+      <Cake size={16} className="text-primary" />
+      <label className="text-xs font-medium text-muted-foreground">Birth date</label>
+      <input
+        type="date"
+        value={birthDate ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        className="text-sm bg-secondary/40 rounded px-2 py-1 outline-none focus:bg-secondary/70"
+      />
+      {months !== null && (
+        <span className="text-xs text-muted-foreground">
+          Age: <span className="font-medium text-foreground">
+            {months < 24 ? `${months} months` : `${Math.floor(months / 12)}y ${months % 12}m`}
+          </span>
+        </span>
+      )}
+    </div>
+  );
+}
+
 
 // ---------------- Quick add ----------------
 function QuickAdd({ onAdd, placeholder }: { onAdd: (v: string) => void; placeholder: string }) {
