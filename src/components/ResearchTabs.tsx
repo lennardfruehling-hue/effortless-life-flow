@@ -1,15 +1,17 @@
 import { useState } from "react";
-import { BookOpen, Mail, NotebookPen, Car } from "lucide-react";
+import { BookOpen, Mail, NotebookPen, Car, Baby } from "lucide-react";
 import { Project, Task, Reminder } from "@/lib/types";
 import ResearchView from "./ResearchView";
 import GmailView from "./GmailView";
 import OneNoteView from "./OneNoteView";
 import CarMaintenanceView from "./CarMaintenanceView";
+import BabyView from "./BabyView";
 
-type Sub = "notes" | "car" | "gmail" | "onenote";
+type Sub = "notes" | "baby" | "car" | "gmail" | "onenote";
 
 const TABS: { id: Sub; label: string; icon: typeof BookOpen }[] = [
   { id: "notes", label: "Notes", icon: BookOpen },
+  { id: "baby", label: "Baby", icon: Baby },
   { id: "car", label: "Car", icon: Car },
   { id: "gmail", label: "Gmail", icon: Mail },
   { id: "onenote", label: "OneNote", icon: NotebookPen },
@@ -47,6 +49,9 @@ export default function ResearchTabs({ projects, tasks, onSaveTasks, reminders, 
 
       <div className="flex-1 overflow-hidden">
         {sub === "notes" && <ResearchView projects={projects} />}
+        {sub === "baby" && (
+          <BabyView projects={projects} tasks={tasks} onSaveTasks={onSaveTasks} />
+        )}
         {sub === "car" && (
           <CarMaintenanceView
             tasks={tasks}
