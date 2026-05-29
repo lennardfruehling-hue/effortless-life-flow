@@ -408,6 +408,10 @@ function FlowTrioDock({
   }, [collapsed]);
 
   const [showPanel, setShowPanel] = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const { notifications, dismiss, dismissAll } = useAssignmentNotifications(tasks);
+  const notifCount = notifications.length;
+  const lastNotifIdsRef = useRef<Set<string>>(new Set());
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = window.setInterval(() => setTick(t => t + 1), 30_000);
