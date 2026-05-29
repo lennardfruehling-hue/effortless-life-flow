@@ -1166,7 +1166,7 @@ function FoodSmart({
   entries: BabyEntry[];
   onChange: (next: BabyEntry[]) => void;
 }) {
-  const [view, setView] = useState<"week" | "log">("week");
+  const [view, setView] = useState<"week" | "calendar" | "history">("week");
 
   // Weekly plan = entries with dayOfWeek set
   const plan = useMemo(() => {
@@ -1193,23 +1193,24 @@ function FoodSmart({
     }));
   };
 
-  // Nutrition rollup for the week
   const tagCounts = useMemo(() => {
     const c: Record<string, number> = {};
     entries.forEach(e => (e.nutrition ?? []).forEach(t => { c[t] = (c[t] ?? 0) + 1; }));
     return c;
   }, [entries]);
 
-  const logEntries = entries.filter(e => e.date && e.dayOfWeek === undefined);
-  const addLog = (title: string, mealType: MealType) => {
-    onChange([{ id: uuid(), title, mealType, date: format(new Date(), "yyyy-MM-dd"), time: format(new Date(), "HH:mm") }, ...entries]);
-  };
+  // Logged meals = entries with a date (history & calendar)
+  const logged = useMemo(
+    () => entries.filter(e => e.date && e.dayOfWeek === undefined),
+    [entries]
+  );
 
   return (
     <div className="space-y-4">
       <div className="flex gap-1 border-b border-border">
         <TabBtn active={view === "week"} onClick={() => setView("week")}>Weekly plan</TabBtn>
-        <TabBtn active={view === "log"} onClick={() => setView("log")}>Feed log</TabBtn>
+        <TabBtn active={view === "calendar"} onClick={() => setView("calendar")}>Calendar</TabBtn>
+        <TabBtn active={view === "history"} onClick={() => setView("history")}>History ({logged.length})</TabBtn>
       </div>
 
       {view === "week" && (
@@ -1274,22 +1275,17 @@ function FoodSmart({
         </>
       )}
 
-      {view === "log" && (
-        <>
-          <LogAdd onAdd={addLog} />
-          <div className="space-y-2">
-            {logEntries.length === 0 && <p className="text-sm text-muted-foreground italic">No feed log entries yet.</p>}
-            {logEntries.map(e => (
-              <div key={e.id} className="p-2 rounded-lg border border-border bg-card flex items-center gap-3 text-sm">
-                <Clock size={12} className="text-muted-foreground" />
-                <span className="font-medium">{e.title}</span>
-                {e.mealType && <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary/60">{MEAL_LABELS[e.mealType]}</span>}
-                <span className="text-xs text-muted-foreground ml-auto">{e.date && format(parseISO(e.date), "PP")} {e.time}</span>
-                <button onClick={() => removeEntry(e.id)} className="text-muted-foreground hover:text-destructive"><Trash2 size={12} /></button>
-              </div>
-            ))}
-          </div>
-        </>
+      {view === "calendar" && (
+        <FoodCalendar
+          logged={logged}
+          onAdd={(entry) => onChange([entry, ...entries])}
+          onRemove={removeEntry}
+          onToggleTag={toggleTag}
+        />
+      )}
+
+      {view === "history" && (
+        <FoodHistory logged={logged} onRemove={removeEntry} />
       )}
     </div>
   );
@@ -1319,19 +1315,235 @@ function CellAdd({ onAdd }: { onAdd: (v: string) => void }) {
   );
 }
 
-function LogAdd({ onAdd }: { onAdd: (title: string, meal: MealType) => void }) {
-  const [title, setTitle] = useState("");
-  const [meal, setMeal] = useState<MealType>("breakfast");
+// ---------------- Food calendar ----------------
+function FoodCalendar({
+  logged, onAdd, onRemove, onToggleTag,
+}: {
+  logged: BabyEntry[];
+  onAdd: (e: BabyEntry) => void;
+  onRemove: (id: string) => void;
+  onToggleTag: (id: string, tag: string) => void;
+}) {
+  const [cursor, setCursor] = useState(() => {
+    const d = new Date(); d.setDate(1); return d;
+  });
+  const [selected, setSelected] = useState(format(new Date(), "yyyy-MM-dd"));
+
+  const monthStart = new Date(cursor);
+  const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+  const leadDays = monthStart.getDay(); // Sunday-start
+  const totalCells = leadDays + monthEnd.getDate();
+  const rows = Math.ceil(totalCells / 7);
+
+  const byDate = useMemo(() => {
+    const m: Record<string, BabyEntry[]> = {};
+    logged.forEach(e => { if (e.date) (m[e.date] ||= []).push(e); });
+    return m;
+  }, [logged]);
+
+  const dayMeals = (byDate[selected] ?? []).slice().sort((a, b) => (a.time ?? "").localeCompare(b.time ?? ""));
+
   return (
-    <div className="flex gap-2 items-center p-3 rounded-lg border border-border bg-card">
-      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What did baby eat?" className="flex-1 text-sm bg-secondary/30 rounded px-2 py-1.5 outline-none focus:bg-secondary/50" />
-      <select value={meal} onChange={(e) => setMeal(e.target.value as MealType)} className="text-xs bg-secondary/40 rounded px-2 py-1.5 outline-none">
-        {(["breakfast","lunch","dinner","snack"] as MealType[]).map(m => <option key={m} value={m}>{MEAL_LABELS[m]}</option>)}
-      </select>
-      <button onClick={() => { if (title.trim()) { onAdd(title.trim(), meal); setTitle(""); } }} className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded hover:opacity-90">Log</button>
+    <div className="space-y-4">
+      {/* Month nav */}
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}
+          className="text-xs px-2 py-1 rounded hover:bg-secondary"
+        >← Prev</button>
+        <div className="text-sm font-semibold">{format(cursor, "MMMM yyyy")}</div>
+        <button
+          onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}
+          className="text-xs px-2 py-1 rounded hover:bg-secondary"
+        >Next →</button>
+      </div>
+
+      {/* Calendar grid */}
+      <div className="rounded-lg border border-border overflow-hidden">
+        <div className="grid grid-cols-7 bg-secondary/40 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+          {DAY_NAMES.map(d => <div key={d} className="px-2 py-1.5 text-center">{d}</div>)}
+        </div>
+        <div className="grid grid-cols-7">
+          {Array.from({ length: rows * 7 }).map((_, i) => {
+            const dayNum = i - leadDays + 1;
+            if (dayNum < 1 || dayNum > monthEnd.getDate()) {
+              return <div key={i} className="aspect-square border-t border-l border-border bg-secondary/10" />;
+            }
+            const dateStr = format(new Date(cursor.getFullYear(), cursor.getMonth(), dayNum), "yyyy-MM-dd");
+            const items = byDate[dateStr] ?? [];
+            const isToday = dateStr === format(new Date(), "yyyy-MM-dd");
+            const isSelected = dateStr === selected;
+            return (
+              <button
+                key={i}
+                onClick={() => setSelected(dateStr)}
+                className={`aspect-square border-t border-l border-border p-1 flex flex-col items-stretch text-left transition-colors ${
+                  isSelected ? "bg-primary/15 ring-1 ring-primary"
+                  : isToday ? "bg-secondary/40"
+                  : "hover:bg-secondary/30"
+                }`}
+              >
+                <span className={`text-[10px] font-mono ${isToday ? "text-primary font-bold" : "text-muted-foreground"}`}>{dayNum}</span>
+                {items.length > 0 && (
+                  <div className="flex flex-wrap gap-0.5 mt-auto">
+                    {items.slice(0, 4).map(e => (
+                      <span
+                        key={e.id}
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          e.mealType === "breakfast" ? "bg-amber-500"
+                          : e.mealType === "lunch" ? "bg-emerald-500"
+                          : e.mealType === "dinner" ? "bg-indigo-500"
+                          : "bg-pink-500"
+                        }`}
+                      />
+                    ))}
+                    {items.length > 4 && <span className="text-[8px] text-muted-foreground">+{items.length - 4}</span>}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Selected-day panel */}
+      <div className="rounded-lg border border-border bg-card">
+        <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+          <div className="text-sm font-semibold">{format(parseISO(selected), "EEEE, d MMMM yyyy")}</div>
+          <span className="text-[10px] text-muted-foreground">{dayMeals.length} meal{dayMeals.length === 1 ? "" : "s"}</span>
+        </div>
+
+        <DatedLogAdd date={selected} onAdd={onAdd} />
+
+        <div className="px-3 pb-3 space-y-1.5">
+          {dayMeals.length === 0 && (
+            <p className="text-xs text-muted-foreground italic py-2">No meals logged for this date.</p>
+          )}
+          {dayMeals.map(e => (
+            <div key={e.id} className="p-2 rounded border border-border bg-background group">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-xs font-mono text-muted-foreground w-12 flex-shrink-0">{e.time ?? "—"}</span>
+                {e.mealType && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                    e.mealType === "breakfast" ? "bg-amber-500/20 text-amber-600"
+                    : e.mealType === "lunch" ? "bg-emerald-500/20 text-emerald-600"
+                    : e.mealType === "dinner" ? "bg-indigo-500/20 text-indigo-600"
+                    : "bg-pink-500/20 text-pink-600"
+                  }`}>{MEAL_LABELS[e.mealType]}</span>
+                )}
+                <span className="flex-1 truncate font-medium">{e.title}</span>
+                <button onClick={() => onRemove(e.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive">
+                  <Trash2 size={12} />
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-0.5 mt-1 ml-14">
+                {NUTRITION_TAGS.map(t => (
+                  <button
+                    key={t}
+                    onClick={() => onToggleTag(e.id, t)}
+                    className={`text-[9px] px-1.5 py-0.5 rounded ${e.nutrition?.includes(t) ? "bg-primary/30 text-primary" : "text-muted-foreground hover:bg-secondary"}`}
+                  >{t}</button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
+
+function DatedLogAdd({ date, onAdd }: { date: string; onAdd: (e: BabyEntry) => void }) {
+  const [title, setTitle] = useState("");
+  const [time, setTime] = useState(format(new Date(), "HH:mm"));
+  const [meal, setMeal] = useState<MealType>("breakfast");
+  return (
+    <div className="px-3 py-2 border-b border-border flex flex-wrap gap-2 items-center bg-secondary/20">
+      <input
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="What did baby eat?"
+        className="flex-1 min-w-[140px] text-sm bg-background border border-border rounded px-2 py-1 outline-none focus:border-primary"
+      />
+      <input
+        type="time"
+        value={time}
+        onChange={(e) => setTime(e.target.value)}
+        className="text-xs bg-background border border-border rounded px-2 py-1 outline-none"
+      />
+      <select value={meal} onChange={(e) => setMeal(e.target.value as MealType)} className="text-xs bg-background border border-border rounded px-2 py-1 outline-none">
+        {(["breakfast","lunch","dinner","snack"] as MealType[]).map(m => <option key={m} value={m}>{MEAL_LABELS[m]}</option>)}
+      </select>
+      <button
+        onClick={() => {
+          if (!title.trim()) return;
+          onAdd({ id: uuid(), title: title.trim(), mealType: meal, date, time });
+          setTitle("");
+        }}
+        className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded hover:opacity-90"
+      >Log</button>
+    </div>
+  );
+}
+
+// ---------------- Food history ----------------
+function FoodHistory({ logged, onRemove }: { logged: BabyEntry[]; onRemove: (id: string) => void }) {
+  const grouped = useMemo(() => {
+    const m: Record<string, BabyEntry[]> = {};
+    logged.forEach(e => { if (e.date) (m[e.date] ||= []).push(e); });
+    return Object.entries(m)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([date, items]) => [date, items.slice().sort((a, b) => (b.time ?? "").localeCompare(a.time ?? ""))] as const);
+  }, [logged]);
+
+  if (grouped.length === 0) {
+    return <p className="text-sm text-muted-foreground italic">No meals logged yet. Use the Calendar tab to log meals at specific dates &amp; times.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {grouped.map(([date, items]) => {
+        const tagSet = new Set<string>();
+        items.forEach(i => (i.nutrition ?? []).forEach(t => tagSet.add(t)));
+        return (
+          <div key={date} className="rounded-lg border border-border bg-card">
+            <div className="px-3 py-2 border-b border-border flex items-center justify-between bg-secondary/20">
+              <div className="text-sm font-semibold">{format(parseISO(date), "EEEE, d MMMM yyyy")}</div>
+              <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                <span>{items.length} meal{items.length === 1 ? "" : "s"}</span>
+                {tagSet.size > 0 && <span>· {Array.from(tagSet).join(" · ")}</span>}
+              </div>
+            </div>
+            <div className="divide-y divide-border">
+              {items.map(e => (
+                <div key={e.id} className="px-3 py-1.5 flex items-center gap-2 text-sm group">
+                  <span className="text-xs font-mono text-muted-foreground w-12 flex-shrink-0">{e.time ?? "—"}</span>
+                  {e.mealType && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                      e.mealType === "breakfast" ? "bg-amber-500/20 text-amber-600"
+                      : e.mealType === "lunch" ? "bg-emerald-500/20 text-emerald-600"
+                      : e.mealType === "dinner" ? "bg-indigo-500/20 text-indigo-600"
+                      : "bg-pink-500/20 text-pink-600"
+                    }`}>{MEAL_LABELS[e.mealType]}</span>
+                  )}
+                  <span className="flex-1 truncate">{e.title}</span>
+                  {(e.nutrition ?? []).length > 0 && (
+                    <span className="text-[10px] text-muted-foreground hidden md:inline">{e.nutrition!.slice(0, 3).join("·")}</span>
+                  )}
+                  <button onClick={() => onRemove(e.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive">
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
 
 // ---------------- Education ----------------
 function EducationSmart({
