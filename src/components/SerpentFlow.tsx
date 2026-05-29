@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronRight, ChevronDown, ChevronUp, Bell, AlertTriangle, Clock, Compass } from "lucide-react";
+import { X, ChevronRight, ChevronDown, ChevronUp, Bell, AlertTriangle, Clock, Compass, UserPlus, FileText, ListTodo } from "lucide-react";
+import { useAssignmentNotifications } from "@/hooks/useAssignmentNotifications";
 import {
   loadFlowState,
   saveFlowState,
@@ -407,6 +408,10 @@ function FlowTrioDock({
   }, [collapsed]);
 
   const [showPanel, setShowPanel] = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
+  const { notifications, dismiss, dismissAll } = useAssignmentNotifications(tasks);
+  const notifCount = notifications.length;
+  const lastNotifIdsRef = useRef<Set<string>>(new Set());
   const [tick, setTick] = useState(0);
   useEffect(() => {
     const id = window.setInterval(() => setTick(t => t + 1), 30_000);
@@ -514,25 +519,54 @@ function FlowTrioDock({
     lastAlarmIdsRef.current = currentIds;
   }, [alerts]);
 
+  // Surface new assignment notifications with a soft chime
+  useEffect(() => {
+    const currentIds = new Set(notifications.map(n => n.id));
+    const lastIds = lastNotifIdsRef.current;
+    let hasNew = false;
+    for (const id of currentIds) if (!lastIds.has(id)) { hasNew = true; break; }
+    if (hasNew && currentIds.size > 0 && lastIds.size > 0) {
+      playAlertChime(audioRef);
+      try {
+        if ("Notification" in window && Notification.permission === "granted") {
+          const sample = notifications[0];
+          if (sample) new Notification(sample.kind === "task" ? "📋 Task assigned to you" : "📝 Note shared with you", { body: sample.label, tag: sample.id });
+        }
+      } catch {}
+    }
+    lastNotifIdsRef.current = currentIds;
+  }, [notifications]);
+
   const alertCount = alerts.length;
   const alarmActive = alertCount > 0;
+  const hasNotifs = notifCount > 0;
   // Faded red palette when alarming, default sidebar otherwise
   const dockTone = alarmActive
     ? "bg-red-950/70 border-red-400/40 text-red-50"
+    : hasNotifs
+    ? "bg-indigo-950/70 border-indigo-400/40 text-indigo-50"
     : "bg-sidebar/85 border-amber-300/30 text-white";
 
   if (collapsed) {
     const doneCount = trio.filter(t => t.done).length;
+    const pillLabel = alarmActive
+      ? `${alertCount} alert${alertCount === 1 ? "" : "s"}`
+      : hasNotifs
+      ? `${notifCount} new`
+      : `Flow ${doneCount}/3`;
+    const pillIcon = alarmActive
+      ? <Bell size={14} className="text-red-200" />
+      : hasNotifs
+      ? <UserPlus size={14} className="text-indigo-200" />
+      : <span>🐍</span>;
     return (
       <button
         onClick={() => setCollapsed(false)}
-        title={alarmActive ? `${alertCount} alert${alertCount === 1 ? "" : "s"}` : "Show alarm center"}
-        className={`fixed bottom-0 left-1/2 -translate-x-1/2 z-40 px-4 py-1 rounded-t-lg backdrop-blur border border-b-0 shadow-lg flex items-center gap-2 hover:opacity-90 transition ${dockTone} ${hasOverdue ? "animate-pulse" : ""}`}
+        title={alarmActive ? `${alertCount} alert${alertCount === 1 ? "" : "s"}` : hasNotifs ? `${notifCount} new assignment${notifCount === 1 ? "" : "s"}` : "Show command center"}
+        className={`fixed bottom-0 left-1/2 -translate-x-1/2 z-40 px-4 py-1 rounded-t-lg backdrop-blur border border-b-0 shadow-lg flex items-center gap-2 hover:opacity-90 transition ${dockTone} ${hasOverdue || hasNotifs ? "animate-pulse" : ""}`}
       >
-        {alarmActive ? <Bell size={14} className="text-red-200" /> : <span>🐍</span>}
-        <span className="text-xs font-mono uppercase tracking-wider">
-          {alarmActive ? `${alertCount} alert${alertCount === 1 ? "" : "s"}` : `Flow ${doneCount}/3`}
-        </span>
+        {pillIcon}
+        <span className="text-xs font-mono uppercase tracking-wider">{pillLabel}</span>
         <ChevronUp size={14} />
       </button>
     );
@@ -573,6 +607,57 @@ function FlowTrioDock({
                   {a.detail && <div className="text-[10px] text-white/70 truncate">{a.detail}</div>}
                 </div>
                 <span className="text-[9px] uppercase tracking-wider font-mono text-white/60">{a.kind}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Notifications summary row: tasks/notes assigned to me */}
+      {hasNotifs && (
+        <button
+          onClick={() => setShowNotifs(s => !s)}
+          className="w-full flex items-center justify-between gap-2 px-4 py-1.5 border-b border-white/10 text-xs font-medium text-indigo-100"
+          title="Open notifications"
+        >
+          <span className="flex items-center gap-1.5">
+            <UserPlus size={13} className="text-indigo-200" />
+            {notifCount} new {notifCount === 1 ? "assignment" : "assignments"}
+          </span>
+          <ChevronUp size={12} className={`transition-transform ${showNotifs ? "rotate-180" : ""}`} />
+        </button>
+      )}
+
+      {/* Notifications panel */}
+      {hasNotifs && showNotifs && (
+        <div className="px-3 py-2 border-b border-white/10 max-h-64 overflow-y-auto scrollbar-thin space-y-1 min-w-[300px]">
+          <div className="flex items-center justify-between px-1 pb-1">
+            <span className="text-[9px] uppercase tracking-wider font-mono text-white/60">Assigned to you</span>
+            <button
+              onClick={dismissAll}
+              className="text-[10px] text-white/60 hover:text-white underline-offset-2 hover:underline"
+              title="Dismiss all"
+            >
+              Clear all
+            </button>
+          </div>
+          {notifications.map(n => {
+            const Icon = n.kind === "task" ? ListTodo : FileText;
+            return (
+              <div key={n.id} className="flex items-start gap-2 px-2 py-1.5 rounded text-xs bg-indigo-500/15 group">
+                <Icon size={12} className="text-indigo-200 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <div className="truncate font-medium text-white">{n.label}</div>
+                  {n.detail && <div className="text-[10px] text-white/70 truncate">{n.detail}</div>}
+                </div>
+                <span className="text-[9px] uppercase tracking-wider font-mono text-white/60">{n.kind}</span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); dismiss(n.id); }}
+                  className="text-white/40 hover:text-white transition opacity-60 group-hover:opacity-100"
+                  title="Dismiss"
+                >
+                  <X size={12} />
+                </button>
               </div>
             );
           })}
