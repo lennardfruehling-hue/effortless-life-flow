@@ -270,44 +270,24 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
                 }}
               />
             )}
-            <motion.div
-              key="step"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed z-50 w-[320px] bg-card border-2 border-primary rounded-lg shadow-2xl p-4"
-              style={{ top: popover.top, left: popover.left }}
-            >
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">🐍</span>
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">
-                      {FLOWS[active].label} · Step {stepIdx + 1} of {FLOWS[active].steps.length}
-                    </div>
-                    <div className="text-sm font-semibold text-foreground">{currentStep.title}</div>
-                  </div>
-                </div>
-                <button onClick={() => setActive(null)} className="text-muted-foreground hover:text-foreground">
-                  <X size={16} />
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">{currentStep.body}</p>
-              {!stepSatisfied && currentStep.hint && (
-                <p className="text-[11px] text-amber-600 dark:text-amber-300 mb-2 italic">⏳ {currentStep.hint}</p>
-              )}
-              <button
-                onClick={next}
-                disabled={!stepSatisfied}
-                className={`w-full flex items-center justify-center gap-1 rounded px-3 py-2 text-xs font-medium transition ${
-                  stepSatisfied
-                    ? "bg-primary text-primary-foreground hover:opacity-90"
-                    : "bg-muted text-muted-foreground cursor-not-allowed"
-                }`}
+            {targetRect && (
+              <motion.div
+                key="step-tip"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="fixed z-50 max-w-[240px] bg-sidebar/95 border border-amber-300/40 rounded-md shadow-xl px-3 py-2 pointer-events-none"
+                style={{ top: popover.top, left: popover.left }}
               >
-                {stepSatisfied ? (stepIdx + 1 >= FLOWS[active].steps.length ? "Complete" : "Next") : "Locked"} <ChevronRight size={14} />
-              </button>
-            </motion.div>
+                <div className="text-[10px] uppercase tracking-wider text-amber-200 font-mono mb-0.5">
+                  Step {stepIdx + 1} · {FLOWS[active].label}
+                </div>
+                <div className="text-xs font-semibold text-white">{currentStep.title}</div>
+                {!stepSatisfied && currentStep.hint && (
+                  <div className="text-[10px] text-amber-200 mt-1 italic">⏳ {currentStep.hint}</div>
+                )}
+              </motion.div>
+            )}
           </>
         )}
       </AnimatePresence>
