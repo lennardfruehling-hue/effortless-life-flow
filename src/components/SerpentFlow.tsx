@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useState, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronRight, ChevronDown, ChevronUp, Bell, AlertTriangle, Clock, Compass, UserPlus, FileText, ListTodo } from "lucide-react";
+import { X, ChevronDown, ChevronUp, Bell, AlertTriangle, Clock, Compass, UserPlus, FileText, ListTodo } from "lucide-react";
 import { useAssignmentNotifications } from "@/hooks/useAssignmentNotifications";
 import {
   loadFlowState,
@@ -34,12 +34,14 @@ const FLOWS: Record<FlowKind, { label: string; steps: Step[] }> = {
   start: {
     label: "Start Serpent 🐍",
     steps: [
-      { title: "Open Tasks", body: "Go to the Tasks view to plan your day.", target: '[data-tour="nav-tasks"]', requires: { kind: "click-target" }, hint: "Click the Tasks nav item to continue." },
-      { title: "Add Daily Tasks", body: "Use Add Task to drop in today's daily items.", target: '[data-tour="add-task"]', requires: { kind: "click-target" }, hint: "Click Add Task to continue." },
-      { title: "Check Tasks", body: "Review urgency on existing tasks (A1/B1).", target: '[data-tour="add-task"]', requires: { kind: "none" } },
-      { title: "Open Schedule", body: "Open the 24h Schedule panel.", target: '[data-tour="schedule-toggle"]', requires: { kind: "click-target" }, hint: "Click Schedule to open the panel." },
-      { title: "Produce & Complete Schedule", body: "Drag tasks in, set realistic time + buffer, sanity-check it's doable.", target: '[data-tour="schedule-panel"]', requires: { kind: "progress-event", event: "schedule-block-added" }, hint: "Add at least one block to the schedule to continue." },
-      { title: "Email schedule", body: "Send the schedule to yourself by email.", target: '[data-tour="email-schedule"]', requires: { kind: "progress-event", event: "schedule-emailed" }, hint: "Click Email schedule to continue." },
+      { title: "Review yesterday's tasks", body: "Open Tasks and scan what carried over from yesterday.", target: '[data-tour="nav-tasks"]', requires: { kind: "click-target" }, hint: "Click the Tasks nav item to open the list." },
+      { title: "Add today's tasks", body: "Drop in anything new for today.", target: '[data-tour="add-task"]', requires: { kind: "click-target" }, hint: "Click Add Task to add new items." },
+      { title: "Anything you don't want to know?", body: "Mark tasks to hide / defer (Avoid / Hate categories). Tick when reviewed.", requires: { kind: "none" } },
+      { title: "Check non-negotiables for Célida (K)", body: "Confirm K-category items for Célida are in today's list.", requires: { kind: "none" } },
+      { title: "Build today's schedule", body: "Open Schedule and drag tasks into time blocks.", target: '[data-tour="schedule-toggle"]', requires: { kind: "progress-event", event: "schedule-block-added" }, hint: "Open Schedule and add at least one block." },
+      { title: "Realistic timing — add buffers", body: "Sanity-check durations; add extra time for each task.", requires: { kind: "none" } },
+      { title: "Print schedule", body: "Open a printable copy.", target: '[data-tour="print-schedule"]', requires: { kind: "progress-event", event: "schedule-printed" }, hint: "Click Print schedule." },
+      { title: "Email schedule", body: "Send today's schedule to your inbox.", target: '[data-tour="email-schedule"]', requires: { kind: "progress-event", event: "schedule-emailed" }, hint: "Click Email schedule." },
     ],
   },
   midday: {
@@ -216,8 +218,6 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
     return { top, left };
   })();
 
-  const showStartHero = !state.startCompleted && !active && !trioOpen;
-
   const TRIO: { kind: FlowKind; img: string; label: string; done: boolean }[] = [
     { kind: "start",   img: risingSun, label: "Start Serpent",  done: state.startCompleted },
     { kind: "midday",  img: sun,       label: "Midday Check",   done: state.middayCompleted },
@@ -226,47 +226,30 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
 
   return (
     <>
-      {/* Floating Start Serpent hero button */}
-      <AnimatePresence>
-        {showStartHero && (
-          <motion.button
-            key="start-btn"
-            initial={{ opacity: 0, scale: 0.85, y: -10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.85 }}
-            onClick={() => startFlow("start")}
-            className="fixed left-1/2 top-1/4 -translate-x-1/2 z-40 px-10 py-4 rounded-full bg-sidebar/90 backdrop-blur border border-amber-300/40 shadow-2xl text-white flex items-center gap-3 hover:bg-sidebar transition-colors animate-pulse-glow"
-            style={{
-              fontFamily: "'Great Vibes', 'Allura', cursive",
-              fontSize: "2rem",
-              lineHeight: 1,
-              boxShadow: "0 10px 40px -10px rgba(255,170,60,0.35), 0 0 0 1px rgba(255,200,120,0.15) inset",
-            }}
-          >
-            <span className="text-2xl">🐍</span> Start Serpent
-          </motion.button>
-        )}
-      </AnimatePresence>
-
       {/* Permanent trio at bottom center — collapsible to a thin tab */}
-      {!active && (
-        <FlowTrioDock
-          trio={TRIO}
-          flow={state}
-          tasks={tasks}
-          reminders={reminders}
-          lifePlanProjects={lifePlanProjects}
-          dailySchedule={dailySchedule}
-          onStart={startFlow}
-          onReset={() => {
-            if (!confirm("Reset today's Serpent flow? Start, Midday and Evening will be marked uncompleted and the phase cleared.")) return;
-            setState((s) => ({ ...s, startCompleted: false, middayCompleted: false, eveningCompleted: false }));
-            setManualPhase(null);
-            setActive(null);
-            setStepIdx(0);
-          }}
-        />
-      )}
+      <FlowTrioDock
+        trio={TRIO}
+        flow={state}
+        tasks={tasks}
+        reminders={reminders}
+        lifePlanProjects={lifePlanProjects}
+        dailySchedule={dailySchedule}
+        onStart={startFlow}
+        onReset={() => {
+          if (!confirm("Reset today's Serpent flow? Start, Midday and Evening will be marked uncompleted and the phase cleared.")) return;
+          setState((s) => ({ ...s, startCompleted: false, middayCompleted: false, eveningCompleted: false }));
+          setManualPhase(null);
+          setActive(null);
+          setStepIdx(0);
+        }}
+        activeFlow={active}
+        activeSteps={active ? FLOWS[active].steps : null}
+        stepIdx={stepIdx}
+        stepSatisfied={stepSatisfied}
+        onAdvance={next}
+        onCancel={() => { setActive(null); setStepIdx(0); }}
+        onJumpToStep={(i) => setStepIdx(i)}
+      />
 
       {/* Highlight ring + anchored tooltip */}
       <AnimatePresence>
@@ -287,44 +270,24 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
                 }}
               />
             )}
-            <motion.div
-              key="step"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed z-50 w-[320px] bg-card border-2 border-primary rounded-lg shadow-2xl p-4"
-              style={{ top: popover.top, left: popover.left }}
-            >
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">🐍</span>
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono">
-                      {FLOWS[active].label} · Step {stepIdx + 1} of {FLOWS[active].steps.length}
-                    </div>
-                    <div className="text-sm font-semibold text-foreground">{currentStep.title}</div>
-                  </div>
-                </div>
-                <button onClick={() => setActive(null)} className="text-muted-foreground hover:text-foreground">
-                  <X size={16} />
-                </button>
-              </div>
-              <p className="text-xs text-muted-foreground mb-3">{currentStep.body}</p>
-              {!stepSatisfied && currentStep.hint && (
-                <p className="text-[11px] text-amber-600 dark:text-amber-300 mb-2 italic">⏳ {currentStep.hint}</p>
-              )}
-              <button
-                onClick={next}
-                disabled={!stepSatisfied}
-                className={`w-full flex items-center justify-center gap-1 rounded px-3 py-2 text-xs font-medium transition ${
-                  stepSatisfied
-                    ? "bg-primary text-primary-foreground hover:opacity-90"
-                    : "bg-muted text-muted-foreground cursor-not-allowed"
-                }`}
+            {targetRect && (
+              <motion.div
+                key="step-tip"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="fixed z-50 max-w-[240px] bg-sidebar/95 border border-amber-300/40 rounded-md shadow-xl px-3 py-2 pointer-events-none"
+                style={{ top: popover.top, left: popover.left }}
               >
-                {stepSatisfied ? (stepIdx + 1 >= FLOWS[active].steps.length ? "Complete" : "Next") : "Locked"} <ChevronRight size={14} />
-              </button>
-            </motion.div>
+                <div className="text-[10px] uppercase tracking-wider text-amber-200 font-mono mb-0.5">
+                  Step {stepIdx + 1} · {FLOWS[active].label}
+                </div>
+                <div className="text-xs font-semibold text-white">{currentStep.title}</div>
+                {!stepSatisfied && currentStep.hint && (
+                  <div className="text-[10px] text-amber-200 mt-1 italic">⏳ {currentStep.hint}</div>
+                )}
+              </motion.div>
+            )}
           </>
         )}
       </AnimatePresence>
@@ -389,6 +352,13 @@ function FlowTrioDock({
   dailySchedule,
   onStart,
   onReset,
+  activeFlow,
+  activeSteps,
+  stepIdx,
+  stepSatisfied,
+  onAdvance,
+  onCancel,
+  onJumpToStep,
 }: {
   trio: TrioItem[];
   flow: SerpentFlowDayState;
@@ -398,6 +368,13 @@ function FlowTrioDock({
   dailySchedule: DailyScheduleSlot[];
   onStart: (k: FlowKind) => void;
   onReset: () => void;
+  activeFlow: FlowKind | null;
+  activeSteps: Step[] | null;
+  stepIdx: number;
+  stepSatisfied: boolean;
+  onAdvance: () => void;
+  onCancel: () => void;
+  onJumpToStep: (i: number) => void;
 }) {
   const KEY = "serpent-trio-collapsed";
   const [collapsed, setCollapsed] = useState<boolean>(() => {
@@ -661,6 +638,72 @@ function FlowTrioDock({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Active flow checklist — step-by-step inside the command center */}
+      {activeFlow && activeSteps && (
+        <div className="px-3 py-2 border-b border-white/10 min-w-[340px] max-w-[420px]">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] uppercase tracking-wider font-mono text-white/70">
+              {activeFlow === "start" ? "Start Serpent" : activeFlow === "midday" ? "Midday Check" : "Evening Review"} · {stepIdx + 1}/{activeSteps.length}
+            </span>
+            <button
+              onClick={onCancel}
+              className="text-[10px] text-white/50 hover:text-white"
+              title="Close checklist"
+            >
+              <X size={12} />
+            </button>
+          </div>
+          <ol className="space-y-0.5">
+            {activeSteps.map((s, i) => {
+              const done = i < stepIdx;
+              const current = i === stepIdx;
+              return (
+                <li
+                  key={i}
+                  className={`flex items-start gap-2 px-1.5 py-1 rounded text-[11px] ${
+                    current ? "bg-amber-500/15 text-white" : done ? "text-white/50 line-through" : "text-white/60"
+                  }`}
+                >
+                  <button
+                    onClick={() => { if (i < stepIdx) onJumpToStep(i); }}
+                    className={`mt-0.5 w-3.5 h-3.5 rounded-sm border flex-shrink-0 flex items-center justify-center text-[9px] ${
+                      done ? "bg-emerald-500 border-emerald-300 text-white" :
+                      current ? "border-amber-300" : "border-white/30"
+                    }`}
+                    title={done ? "Go back to this step" : ""}
+                  >
+                    {done ? "✓" : current ? "•" : ""}
+                  </button>
+                  <span className="flex-1 leading-tight">
+                    <span className="font-medium">{i + 1}. {s.title}</span>
+                    {current && (
+                      <span className="block text-[10px] text-white/70 mt-0.5">{s.body}</span>
+                    )}
+                    {current && !stepSatisfied && s.hint && (
+                      <span className="block text-[10px] text-amber-200 mt-0.5 italic">⏳ {s.hint}</span>
+                    )}
+                  </span>
+                  {current && (
+                    <button
+                      onClick={onAdvance}
+                      disabled={!stepSatisfied}
+                      className={`flex-shrink-0 self-center text-[10px] px-2 py-0.5 rounded font-medium transition ${
+                        stepSatisfied
+                          ? "bg-amber-400 text-black hover:opacity-90"
+                          : "bg-white/10 text-white/40 cursor-not-allowed"
+                      }`}
+                      title={stepSatisfied ? "Mark step complete" : "Complete the action above to unlock"}
+                    >
+                      {stepSatisfied ? (i + 1 >= activeSteps.length ? "Done" : "Next") : "Locked"}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
         </div>
       )}
 
