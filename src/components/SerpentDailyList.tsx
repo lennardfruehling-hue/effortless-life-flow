@@ -6,7 +6,7 @@ import { format } from "date-fns";
 interface Props {
   tasks: Task[];
   onToggle: (id: string) => void;
-  /** How many to surface. Defaults to 5. */
+  /** Extra ranked tasks to surface beyond daily recurring ones. */
   limit?: number;
 }
 
@@ -48,18 +48,20 @@ function rankTask(t: Task): number {
   return score;
 }
 
-export default function SerpentDailyList({ tasks, onToggle, limit = 5 }: Props) {
+export default function SerpentDailyList({ tasks, onToggle, limit = 7 }: Props) {
   const [open, setOpen] = useState(false);
-  const [n, setN] = useState(limit);
+  const [extra, setExtra] = useState(limit);
 
-  const ranked = useMemo(() => {
-    return [...tasks]
-      .filter(t => !t.completed && !t.recurrence)
-      .map(t => ({ t, s: rankTask(t) }))
+  const { dailyRecurring, ranked, all } = useMemo(() => {
+    const daily = tasks.filter((t) => t.recurrence === "daily");
+    const rest = tasks
+      .filter((t) => !t.completed && !t.recurrence)
+      .map((t) => ({ t, s: rankTask(t) }))
       .sort((a, b) => b.s - a.s)
-      .slice(0, n)
-      .map(x => x.t);
-  }, [tasks, n]);
+      .slice(0, extra)
+      .map((x) => x.t);
+    return { dailyRecurring: daily, ranked: rest, all: [...daily, ...rest] };
+  }, [tasks, extra]);
 
   const today = format(new Date(), "EEE, d MMM");
 
