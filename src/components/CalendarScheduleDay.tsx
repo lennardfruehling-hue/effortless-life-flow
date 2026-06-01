@@ -381,7 +381,8 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
         <h3 className="text-sm font-semibold text-foreground">Daily Calendar (24h)</h3>
         <div className="flex items-center gap-2">
           <button
-            onClick={handlePrintSchedule}
+            data-tour="print-schedule"
+            onClick={() => { handlePrintSchedule(); window.dispatchEvent(new CustomEvent("serpent-progress", { detail: "schedule-printed" })); }}
             className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded border border-border hover:border-primary/30 hover:text-primary text-muted-foreground transition-colors"
             title="Open a printable view of today's schedule"
           >
