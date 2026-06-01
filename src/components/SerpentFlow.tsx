@@ -218,8 +218,6 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
     return { top, left };
   })();
 
-  const showStartHero = !state.startCompleted && !active && !trioOpen;
-
   const TRIO: { kind: FlowKind; img: string; label: string; done: boolean }[] = [
     { kind: "start",   img: risingSun, label: "Start Serpent",  done: state.startCompleted },
     { kind: "midday",  img: sun,       label: "Midday Check",   done: state.middayCompleted },
@@ -228,47 +226,30 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
 
   return (
     <>
-      {/* Floating Start Serpent hero button */}
-      <AnimatePresence>
-        {showStartHero && (
-          <motion.button
-            key="start-btn"
-            initial={{ opacity: 0, scale: 0.85, y: -10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.85 }}
-            onClick={() => startFlow("start")}
-            className="fixed left-1/2 top-1/4 -translate-x-1/2 z-40 px-10 py-4 rounded-full bg-sidebar/90 backdrop-blur border border-amber-300/40 shadow-2xl text-white flex items-center gap-3 hover:bg-sidebar transition-colors animate-pulse-glow"
-            style={{
-              fontFamily: "'Great Vibes', 'Allura', cursive",
-              fontSize: "2rem",
-              lineHeight: 1,
-              boxShadow: "0 10px 40px -10px rgba(255,170,60,0.35), 0 0 0 1px rgba(255,200,120,0.15) inset",
-            }}
-          >
-            <span className="text-2xl">🐍</span> Start Serpent
-          </motion.button>
-        )}
-      </AnimatePresence>
-
       {/* Permanent trio at bottom center — collapsible to a thin tab */}
-      {!active && (
-        <FlowTrioDock
-          trio={TRIO}
-          flow={state}
-          tasks={tasks}
-          reminders={reminders}
-          lifePlanProjects={lifePlanProjects}
-          dailySchedule={dailySchedule}
-          onStart={startFlow}
-          onReset={() => {
-            if (!confirm("Reset today's Serpent flow? Start, Midday and Evening will be marked uncompleted and the phase cleared.")) return;
-            setState((s) => ({ ...s, startCompleted: false, middayCompleted: false, eveningCompleted: false }));
-            setManualPhase(null);
-            setActive(null);
-            setStepIdx(0);
-          }}
-        />
-      )}
+      <FlowTrioDock
+        trio={TRIO}
+        flow={state}
+        tasks={tasks}
+        reminders={reminders}
+        lifePlanProjects={lifePlanProjects}
+        dailySchedule={dailySchedule}
+        onStart={startFlow}
+        onReset={() => {
+          if (!confirm("Reset today's Serpent flow? Start, Midday and Evening will be marked uncompleted and the phase cleared.")) return;
+          setState((s) => ({ ...s, startCompleted: false, middayCompleted: false, eveningCompleted: false }));
+          setManualPhase(null);
+          setActive(null);
+          setStepIdx(0);
+        }}
+        activeFlow={active}
+        activeSteps={active ? FLOWS[active].steps : null}
+        stepIdx={stepIdx}
+        stepSatisfied={stepSatisfied}
+        onAdvance={next}
+        onCancel={() => { setActive(null); setStepIdx(0); }}
+        onJumpToStep={(i) => setStepIdx(i)}
+      />
 
       {/* Highlight ring + anchored tooltip */}
       <AnimatePresence>
