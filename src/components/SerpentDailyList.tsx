@@ -6,7 +6,7 @@ import { format } from "date-fns";
 interface Props {
   tasks: Task[];
   onToggle: (id: string) => void;
-  /** How many to surface. Defaults to 5. */
+  /** Extra ranked tasks to surface beyond daily recurring ones. */
   limit?: number;
 }
 
@@ -48,27 +48,30 @@ function rankTask(t: Task): number {
   return score;
 }
 
-export default function SerpentDailyList({ tasks, onToggle, limit = 5 }: Props) {
+export default function SerpentDailyList({ tasks, onToggle, limit = 7 }: Props) {
   const [open, setOpen] = useState(false);
-  const [n, setN] = useState(limit);
+  const [extra, setExtra] = useState(limit);
 
-  const ranked = useMemo(() => {
-    return [...tasks]
-      .filter(t => !t.completed && !t.recurrence)
-      .map(t => ({ t, s: rankTask(t) }))
+  const { dailyRecurring, ranked, all } = useMemo(() => {
+    const daily = tasks.filter((t) => t.recurrence === "daily");
+    const rest = tasks
+      .filter((t) => !t.completed && !t.recurrence)
+      .map((t) => ({ t, s: rankTask(t) }))
       .sort((a, b) => b.s - a.s)
-      .slice(0, n)
-      .map(x => x.t);
-  }, [tasks, n]);
+      .slice(0, extra)
+      .map((x) => x.t);
+    return { dailyRecurring: daily, ranked: rest, all: [...daily, ...rest] };
+  }, [tasks, extra]);
 
   const today = format(new Date(), "EEE, d MMM");
 
   const handlePrint = () => {
     const w = window.open("", "_blank", "width=420,height=600");
     if (!w) return;
-    const rows = ranked.map((t, i) => `
+    const rows = all.map((t, i) => `
       <li>
         <strong>${i + 1}.</strong> ${escapeHtml(t.title)}
+        ${t.recurrence === "daily" ? '<span style="color:#0a7;font-size:9px;"> ↻ daily</span>' : ""}
         <span style="color:#777;font-size:10px;"> [${t.categories.join(" · ")}]</span>
       </li>`).join("");
     w.document.write(`<!doctype html><html><head><title>Serpent · ${today}</title>
@@ -79,8 +82,8 @@ export default function SerpentDailyList({ tasks, onToggle, limit = 5 }: Props) 
         ol{padding:0;margin:0;list-style:none;}
         li{padding:6px 0;border-bottom:1px dashed #ddd;}
       </style></head><body>
-      <h1>🐍 Serpent · Daily ${n}</h1>
-      <div class="sub">${today}</div>
+      <h1>🐍 Serpent · Daily List</h1>
+      <div class="sub">${today} · ${dailyRecurring.length} daily · ${ranked.length} prioritised</div>
       <ol>${rows}</ol>
     </body></html>`);
     w.document.close();
@@ -90,13 +93,12 @@ export default function SerpentDailyList({ tasks, onToggle, limit = 5 }: Props) 
 
   const handleShare = async () => {
     const text = `🐍 Serpent · ${today}\n\n` +
-      ranked.map((t, i) => `${i + 1}. ${t.title}  [${t.categories.join("·")}]`).join("\n");
+      all.map((t, i) => `${i + 1}. ${t.title}${t.recurrence === "daily" ? " ↻" : ""}  [${t.categories.join("·")}]`).join("\n");
     if (navigator.share) {
       try { await navigator.share({ title: `Serpent · ${today}`, text }); return; } catch { /* user cancelled */ }
     }
     try {
       await navigator.clipboard.writeText(text);
-      // lightweight confirmation
       const el = document.getElementById("serpent-list-copied");
       if (el) { el.style.opacity = "1"; setTimeout(() => { el.style.opacity = "0"; }, 1400); }
     } catch { /* noop */ }
@@ -110,20 +112,22 @@ export default function SerpentDailyList({ tasks, onToggle, limit = 5 }: Props) 
         className="w-full flex items-center gap-2 px-3 py-1.5 text-[11px] uppercase tracking-wider font-mono text-muted-foreground hover:text-foreground transition-colors"
       >
         <ListChecks size={12} className="text-primary" />
-        <span className="font-semibold">Serpent · Daily {n}</span>
+        <span className="font-semibold">Serpent · Daily</span>
         <span className="opacity-50">·</span>
         <span className="opacity-60 normal-case tracking-normal">{today}</span>
+        <span className="opacity-50">·</span>
+        <span className="opacity-60 normal-case">{dailyRecurring.length} daily + {ranked.length} prioritised</span>
         <span className="ml-auto flex items-center gap-2">
           {open && (
             <>
               <span
                 role="button"
                 tabIndex={0}
-                onClick={(e) => { e.stopPropagation(); setN(n === 5 ? 7 : n === 7 ? 10 : 5); }}
+                onClick={(e) => { e.stopPropagation(); setExtra(extra === 5 ? 10 : extra === 10 ? 20 : 5); }}
                 className="hover:text-primary inline-flex items-center gap-1 cursor-pointer"
-                title="Cycle size 5 / 7 / 10"
+                title="Cycle extra prioritised count 5 / 10 / 20"
               >
-                <RefreshCw size={10} /> {n}
+                <RefreshCw size={10} /> +{extra}
               </span>
               <span
                 role="button"
@@ -152,17 +156,17 @@ export default function SerpentDailyList({ tasks, onToggle, limit = 5 }: Props) 
       {/* Body */}
       {open && (
         <ol className="px-3 pb-2 pt-0.5 space-y-0.5 text-[12px] font-mono leading-tight">
-          {ranked.length === 0 && (
+          {all.length === 0 && (
             <li className="text-muted-foreground italic text-[11px] py-1">
-              Nothing prioritised — add tasks with A1 / B1 / B2 categories.
+              Nothing prioritised — add daily recurring tasks or tasks with A1 / B1 / B2 categories.
             </li>
           )}
-          {ranked.map((t, i) => (
+          {all.map((t, i) => (
             <li
               key={t.id}
               className="flex items-center gap-2 py-0.5 border-b border-dashed border-border/50 last:border-0"
             >
-              <span className="text-muted-foreground w-4 text-right">{i + 1}.</span>
+              <span className="text-muted-foreground w-5 text-right">{i + 1}.</span>
               <button
                 onClick={() => onToggle(t.id)}
                 className="flex-shrink-0 w-3.5 h-3.5 rounded-sm border border-border hover:border-primary flex items-center justify-center"
@@ -170,7 +174,12 @@ export default function SerpentDailyList({ tasks, onToggle, limit = 5 }: Props) 
               >
                 {t.completed && <Check size={9} className="text-primary" />}
               </button>
-              <span className="flex-1 truncate">{t.title}</span>
+              <span className={`flex-1 truncate ${t.completed ? "line-through text-muted-foreground" : ""}`}>
+                {t.title}
+              </span>
+              {t.recurrence === "daily" && (
+                <span className="text-[8px] text-emerald-500/80 tracking-wider uppercase">↻ daily</span>
+              )}
               <span className="text-[9px] text-muted-foreground tracking-wider">
                 {t.categories.slice(0, 3).join("·")}
               </span>

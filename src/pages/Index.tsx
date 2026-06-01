@@ -15,6 +15,7 @@ import AIChat from "@/components/AIChat";
 import AISidebar from "@/components/AISidebar";
 import ConsistencyView from "@/components/ConsistencyView";
 import ReminderWatcher from "@/components/ReminderWatcher";
+import WeeklyIntentionWatcher from "@/components/WeeklyIntentionWatcher";
 import SyncStatusBanner from "@/components/SyncStatusBanner";
 import SerpentFlow from "@/components/SerpentFlow";
 
@@ -174,6 +175,7 @@ export default function Index() {
       </div>
       <AISidebar tasks={visibleTasks} projects={allProjects} onSaveTasks={setVisibleTasks} onSaveProjects={setProjects} />
       <ReminderWatcher reminders={reminders} onUpdate={setReminders} />
+      <WeeklyIntentionWatcher tasks={visibleTasks} />
       <SerpentFlow tasks={visibleTasks} reminders={reminders} lifePlanProjects={lifePlanProjects} dailySchedule={dailySchedule} />
     </div>
   );
