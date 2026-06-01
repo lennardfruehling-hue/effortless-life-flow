@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import { Task, ViewMode } from "@/lib/types";
-import { ListTodo, Compass, Bell, BookOpen, CalendarDays, ListChecks, LogOut, Users, Flame, Trophy, Clock } from "lucide-react";
+import { ListTodo, Compass, Bell, BookOpen, CalendarDays, ListChecks, LogOut, Users, Flame, Trophy, Clock, Mail } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import HouseholdSettings from "./HouseholdSettings";
 import FlowCutoffSettings from "./FlowCutoffSettings";
+import NotificationSettingsModal from "./NotificationSettings";
 import { totalPride, prideThisWeek, computeConsistency } from "@/lib/pride";
 import serpentBg from "@/assets/serpent-sidebar.jpg";
 import serpentStrike from "@/assets/serpent-sidebar-strike.jpg";
@@ -35,6 +36,7 @@ export default function Sidebar({
   const { user, signOut } = useAuth();
   const [showHousehold, setShowHousehold] = useState(false);
   const [showFlowTimes, setShowFlowTimes] = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
   const { pride, weekPride, streak } = useMemo(() => {
     const t = tasks ?? [];
     return {
@@ -216,6 +218,14 @@ export default function Sidebar({
           <span className="hidden md:inline">Flow times</span>
         </button>
         <button
+          onClick={() => setShowNotifs(true)}
+          title="Reminders & emails"
+          className="w-full flex items-center justify-center md:justify-start gap-2.5 px-2.5 md:px-3 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors"
+        >
+          <Mail size={16} strokeWidth={1.75} />
+          <span className="hidden md:inline">Reminders & emails</span>
+        </button>
+        <button
           onClick={signOut}
           title="Sign out"
           className="w-full flex items-center justify-center md:justify-start gap-2.5 px-2.5 md:px-3 py-2 rounded-lg text-sm text-sidebar-foreground/70 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground transition-colors"
@@ -228,6 +238,7 @@ export default function Sidebar({
     </aside>
     {showHousehold && <HouseholdSettings onClose={() => setShowHousehold(false)} />}
     {showFlowTimes && <FlowCutoffSettings onClose={() => setShowFlowTimes(false)} />}
+    {showNotifs && <NotificationSettingsModal onClose={() => setShowNotifs(false)} />}
     </>
   );
 }
