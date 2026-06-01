@@ -34,12 +34,14 @@ const FLOWS: Record<FlowKind, { label: string; steps: Step[] }> = {
   start: {
     label: "Start Serpent 🐍",
     steps: [
-      { title: "Open Tasks", body: "Go to the Tasks view to plan your day.", target: '[data-tour="nav-tasks"]', requires: { kind: "click-target" }, hint: "Click the Tasks nav item to continue." },
-      { title: "Add Daily Tasks", body: "Use Add Task to drop in today's daily items.", target: '[data-tour="add-task"]', requires: { kind: "click-target" }, hint: "Click Add Task to continue." },
-      { title: "Check Tasks", body: "Review urgency on existing tasks (A1/B1).", target: '[data-tour="add-task"]', requires: { kind: "none" } },
-      { title: "Open Schedule", body: "Open the 24h Schedule panel.", target: '[data-tour="schedule-toggle"]', requires: { kind: "click-target" }, hint: "Click Schedule to open the panel." },
-      { title: "Produce & Complete Schedule", body: "Drag tasks in, set realistic time + buffer, sanity-check it's doable.", target: '[data-tour="schedule-panel"]', requires: { kind: "progress-event", event: "schedule-block-added" }, hint: "Add at least one block to the schedule to continue." },
-      { title: "Email schedule", body: "Send the schedule to yourself by email.", target: '[data-tour="email-schedule"]', requires: { kind: "progress-event", event: "schedule-emailed" }, hint: "Click Email schedule to continue." },
+      { title: "Review yesterday's tasks", body: "Open Tasks and scan what carried over from yesterday.", target: '[data-tour="nav-tasks"]', requires: { kind: "click-target" }, hint: "Click the Tasks nav item to open the list." },
+      { title: "Add today's tasks", body: "Drop in anything new for today.", target: '[data-tour="add-task"]', requires: { kind: "click-target" }, hint: "Click Add Task to add new items." },
+      { title: "Anything you don't want to know?", body: "Mark tasks to hide / defer (Avoid / Hate categories). Tick when reviewed.", requires: { kind: "none" } },
+      { title: "Check non-negotiables for Célida (K)", body: "Confirm K-category items for Célida are in today's list.", requires: { kind: "none" } },
+      { title: "Build today's schedule", body: "Open Schedule and drag tasks into time blocks.", target: '[data-tour="schedule-toggle"]', requires: { kind: "progress-event", event: "schedule-block-added" }, hint: "Open Schedule and add at least one block." },
+      { title: "Realistic timing — add buffers", body: "Sanity-check durations; add extra time for each task.", requires: { kind: "none" } },
+      { title: "Print schedule", body: "Open a printable copy.", target: '[data-tour="print-schedule"]', requires: { kind: "progress-event", event: "schedule-printed" }, hint: "Click Print schedule." },
+      { title: "Email schedule", body: "Send today's schedule to your inbox.", target: '[data-tour="email-schedule"]', requires: { kind: "progress-event", event: "schedule-emailed" }, hint: "Click Email schedule." },
     ],
   },
   midday: {
