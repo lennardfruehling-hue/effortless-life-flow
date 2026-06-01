@@ -661,6 +661,72 @@ function FlowTrioDock({
         </div>
       )}
 
+      {/* Active flow checklist — step-by-step inside the command center */}
+      {activeFlow && activeSteps && (
+        <div className="px-3 py-2 border-b border-white/10 min-w-[340px] max-w-[420px]">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] uppercase tracking-wider font-mono text-white/70">
+              {activeFlow === "start" ? "Start Serpent" : activeFlow === "midday" ? "Midday Check" : "Evening Review"} · {stepIdx + 1}/{activeSteps.length}
+            </span>
+            <button
+              onClick={onCancel}
+              className="text-[10px] text-white/50 hover:text-white"
+              title="Close checklist"
+            >
+              <X size={12} />
+            </button>
+          </div>
+          <ol className="space-y-0.5">
+            {activeSteps.map((s, i) => {
+              const done = i < stepIdx;
+              const current = i === stepIdx;
+              return (
+                <li
+                  key={i}
+                  className={`flex items-start gap-2 px-1.5 py-1 rounded text-[11px] ${
+                    current ? "bg-amber-500/15 text-white" : done ? "text-white/50 line-through" : "text-white/60"
+                  }`}
+                >
+                  <button
+                    onClick={() => { if (i < stepIdx) onJumpToStep(i); }}
+                    className={`mt-0.5 w-3.5 h-3.5 rounded-sm border flex-shrink-0 flex items-center justify-center text-[9px] ${
+                      done ? "bg-emerald-500 border-emerald-300 text-white" :
+                      current ? "border-amber-300" : "border-white/30"
+                    }`}
+                    title={done ? "Go back to this step" : ""}
+                  >
+                    {done ? "✓" : current ? "•" : ""}
+                  </button>
+                  <span className="flex-1 leading-tight">
+                    <span className="font-medium">{i + 1}. {s.title}</span>
+                    {current && (
+                      <span className="block text-[10px] text-white/70 mt-0.5">{s.body}</span>
+                    )}
+                    {current && !stepSatisfied && s.hint && (
+                      <span className="block text-[10px] text-amber-200 mt-0.5 italic">⏳ {s.hint}</span>
+                    )}
+                  </span>
+                  {current && (
+                    <button
+                      onClick={onAdvance}
+                      disabled={!stepSatisfied}
+                      className={`flex-shrink-0 self-center text-[10px] px-2 py-0.5 rounded font-medium transition ${
+                        stepSatisfied
+                          ? "bg-amber-400 text-black hover:opacity-90"
+                          : "bg-white/10 text-white/40 cursor-not-allowed"
+                      }`}
+                      title={stepSatisfied ? "Mark step complete" : "Complete the action above to unlock"}
+                    >
+                      {stepSatisfied ? (i + 1 >= activeSteps.length ? "Done" : "Next") : "Locked"}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
+
       {/* Main row: flow trio + reset + collapse */}
       <div className="flex items-end gap-4 px-4 py-2">
         {trio.map(({ kind, img, label, done }) => (
