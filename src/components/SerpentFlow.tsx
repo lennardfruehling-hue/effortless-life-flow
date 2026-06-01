@@ -372,6 +372,13 @@ function FlowTrioDock({
   dailySchedule,
   onStart,
   onReset,
+  activeFlow,
+  activeSteps,
+  stepIdx,
+  stepSatisfied,
+  onAdvance,
+  onCancel,
+  onJumpToStep,
 }: {
   trio: TrioItem[];
   flow: SerpentFlowDayState;
@@ -381,6 +388,13 @@ function FlowTrioDock({
   dailySchedule: DailyScheduleSlot[];
   onStart: (k: FlowKind) => void;
   onReset: () => void;
+  activeFlow: FlowKind | null;
+  activeSteps: Step[] | null;
+  stepIdx: number;
+  stepSatisfied: boolean;
+  onAdvance: () => void;
+  onCancel: () => void;
+  onJumpToStep: (i: number) => void;
 }) {
   const KEY = "serpent-trio-collapsed";
   const [collapsed, setCollapsed] = useState<boolean>(() => {
