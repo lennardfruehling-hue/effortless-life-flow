@@ -119,15 +119,6 @@ export default function SerpentDailyList({ tasks, onToggle }: Props) {
               <span
                 role="button"
                 tabIndex={0}
-                onClick={(e) => { e.stopPropagation(); setExtra(extra === 5 ? 10 : extra === 10 ? 20 : 5); }}
-                className="hover:text-primary inline-flex items-center gap-1 cursor-pointer"
-                title="Cycle extra prioritised count 5 / 10 / 20"
-              >
-                <RefreshCw size={10} /> +{extra}
-              </span>
-              <span
-                role="button"
-                tabIndex={0}
                 onClick={(e) => { e.stopPropagation(); handlePrint(); }}
                 className="hover:text-primary cursor-pointer"
                 title="Print"
