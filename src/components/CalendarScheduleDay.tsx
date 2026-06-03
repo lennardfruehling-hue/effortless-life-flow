@@ -265,13 +265,16 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditT
 
   const removeSlot = (id: string) => onSaveSlots(slots.filter((s) => s.id !== id));
 
-  const unscheduledTasks = useMemo(() => {
+  const paletteTasks = useMemo(() => {
     const scheduledIds = new Set(slots.map((s) => s.taskId).filter(Boolean));
-    const base = tasks.filter((t) => !t.completed && !scheduledIds.has(t.id));
-    if (filter === "all") return base;
-    if (filter === "none") return base.filter((t) => !t.recurrence);
-    return base.filter((t) => t.recurrence === filter);
-  }, [tasks, slots, filter]);
+    const daily = tasks.filter((t) => t.recurrence === "daily" && !scheduledIds.has(t.id));
+    const rest = tasks
+      .filter((t) => !t.completed && !t.recurrence && !scheduledIds.has(t.id))
+      .map((t) => ({ t, s: rankTask(t) }))
+      .sort((a, b) => b.s - a.s)
+      .map((x) => x.t);
+    return [...daily, ...rest];
+  }, [tasks, slots]);
 
   // Auto-populate today's schedule with daily-recurring tasks that have a dueTime
   // and any weekly task whose dueDate falls today. Each task gets at most one slot per day.
