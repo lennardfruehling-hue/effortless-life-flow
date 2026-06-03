@@ -1,13 +1,11 @@
 import { useMemo, useState } from "react";
 import { Task } from "@/lib/types";
-import { Printer, Share2, ListChecks, RefreshCw, Check } from "lucide-react";
+import { Printer, Share2, ListChecks, Check } from "lucide-react";
 import { format } from "date-fns";
 
 interface Props {
   tasks: Task[];
   onToggle: (id: string) => void;
-  /** Extra ranked tasks to surface beyond daily recurring ones. */
-  limit?: number;
 }
 
 /**
@@ -48,9 +46,8 @@ function rankTask(t: Task): number {
   return score;
 }
 
-export default function SerpentDailyList({ tasks, onToggle, limit = 7 }: Props) {
+export default function SerpentDailyList({ tasks, onToggle }: Props) {
   const [open, setOpen] = useState(false);
-  const [extra, setExtra] = useState(limit);
 
   const { dailyRecurring, ranked, all } = useMemo(() => {
     const daily = tasks.filter((t) => t.recurrence === "daily");
@@ -58,10 +55,9 @@ export default function SerpentDailyList({ tasks, onToggle, limit = 7 }: Props) 
       .filter((t) => !t.completed && !t.recurrence)
       .map((t) => ({ t, s: rankTask(t) }))
       .sort((a, b) => b.s - a.s)
-      .slice(0, extra)
       .map((x) => x.t);
     return { dailyRecurring: daily, ranked: rest, all: [...daily, ...rest] };
-  }, [tasks, extra]);
+  }, [tasks]);
 
   const today = format(new Date(), "EEE, d MMM");
 
@@ -116,19 +112,10 @@ export default function SerpentDailyList({ tasks, onToggle, limit = 7 }: Props) 
         <span className="opacity-50">·</span>
         <span className="opacity-60 normal-case tracking-normal">{today}</span>
         <span className="opacity-50">·</span>
-        <span className="opacity-60 normal-case">{dailyRecurring.length} daily + {ranked.length} prioritised</span>
+        <span className="opacity-60 normal-case">{dailyRecurring.length} daily + {ranked.length} for today</span>
         <span className="ml-auto flex items-center gap-2">
           {open && (
             <>
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={(e) => { e.stopPropagation(); setExtra(extra === 5 ? 10 : extra === 10 ? 20 : 5); }}
-                className="hover:text-primary inline-flex items-center gap-1 cursor-pointer"
-                title="Cycle extra prioritised count 5 / 10 / 20"
-              >
-                <RefreshCw size={10} /> +{extra}
-              </span>
               <span
                 role="button"
                 tabIndex={0}
