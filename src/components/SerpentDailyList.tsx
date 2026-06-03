@@ -46,9 +46,8 @@ function rankTask(t: Task): number {
   return score;
 }
 
-export default function SerpentDailyList({ tasks, onToggle, limit = 7 }: Props) {
+export default function SerpentDailyList({ tasks, onToggle }: Props) {
   const [open, setOpen] = useState(false);
-  const [extra, setExtra] = useState(limit);
 
   const { dailyRecurring, ranked, all } = useMemo(() => {
     const daily = tasks.filter((t) => t.recurrence === "daily");
@@ -56,10 +55,9 @@ export default function SerpentDailyList({ tasks, onToggle, limit = 7 }: Props) 
       .filter((t) => !t.completed && !t.recurrence)
       .map((t) => ({ t, s: rankTask(t) }))
       .sort((a, b) => b.s - a.s)
-      .slice(0, extra)
       .map((x) => x.t);
     return { dailyRecurring: daily, ranked: rest, all: [...daily, ...rest] };
-  }, [tasks, extra]);
+  }, [tasks]);
 
   const today = format(new Date(), "EEE, d MMM");
 
