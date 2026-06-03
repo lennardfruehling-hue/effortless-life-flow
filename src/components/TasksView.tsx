@@ -206,7 +206,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
         </div>
       )}
       {/* Serpent prioritised daily list */}
-      <SerpentDailyList tasks={tasks} onToggle={handleToggle} />
+      <SerpentDailyList tasks={tasks} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} />
 
 
       {/* Daily / Weekly recurring groups */}
