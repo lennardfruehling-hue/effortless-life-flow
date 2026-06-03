@@ -63,11 +63,10 @@ function snap(min: number): number {
 
 type RecurFilter = "all" | "daily" | "weekly" | "none";
 
-export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props) {
+export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditTask }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ id: string; mode: "move" | "resize"; offsetMin: number; origStart: number; origEnd: number } | null>(null);
-  const [filter, setFilter] = useState<RecurFilter>("all");
   const [nowMin, setNowMin] = useState(() => {
     const n = new Date();
     return n.getHours() * 60 + n.getMinutes();
