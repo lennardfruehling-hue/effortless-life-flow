@@ -6,6 +6,7 @@ import { format } from "date-fns";
 interface Props {
   tasks: Task[];
   onToggle: (id: string) => void;
+  onEdit?: (task: Task) => void;
 }
 
 /**
