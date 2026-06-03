@@ -61,7 +61,7 @@ function snap(min: number): number {
   return Math.round(min / SNAP_MIN) * SNAP_MIN;
 }
 
-type RecurFilter = "all" | "daily" | "weekly" | "none";
+
 
 export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditTask }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
