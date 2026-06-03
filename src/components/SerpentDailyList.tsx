@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Task } from "@/lib/types";
-import { Printer, Share2, ListChecks, RefreshCw, Check } from "lucide-react";
+import { Printer, Share2, ListChecks, Check } from "lucide-react";
 import { format } from "date-fns";
 
 interface Props {
