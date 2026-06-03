@@ -9,6 +9,39 @@ interface Props {
   slots: DailyScheduleSlot[];
   tasks: Task[];
   onSaveSlots: (slots: DailyScheduleSlot[]) => void;
+  onEditTask?: (task: Task) => void;
+}
+
+/**
+ * Mirror SerpentDailyList ranking so the schedule palette shows
+ * the exact same "Today" tasks the user sees in the daily list.
+ */
+function rankTask(t: Task): number {
+  let score = 0;
+  const c = new Set(t.categories);
+  if (c.has("A1")) score += 1000;
+  if (c.has("B1")) score += 700;
+  if (c.has("K")) score += 600;
+  if (c.has("A2")) score += 400;
+  if (c.has("B2")) score += 350;
+  if (c.has("C")) score += 120;
+  if (c.has("D")) score += 80;
+  if (c.has("H")) score += 60;
+  if (c.has("G")) score += 30;
+  if (c.has("J")) score += 20;
+  if (c.has("E")) score -= 40;
+  if (c.has("F")) score -= 80;
+  if (c.has("I")) score -= 150;
+  if (c.has("A3")) score -= 20;
+  if (t.dueDate) {
+    const days = Math.floor((new Date(t.dueDate).getTime() - Date.now()) / 86_400_000);
+    if (days <= 0) score += 500;
+    else if (days <= 1) score += 250;
+    else if (days <= 3) score += 120;
+  }
+  if (t.dueTime) score += 40;
+  if (t.makesProud) score += 30 + Math.min(60, (t.duration ?? 0) / 2);
+  return score;
 }
 
 const HOUR_PX = 56; // px per hour
