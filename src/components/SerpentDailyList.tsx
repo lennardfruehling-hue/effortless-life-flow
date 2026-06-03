@@ -112,7 +112,7 @@ export default function SerpentDailyList({ tasks, onToggle }: Props) {
         <span className="opacity-50">·</span>
         <span className="opacity-60 normal-case tracking-normal">{today}</span>
         <span className="opacity-50">·</span>
-        <span className="opacity-60 normal-case">{dailyRecurring.length} daily + {ranked.length} prioritised</span>
+        <span className="opacity-60 normal-case">{dailyRecurring.length} daily + {ranked.length} for today</span>
         <span className="ml-auto flex items-center gap-2">
           {open && (
             <>
