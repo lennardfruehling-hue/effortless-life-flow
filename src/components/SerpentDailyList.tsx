@@ -6,8 +6,6 @@ import { format } from "date-fns";
 interface Props {
   tasks: Task[];
   onToggle: (id: string) => void;
-  /** Extra ranked tasks to surface beyond daily recurring ones. */
-  limit?: number;
 }
 
 /**
