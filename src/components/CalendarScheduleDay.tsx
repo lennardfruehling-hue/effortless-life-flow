@@ -9,6 +9,39 @@ interface Props {
   slots: DailyScheduleSlot[];
   tasks: Task[];
   onSaveSlots: (slots: DailyScheduleSlot[]) => void;
+  onEditTask?: (task: Task) => void;
+}
+
+/**
+ * Mirror SerpentDailyList ranking so the schedule palette shows
+ * the exact same "Today" tasks the user sees in the daily list.
+ */
+function rankTask(t: Task): number {
+  let score = 0;
+  const c = new Set(t.categories);
+  if (c.has("A1")) score += 1000;
+  if (c.has("B1")) score += 700;
+  if (c.has("K")) score += 600;
+  if (c.has("A2")) score += 400;
+  if (c.has("B2")) score += 350;
+  if (c.has("C")) score += 120;
+  if (c.has("D")) score += 80;
+  if (c.has("H")) score += 60;
+  if (c.has("G")) score += 30;
+  if (c.has("J")) score += 20;
+  if (c.has("E")) score -= 40;
+  if (c.has("F")) score -= 80;
+  if (c.has("I")) score -= 150;
+  if (c.has("A3")) score -= 20;
+  if (t.dueDate) {
+    const days = Math.floor((new Date(t.dueDate).getTime() - Date.now()) / 86_400_000);
+    if (days <= 0) score += 500;
+    else if (days <= 1) score += 250;
+    else if (days <= 3) score += 120;
+  }
+  if (t.dueTime) score += 40;
+  if (t.makesProud) score += 30 + Math.min(60, (t.duration ?? 0) / 2);
+  return score;
 }
 
 const HOUR_PX = 56; // px per hour
@@ -28,13 +61,12 @@ function snap(min: number): number {
   return Math.round(min / SNAP_MIN) * SNAP_MIN;
 }
 
-type RecurFilter = "all" | "daily" | "weekly" | "none";
 
-export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props) {
+
+export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditTask }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ id: string; mode: "move" | "resize"; offsetMin: number; origStart: number; origEnd: number } | null>(null);
-  const [filter, setFilter] = useState<RecurFilter>("all");
   const [nowMin, setNowMin] = useState(() => {
     const n = new Date();
     return n.getHours() * 60 + n.getMinutes();
@@ -233,13 +265,16 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
 
   const removeSlot = (id: string) => onSaveSlots(slots.filter((s) => s.id !== id));
 
-  const unscheduledTasks = useMemo(() => {
+  const paletteTasks = useMemo(() => {
     const scheduledIds = new Set(slots.map((s) => s.taskId).filter(Boolean));
-    const base = tasks.filter((t) => !t.completed && !scheduledIds.has(t.id));
-    if (filter === "all") return base;
-    if (filter === "none") return base.filter((t) => !t.recurrence);
-    return base.filter((t) => t.recurrence === filter);
-  }, [tasks, slots, filter]);
+    const daily = tasks.filter((t) => t.recurrence === "daily" && !scheduledIds.has(t.id));
+    const rest = tasks
+      .filter((t) => !t.completed && !t.recurrence && !scheduledIds.has(t.id))
+      .map((t) => ({ t, s: rankTask(t) }))
+      .sort((a, b) => b.s - a.s)
+      .map((x) => x.t);
+    return [...daily, ...rest];
+  }, [tasks, slots]);
 
   // Auto-populate today's schedule with daily-recurring tasks that have a dueTime
   // and any weekly task whose dueDate falls today. Each task gets at most one slot per day.
@@ -400,62 +435,48 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots }: Props
       </div>
 
       <div className="grid grid-cols-[180px_1fr] gap-3">
-        {/* Task palette */}
+        {/* Task palette — mirrors Serpent Daily List */}
         <div className="border-r border-border pr-3">
-          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-2">Drag tasks →</p>
-          <div className="flex flex-wrap gap-1 mb-2">
-            {(["all", "daily", "weekly", "none"] as RecurFilter[]).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`text-[10px] font-mono px-1.5 py-0.5 rounded border transition-colors ${
-                  filter === f
-                    ? "bg-primary/20 text-primary border-primary/40"
-                    : "text-muted-foreground border-border hover:border-primary/30"
-                }`}
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-2">
+            Daily list · drag → schedule
+          </p>
+          <div className="space-y-1.5 max-h-[600px] overflow-y-auto scrollbar-thin">
+            {paletteTasks.length === 0 && (
+              <p className="text-[11px] text-muted-foreground italic">All tasks scheduled</p>
+            )}
+            {paletteTasks.map((t, i) => (
+              <div
+                key={t.id}
+                draggable
+                onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
+                onClick={() => onEditTask?.(t)}
+                className="cursor-grab active:cursor-grabbing p-2 rounded border border-border bg-secondary/40 hover:border-primary/40 hover:bg-secondary text-xs group"
+                title="Click to edit · drag to schedule"
               >
-                {f === "none" ? "one-off" : f}
-              </button>
-            ))}
-          </div>
-          <div className="space-y-2 max-h-[600px] overflow-y-auto scrollbar-thin">
-            {unscheduledTasks.length === 0 && <p className="text-[11px] text-muted-foreground italic">No tasks</p>}
-            {(["daily", "weekly", "none"] as const)
-              .filter((g) => filter === "all" || (g === "none" ? filter === "none" : filter === g))
-              .map((group) => {
-                const items = unscheduledTasks.filter((t) =>
-                  group === "none" ? !t.recurrence : t.recurrence === group
-                );
-                if (items.length === 0) return null;
-                const labels: Record<string, string> = { daily: "Daily", weekly: "Weekly", none: "One-off" };
-                return (
-                  <div key={group}>
-                    <div className="text-[9px] uppercase tracking-wider text-muted-foreground font-mono mb-1">
-                      {labels[group]} · {items.length}
-                    </div>
-                    <div className="space-y-1.5">
-                      {items.map((t) => (
-                        <div
-                          key={t.id}
-                          draggable
-                          onDragStart={(e) => e.dataTransfer.setData("text/task-id", t.id)}
-                          className="cursor-grab active:cursor-grabbing p-2 rounded border border-border bg-secondary/40 hover:border-primary/40 hover:bg-secondary text-xs"
-                        >
-                          <div className="text-foreground line-clamp-2 mb-1">{t.title}</div>
-                          <div className="flex flex-wrap gap-0.5">
-                            {t.categories.slice(0, 3).map((c) => (
-                              <CategoryBadge key={c} category={c} small />
-                            ))}
-                          </div>
-                          {t.duration && <div className="text-[10px] text-muted-foreground font-mono mt-0.5">{t.duration}m</div>}
-                        </div>
+                <div className="flex items-start gap-1.5">
+                  <span className="text-[10px] text-muted-foreground font-mono mt-0.5 w-4 text-right flex-shrink-0">
+                    {i + 1}.
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-foreground line-clamp-2 mb-1 group-hover:text-primary">{t.title}</div>
+                    <div className="flex flex-wrap gap-0.5 items-center">
+                      {t.recurrence === "daily" && (
+                        <span className="text-[8px] text-emerald-500/80 tracking-wider uppercase mr-1">↻</span>
+                      )}
+                      {t.categories.slice(0, 3).map((c) => (
+                        <CategoryBadge key={c} category={c} small />
                       ))}
+                      {t.duration && (
+                        <span className="text-[10px] text-muted-foreground font-mono ml-1">{t.duration}m</span>
+                      )}
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
+
 
         {/* 24h grid (scrollable, opens at current time) */}
         <div className="relative">

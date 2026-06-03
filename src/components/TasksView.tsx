@@ -155,7 +155,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
       {/* Daily Schedule */}
       {showSchedule && (
         <div className="mb-6">
-          <CalendarScheduleDay slots={dailySchedule} tasks={tasks} onSaveSlots={onSaveDailySchedule} />
+          <CalendarScheduleDay slots={dailySchedule} tasks={tasks} onSaveSlots={onSaveDailySchedule} onEditTask={(t) => { setEditTask(t); setShowForm(true); }} />
         </div>
       )}
 
