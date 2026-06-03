@@ -162,9 +162,12 @@ export default function SerpentDailyList({ tasks, onToggle, onEdit }: Props) {
               >
                 {t.completed && <Check size={9} className="text-primary" />}
               </button>
-              <span className={`flex-1 truncate ${t.completed ? "line-through text-muted-foreground" : ""}`}>
+              <button
+                onClick={() => onEdit?.(t)}
+                className={`flex-1 text-left truncate ${t.completed ? "line-through text-muted-foreground" : "hover:text-primary cursor-pointer"}`}
+              >
                 {t.title}
-              </span>
+              </button>
               {t.recurrence === "daily" && (
                 <span className="text-[8px] text-emerald-500/80 tracking-wider uppercase">↻ daily</span>
               )}
