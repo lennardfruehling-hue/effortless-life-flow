@@ -47,7 +47,7 @@ function rankTask(t: Task): number {
   return score;
 }
 
-export default function SerpentDailyList({ tasks, onToggle }: Props) {
+export default function SerpentDailyList({ tasks, onToggle, onEdit }: Props) {
   const [open, setOpen] = useState(false);
 
   const { dailyRecurring, ranked, all } = useMemo(() => {
