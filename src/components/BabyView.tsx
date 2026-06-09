@@ -11,6 +11,7 @@ import {
   Gift, UtensilsCrossed, FileText, GraduationCap, Plus, Trash2,
   Link2, Upload, X, CheckSquare, Square, ExternalLink,
   Smile, Frown, Meh, Cake, Languages, Activity, AlertCircle, Clock,
+  Target, Brain, MessageCircle, Users, Palette, Dumbbell, Sparkles,
 } from "lucide-react";
 
 // ---------------- Data shape ----------------
@@ -49,14 +50,26 @@ interface BabyEntry {
   administered?: boolean;
   doctor?: string;
   location?: string;
+  // priorities
+  priorityLevel?: "high" | "medium" | "low";
+  developmentArea?: DevelopmentArea;
+  ageRangeStart?: number; // months
+  ageRangeEnd?: number;   // months
+  status?: "active" | "achieved" | "paused";
+  linkedTaskIds?: string[];
+  rationale?: string;
 }
 
+export type DevelopmentArea =
+  | "motor" | "cognitive" | "language" | "social" | "emotional" | "physical" | "creative" | "sensory";
+
 type SectionId =
-  | "vaccines" | "appointments" | "milestones" | "health" | "growth"
+  | "priorities" | "vaccines" | "appointments" | "milestones" | "health" | "growth"
   | "play" | "toys" | "food" | "documents" | "education";
 
 interface BabyData {
   birthDate?: string;
+  priorities: BabyEntry[];
   vaccines: BabyEntry[];
   appointments: BabyEntry[];
   milestones: BabyEntry[];
@@ -70,9 +83,21 @@ interface BabyData {
 }
 
 const DEFAULT_DATA: BabyData = {
+  priorities: [],
   vaccines: [], appointments: [], milestones: [], health: [], growth: [],
   play: [], toys: { listId: null }, food: [], documents: [], education: [],
 };
+
+export const DEVELOPMENT_AREAS: { id: DevelopmentArea; label: string; icon: typeof Brain; color: string }[] = [
+  { id: "motor",     label: "Motor",     icon: Dumbbell,      color: "text-orange-500" },
+  { id: "cognitive", label: "Cognitive", icon: Brain,         color: "text-purple-500" },
+  { id: "language",  label: "Language",  icon: MessageCircle, color: "text-blue-500" },
+  { id: "social",    label: "Social",    icon: Users,         color: "text-pink-500" },
+  { id: "emotional", label: "Emotional", icon: Heart,         color: "text-red-500" },
+  { id: "physical",  label: "Physical",  icon: Activity,      color: "text-emerald-500" },
+  { id: "creative",  label: "Creative",  icon: Palette,       color: "text-amber-500" },
+  { id: "sensory",   label: "Sensory",   icon: Sparkles,      color: "text-cyan-500" },
+];
 
 // ---------------- Reference data ----------------
 
@@ -133,6 +158,7 @@ interface SectionDef {
 }
 
 const SECTIONS: SectionDef[] = [
+  { id: "priorities",   label: "Priorities",       icon: Target,                                          placeholder: "Priority (e.g. Encourage crawling)" },
   { id: "vaccines",     label: "Vaccines",         icon: Syringe,          hasDate: true,                 placeholder: "Vaccine name (e.g. MMR)" },
   { id: "appointments", label: "Appointments",     icon: CalendarClock,    hasDate: true, hasTime: true,  placeholder: "Doctor / clinic" },
   { id: "milestones",   label: "Milestones",       icon: Star,             hasDate: true,                 placeholder: "First word, first step…" },
@@ -288,6 +314,16 @@ export default function BabyView({ projects, tasks, onSaveTasks }: Props) {
             <sectionDef.icon size={22} className="text-primary" />
             <h1 className="text-2xl font-bold">{sectionDef.label}</h1>
           </div>
+
+          {active === "priorities" && (
+            <PrioritiesSmart
+              birthDate={safe.birthDate}
+              entries={safe.priorities}
+              notes={notes}
+              tasks={tasks}
+              onChange={(next) => updateSection("priorities", next)}
+            />
+          )}
 
           {active === "vaccines" && (
             <VaccinesSmart
@@ -1707,6 +1743,408 @@ function LanguageLog({ onLog }: { onLog: (l: Language, dur: number, title: strin
       <input type="number" value={dur} onChange={(e) => setDur(e.target.value)} className="w-20 text-xs bg-secondary/40 rounded px-2 py-1.5 outline-none" />
       <span className="text-xs text-muted-foreground">min</span>
       <button onClick={() => { onLog(lang, Number(dur) || 0, title.trim()); setTitle(""); }} className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded hover:opacity-90">Log</button>
+    </div>
+  );
+}
+
+// ============================================================
+// PRIORITIES
+// ============================================================
+
+function PrioritiesSmart({
+  birthDate, entries, notes, tasks, onChange,
+}: {
+  birthDate?: string;
+  entries: BabyEntry[];
+  notes: ResearchNoteRow[];
+  tasks: Task[];
+  onChange: (next: BabyEntry[]) => void;
+}) {
+  const [openAdd, setOpenAdd] = useState(false);
+  const [filter, setFilter] = useState<"all" | DevelopmentArea>("all");
+  const [statusFilter, setStatusFilter] = useState<"active" | "all" | "achieved">("active");
+  const babyMonths = ageInMonths(birthDate) ?? -1;
+
+  const patch = (id: string, p: Partial<BabyEntry>) =>
+    onChange(entries.map(e => e.id === id ? { ...e, ...p } : e));
+  const remove = (id: string) => onChange(entries.filter(e => e.id !== id));
+
+  const visible = useMemo(() => {
+    const order = { high: 0, medium: 1, low: 2 } as const;
+    return entries
+      .filter(e => filter === "all" || e.developmentArea === filter)
+      .filter(e => statusFilter === "all"
+        ? true
+        : statusFilter === "achieved"
+          ? e.status === "achieved"
+          : (e.status ?? "active") === "active")
+      .sort((a, b) => (order[a.priorityLevel ?? "medium"] - order[b.priorityLevel ?? "medium"]));
+  }, [entries, filter, statusFilter]);
+
+  const activeCount = entries.filter(e => (e.status ?? "active") === "active").length;
+  const highCount = entries.filter(e => e.priorityLevel === "high" && (e.status ?? "active") === "active").length;
+  const achievedCount = entries.filter(e => e.status === "achieved").length;
+
+  const ageRelevant = (e: BabyEntry) => {
+    if (babyMonths < 0) return true;
+    const s = e.ageRangeStart ?? -Infinity;
+    const en = e.ageRangeEnd ?? Infinity;
+    return babyMonths >= s && babyMonths <= en;
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Focused priorities for the baby's development. Pick a development area, set urgency, and link
+        related notes and tasks so the household stays aligned on what matters most right now.
+      </p>
+
+      <div className="grid grid-cols-3 gap-3">
+        <Stat label="Active priorities" value={String(activeCount)} />
+        <Stat label="High-priority" value={String(highCount)} accent={highCount > 0 ? "destructive" : undefined} />
+        <Stat label="Achieved" value={String(achievedCount)} />
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          onClick={() => setOpenAdd(v => !v)}
+          className="flex items-center gap-1 text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded hover:opacity-90"
+        >
+          <Plus size={12} /> Add priority
+        </button>
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value as any)}
+          className="text-xs bg-secondary/40 rounded px-2 py-1.5 outline-none"
+        >
+          <option value="all">All areas</option>
+          {DEVELOPMENT_AREAS.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as any)}
+          className="text-xs bg-secondary/40 rounded px-2 py-1.5 outline-none"
+        >
+          <option value="active">Active</option>
+          <option value="achieved">Achieved</option>
+          <option value="all">All</option>
+        </select>
+      </div>
+
+      {openAdd && (
+        <PriorityForm
+          onAdd={(e) => { onChange([e, ...entries]); setOpenAdd(false); }}
+          onCancel={() => setOpenAdd(false)}
+        />
+      )}
+
+      <div className="space-y-2">
+        {visible.length === 0 && (
+          <p className="text-sm text-muted-foreground italic">No priorities yet. Add one to track what matters most for the baby right now.</p>
+        )}
+        {visible.map(e => (
+          <PriorityCard
+            key={e.id}
+            entry={e}
+            notes={notes}
+            tasks={tasks}
+            ageRelevant={ageRelevant(e)}
+            onPatch={(p) => patch(e.id, p)}
+            onDelete={() => remove(e.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PriorityForm({
+  onAdd, onCancel,
+}: {
+  onAdd: (e: BabyEntry) => void;
+  onCancel: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [area, setArea] = useState<DevelopmentArea>("motor");
+  const [level, setLevel] = useState<"high" | "medium" | "low">("medium");
+  const [ageStart, setAgeStart] = useState("");
+  const [ageEnd, setAgeEnd] = useState("");
+  const [rationale, setRationale] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const submit = () => {
+    const t = title.trim();
+    if (!t) return;
+    onAdd({
+      id: uuid(),
+      title: t,
+      developmentArea: area,
+      priorityLevel: level,
+      status: "active",
+      ageRangeStart: ageStart ? Number(ageStart) : undefined,
+      ageRangeEnd: ageEnd ? Number(ageEnd) : undefined,
+      rationale: rationale || undefined,
+      notes: notes || undefined,
+      linkedNoteIds: [],
+      linkedTaskIds: [],
+      date: new Date().toISOString().slice(0, 10),
+    });
+  };
+
+  return (
+    <div className="p-3 rounded-lg border border-border bg-card space-y-2">
+      <input
+        autoFocus
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder="Priority (e.g. Encourage crawling)"
+        className="w-full text-sm bg-secondary/30 rounded px-2 py-1.5 outline-none focus:bg-secondary/50"
+      />
+
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Development area</span>
+          <select
+            value={area}
+            onChange={(e) => setArea(e.target.value as DevelopmentArea)}
+            className="w-full text-sm bg-secondary/30 rounded px-2 py-1.5 outline-none mt-0.5"
+          >
+            {DEVELOPMENT_AREAS.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
+          </select>
+        </label>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Priority level</span>
+          <select
+            value={level}
+            onChange={(e) => setLevel(e.target.value as any)}
+            className="w-full text-sm bg-secondary/30 rounded px-2 py-1.5 outline-none mt-0.5"
+          >
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Age from (months)</span>
+          <input
+            type="number" min="0"
+            value={ageStart}
+            onChange={(e) => setAgeStart(e.target.value)}
+            className="w-full text-sm bg-secondary/30 rounded px-2 py-1.5 outline-none mt-0.5"
+          />
+        </label>
+        <label className="block">
+          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Age to (months)</span>
+          <input
+            type="number" min="0"
+            value={ageEnd}
+            onChange={(e) => setAgeEnd(e.target.value)}
+            className="w-full text-sm bg-secondary/30 rounded px-2 py-1.5 outline-none mt-0.5"
+          />
+        </label>
+      </div>
+
+      <textarea
+        value={rationale}
+        onChange={(e) => setRationale(e.target.value)}
+        placeholder="Why this matters for development…"
+        rows={2}
+        className="w-full text-sm bg-secondary/30 rounded px-2 py-1.5 outline-none focus:bg-secondary/50"
+      />
+      <textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        placeholder="How we'll work on it (concrete actions)…"
+        rows={2}
+        className="w-full text-sm bg-secondary/30 rounded px-2 py-1.5 outline-none focus:bg-secondary/50"
+      />
+
+      <div className="flex justify-end gap-2">
+        <button onClick={onCancel} className="text-xs px-3 py-1.5 rounded hover:bg-secondary">Cancel</button>
+        <button onClick={submit} className="text-xs bg-primary text-primary-foreground px-3 py-1.5 rounded hover:opacity-90">Add priority</button>
+      </div>
+    </div>
+  );
+}
+
+function PriorityCard({
+  entry, notes, tasks, ageRelevant, onPatch, onDelete,
+}: {
+  entry: BabyEntry;
+  notes: ResearchNoteRow[];
+  tasks: Task[];
+  ageRelevant: boolean;
+  onPatch: (p: Partial<BabyEntry>) => void;
+  onDelete: () => void;
+}) {
+  const [pickingNote, setPickingNote] = useState(false);
+  const [pickingTask, setPickingTask] = useState(false);
+  const linkedNotes = (entry.linkedNoteIds ?? []).map(id => notes.find(n => n.id === id)).filter(Boolean) as ResearchNoteRow[];
+  const linkedTasks = (entry.linkedTaskIds ?? []).map(id => tasks.find(t => t.id === id)).filter(Boolean) as Task[];
+  const areaDef = DEVELOPMENT_AREAS.find(a => a.id === entry.developmentArea);
+  const status = entry.status ?? "active";
+
+  const levelStyle =
+    entry.priorityLevel === "high"   ? "bg-red-500/15 text-red-500 border-red-500/30" :
+    entry.priorityLevel === "low"    ? "bg-muted text-muted-foreground border-border" :
+                                       "bg-amber-500/15 text-amber-500 border-amber-500/30";
+
+  return (
+    <div className={`p-3 rounded-lg border bg-card ${status === "achieved" ? "opacity-60" : ""} ${!ageRelevant && status === "active" ? "border-dashed" : "border-border"}`}>
+      <div className="flex items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            {areaDef && (
+              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider ${areaDef.color}`}>
+                <areaDef.icon size={11} /> {areaDef.label}
+              </span>
+            )}
+            <span className={`text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded border ${levelStyle}`}>
+              {entry.priorityLevel ?? "medium"}
+            </span>
+            {status === "achieved" && (
+              <span className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500 border border-emerald-500/30">
+                Achieved
+              </span>
+            )}
+            {!ageRelevant && status === "active" && (entry.ageRangeStart !== undefined || entry.ageRangeEnd !== undefined) && (
+              <span className="text-[10px] text-muted-foreground italic">outside current age range</span>
+            )}
+          </div>
+
+          <div className={`font-semibold text-sm mt-1 ${status === "achieved" ? "line-through" : ""}`}>
+            {entry.title}
+          </div>
+
+          {(entry.ageRangeStart !== undefined || entry.ageRangeEnd !== undefined) && (
+            <div className="text-[11px] text-muted-foreground mt-0.5">
+              Age window: {entry.ageRangeStart ?? "0"}–{entry.ageRangeEnd ?? "?"} months
+            </div>
+          )}
+
+          {entry.rationale && (
+            <div className="text-xs text-foreground/80 mt-1 whitespace-pre-wrap">
+              <span className="text-muted-foreground font-medium">Why: </span>{entry.rationale}
+            </div>
+          )}
+          {entry.notes && (
+            <div className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">
+              {entry.notes}
+            </div>
+          )}
+
+          {linkedNotes.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {linkedNotes.map(n => (
+                <span key={n.id} className="inline-flex items-center gap-1 text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded">
+                  <Link2 size={9} /> {n.icon ?? "📄"} {n.title}
+                  <button
+                    onClick={() => onPatch({ linkedNoteIds: (entry.linkedNoteIds ?? []).filter(id => id !== n.id) })}
+                    className="hover:opacity-70"
+                  ><X size={9} /></button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {linkedTasks.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {linkedTasks.map(t => (
+                <span key={t.id} className={`inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded ${t.completed ? "bg-emerald-500/15 text-emerald-500" : "bg-secondary text-foreground"}`}>
+                  {t.completed ? <CheckSquare size={9} /> : <Square size={9} />} {t.title}
+                  <button
+                    onClick={() => onPatch({ linkedTaskIds: (entry.linkedTaskIds ?? []).filter(id => id !== t.id) })}
+                    className="hover:opacity-70"
+                  ><X size={9} /></button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          <div className="mt-2 flex items-center gap-3 flex-wrap">
+            <button
+              onClick={() => setPickingNote(v => !v)}
+              className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-1"
+            >
+              <Link2 size={10} /> Link note
+            </button>
+            <button
+              onClick={() => setPickingTask(v => !v)}
+              className="text-[10px] text-muted-foreground hover:text-primary flex items-center gap-1"
+            >
+              <Link2 size={10} /> Link task
+            </button>
+            <button
+              onClick={() => onPatch({ status: status === "achieved" ? "active" : "achieved" })}
+              className="text-[10px] text-muted-foreground hover:text-emerald-500 flex items-center gap-1"
+            >
+              <CheckSquare size={10} /> {status === "achieved" ? "Reopen" : "Mark achieved"}
+            </button>
+            <select
+              value={entry.priorityLevel ?? "medium"}
+              onChange={(e) => onPatch({ priorityLevel: e.target.value as any })}
+              className="text-[10px] bg-secondary/40 rounded px-1.5 py-0.5 outline-none"
+            >
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+
+          {pickingNote && (
+            <div className="mt-1 max-h-48 overflow-y-auto border border-border rounded p-1 bg-background space-y-0.5">
+              {notes.length === 0 && (
+                <p className="text-[10px] text-muted-foreground italic p-1">No notes yet — create one in the Notes tab.</p>
+              )}
+              {notes
+                .filter(n => !(entry.linkedNoteIds ?? []).includes(n.id))
+                .map(n => (
+                  <button
+                    key={n.id}
+                    onClick={() => {
+                      onPatch({ linkedNoteIds: [...(entry.linkedNoteIds ?? []), n.id] });
+                      setPickingNote(false);
+                    }}
+                    className="w-full text-left text-xs px-2 py-1 rounded hover:bg-secondary"
+                  >
+                    {n.icon ?? "📄"} {n.title}
+                  </button>
+                ))}
+            </div>
+          )}
+
+          {pickingTask && (
+            <div className="mt-1 max-h-48 overflow-y-auto border border-border rounded p-1 bg-background space-y-0.5">
+              {tasks.length === 0 && (
+                <p className="text-[10px] text-muted-foreground italic p-1">No tasks available.</p>
+              )}
+              {tasks
+                .filter(t => !(entry.linkedTaskIds ?? []).includes(t.id))
+                .slice(0, 60)
+                .map(t => (
+                  <button
+                    key={t.id}
+                    onClick={() => {
+                      onPatch({ linkedTaskIds: [...(entry.linkedTaskIds ?? []), t.id] });
+                      setPickingTask(false);
+                    }}
+                    className="w-full text-left text-xs px-2 py-1 rounded hover:bg-secondary flex items-center gap-1"
+                  >
+                    {t.completed ? <CheckSquare size={11} className="text-emerald-500" /> : <Square size={11} className="text-muted-foreground" />}
+                    <span className="truncate">{t.title}</span>
+                  </button>
+                ))}
+            </div>
+          )}
+        </div>
+
+        <button onClick={onDelete} className="text-muted-foreground hover:text-destructive p-1">
+          <Trash2 size={12} />
+        </button>
+      </div>
     </div>
   );
 }
