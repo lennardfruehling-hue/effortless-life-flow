@@ -158,6 +158,7 @@ interface SectionDef {
 }
 
 const SECTIONS: SectionDef[] = [
+  { id: "priorities",   label: "Priorities",       icon: Target,                                          placeholder: "Priority (e.g. Encourage crawling)" },
   { id: "vaccines",     label: "Vaccines",         icon: Syringe,          hasDate: true,                 placeholder: "Vaccine name (e.g. MMR)" },
   { id: "appointments", label: "Appointments",     icon: CalendarClock,    hasDate: true, hasTime: true,  placeholder: "Doctor / clinic" },
   { id: "milestones",   label: "Milestones",       icon: Star,             hasDate: true,                 placeholder: "First word, first step…" },
