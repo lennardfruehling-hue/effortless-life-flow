@@ -50,14 +50,26 @@ interface BabyEntry {
   administered?: boolean;
   doctor?: string;
   location?: string;
+  // priorities
+  priorityLevel?: "high" | "medium" | "low";
+  developmentArea?: DevelopmentArea;
+  ageRangeStart?: number; // months
+  ageRangeEnd?: number;   // months
+  status?: "active" | "achieved" | "paused";
+  linkedTaskIds?: string[];
+  rationale?: string;
 }
 
+export type DevelopmentArea =
+  | "motor" | "cognitive" | "language" | "social" | "emotional" | "physical" | "creative" | "sensory";
+
 type SectionId =
-  | "vaccines" | "appointments" | "milestones" | "health" | "growth"
+  | "priorities" | "vaccines" | "appointments" | "milestones" | "health" | "growth"
   | "play" | "toys" | "food" | "documents" | "education";
 
 interface BabyData {
   birthDate?: string;
+  priorities: BabyEntry[];
   vaccines: BabyEntry[];
   appointments: BabyEntry[];
   milestones: BabyEntry[];
@@ -71,9 +83,21 @@ interface BabyData {
 }
 
 const DEFAULT_DATA: BabyData = {
+  priorities: [],
   vaccines: [], appointments: [], milestones: [], health: [], growth: [],
   play: [], toys: { listId: null }, food: [], documents: [], education: [],
 };
+
+export const DEVELOPMENT_AREAS: { id: DevelopmentArea; label: string; icon: typeof Brain; color: string }[] = [
+  { id: "motor",     label: "Motor",     icon: Dumbbell,      color: "text-orange-500" },
+  { id: "cognitive", label: "Cognitive", icon: Brain,         color: "text-purple-500" },
+  { id: "language",  label: "Language",  icon: MessageCircle, color: "text-blue-500" },
+  { id: "social",    label: "Social",    icon: Users,         color: "text-pink-500" },
+  { id: "emotional", label: "Emotional", icon: Heart,         color: "text-red-500" },
+  { id: "physical",  label: "Physical",  icon: Activity,      color: "text-emerald-500" },
+  { id: "creative",  label: "Creative",  icon: Palette,       color: "text-amber-500" },
+  { id: "sensory",   label: "Sensory",   icon: Sparkles,      color: "text-cyan-500" },
+];
 
 // ---------------- Reference data ----------------
 
