@@ -315,6 +315,16 @@ export default function BabyView({ projects, tasks, onSaveTasks }: Props) {
             <h1 className="text-2xl font-bold">{sectionDef.label}</h1>
           </div>
 
+          {active === "priorities" && (
+            <PrioritiesSmart
+              birthDate={safe.birthDate}
+              entries={safe.priorities}
+              notes={notes}
+              tasks={tasks}
+              onChange={(next) => updateSection("priorities", next)}
+            />
+          )}
+
           {active === "vaccines" && (
             <VaccinesSmart
               birthDate={safe.birthDate}
