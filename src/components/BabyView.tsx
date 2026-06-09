@@ -11,6 +11,7 @@ import {
   Gift, UtensilsCrossed, FileText, GraduationCap, Plus, Trash2,
   Link2, Upload, X, CheckSquare, Square, ExternalLink,
   Smile, Frown, Meh, Cake, Languages, Activity, AlertCircle, Clock,
+  Target, Brain, MessageCircle, Users, Palette, Dumbbell, Sparkles,
 } from "lucide-react";
 
 // ---------------- Data shape ----------------
