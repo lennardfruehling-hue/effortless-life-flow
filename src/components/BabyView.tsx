@@ -2649,17 +2649,39 @@ function ScheduleEditor({
     onChange(schedule.map(b => b.id === id ? { ...b, ...p } : b));
   const remove = (id: string) => onChange(schedule.filter(b => b.id !== id));
   const resetDefaults = () => onChange(DEFAULT_ROUTINE_SCHEDULE);
+  const applyPreset = (id: string) => {
+    const p = ROUTINE_PRESETS.find(x => x.id === id);
+    if (!p) return;
+    if (schedule.length && !confirm(`Replace current schedule with "${p.label}" preset?`)) return;
+    // Clone blocks with fresh ids so user can edit freely
+    onChange(p.blocks.map(b => ({ ...b, id: uuid() })));
+  };
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          Recommended daily rhythm. Tap <strong>Log</strong> on any block to record it as done now.
-        </p>
-        <button onClick={resetDefaults}
-          className="text-[11px] px-2 py-1 rounded bg-secondary hover:bg-secondary/70">
-          Reset to default
-        </button>
+      <div className="rounded-lg border border-border bg-card/40 p-3 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold">Goodnight Aryan — EAT → PLAY → SLEEP</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Full feed on waking · short awake window · then sleep. Day feeds every 3h (7, 10, 13, 16, 19).
+              Don't wake Aryan at night. Tap <strong>Log</strong> on a block to record it now.
+            </p>
+          </div>
+          <button onClick={resetDefaults}
+            className="text-[11px] px-2 py-1 rounded bg-secondary hover:bg-secondary/70 shrink-0">
+            Reset
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {ROUTINE_PRESETS.map(p => (
+            <button key={p.id} onClick={() => applyPreset(p.id)}
+              title={p.description}
+              className="text-[11px] px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20">
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Add block */}
