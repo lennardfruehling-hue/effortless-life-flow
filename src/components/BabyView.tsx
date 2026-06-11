@@ -419,6 +419,15 @@ export default function BabyView({ projects, tasks, onSaveTasks }: Props) {
             />
           )}
 
+          {active === "routine" && (
+            <RoutineTrackerSmart
+              logs={safe.routineLogs ?? []}
+              schedule={safe.routineSchedule ?? DEFAULT_ROUTINE_SCHEDULE}
+              onChangeLogs={(next) => setData({ ...safe, routineLogs: next })}
+              onChangeSchedule={(next) => setData({ ...safe, routineSchedule: next })}
+            />
+          )}
+
           {active === "education" && (
             <EducationSmart
               entries={safe.education}
