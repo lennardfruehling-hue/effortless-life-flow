@@ -12,6 +12,8 @@ import {
   Link2, Upload, X, CheckSquare, Square, ExternalLink,
   Smile, Frown, Meh, Cake, Languages, Activity, AlertCircle, Clock,
   Target, Brain, MessageCircle, Users, Palette, Dumbbell, Sparkles,
+  Milk, Moon, Droplet, Play as PlayIcon, Apple, Timer, ChevronLeft, ChevronRight,
+  Repeat, BarChart3,
 } from "lucide-react";
 
 // ---------------- Data shape ----------------
