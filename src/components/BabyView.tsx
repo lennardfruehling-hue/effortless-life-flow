@@ -2208,3 +2208,530 @@ function PriorityCard({
     </div>
   );
 }
+
+// ============================================================
+// ----------------- Routine Tracker --------------------------
+// Detailed breastfeeding / play / eat / sleep / diaper log
+// with timeline, schedule template and weekly stats.
+// ============================================================
+
+const ROUTINE_META: Record<RoutineKind, { label: string; icon: typeof Milk; color: string; bg: string }> = {
+  breastfeed: { label: "Breastfeed", icon: Milk,          color: "text-pink-500",    bg: "bg-pink-500/15 border-pink-500/30" },
+  bottle:     { label: "Bottle",     icon: Milk,          color: "text-sky-500",     bg: "bg-sky-500/15 border-sky-500/30" },
+  pump:       { label: "Pump",       icon: Droplet,       color: "text-fuchsia-500", bg: "bg-fuchsia-500/15 border-fuchsia-500/30" },
+  solid:      { label: "Eat",        icon: Apple,         color: "text-emerald-500", bg: "bg-emerald-500/15 border-emerald-500/30" },
+  play:       { label: "Play",       icon: PlayIcon,      color: "text-amber-500",   bg: "bg-amber-500/15 border-amber-500/30" },
+  sleep:      { label: "Sleep",      icon: Moon,          color: "text-indigo-400",  bg: "bg-indigo-500/15 border-indigo-500/30" },
+  diaper:     { label: "Diaper",     icon: Baby,          color: "text-teal-500",    bg: "bg-teal-500/15 border-teal-500/30" },
+};
+
+const ROUTINE_ORDER: RoutineKind[] = ["breastfeed", "bottle", "pump", "solid", "play", "sleep", "diaper"];
+
+function todayStr() { return format(new Date(), "yyyy-MM-dd"); }
+function nowTime() { return format(new Date(), "HH:mm"); }
+
+function minutesBetween(start?: string, end?: string): number | undefined {
+  if (!start || !end) return undefined;
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
+  let d = (eh * 60 + em) - (sh * 60 + sm);
+  if (d < 0) d += 24 * 60;
+  return d;
+}
+
+function RoutineTrackerSmart({
+  logs, schedule, onChangeLogs, onChangeSchedule,
+}: {
+  logs: RoutineLog[];
+  schedule: RoutineBlock[];
+  onChangeLogs: (next: RoutineLog[]) => void;
+  onChangeSchedule: (next: RoutineBlock[]) => void;
+}) {
+  const [tab, setTab] = useState<"today" | "schedule" | "stats">("today");
+  const [date, setDate] = useState<string>(todayStr());
+
+  const dayLogs = useMemo(
+    () => logs
+      .filter(l => l.date === date)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime)),
+    [logs, date]
+  );
+
+  const addLog = (l: Omit<RoutineLog, "id">) => {
+    const dur = l.durationMin ?? minutesBetween(l.startTime, l.endTime);
+    onChangeLogs([...logs, { ...l, durationMin: dur, id: uuid() }]);
+  };
+  const patchLog = (id: string, patch: Partial<RoutineLog>) => {
+    onChangeLogs(logs.map(l => {
+      if (l.id !== id) return l;
+      const next = { ...l, ...patch };
+      if (patch.startTime || patch.endTime) {
+        next.durationMin = patch.durationMin ?? minutesBetween(next.startTime, next.endTime) ?? next.durationMin;
+      }
+      return next;
+    }));
+  };
+  const removeLog = (id: string) => onChangeLogs(logs.filter(l => l.id !== id));
+
+  const shiftDate = (n: number) => {
+    const d = parseISO(date);
+    setDate(format(addDays(d, n), "yyyy-MM-dd"));
+  };
+
+  const dayTotals = useMemo(() => {
+    const t = {
+      breastfeedMin: 0, breastfeedCount: 0,
+      bottleMl: 0, bottleCount: 0,
+      pumpMl: 0,
+      solidCount: 0,
+      playMin: 0,
+      sleepMin: 0,
+      diaperCount: 0,
+      leftCount: 0, rightCount: 0,
+    };
+    for (const l of dayLogs) {
+      if (l.kind === "breastfeed") {
+        t.breastfeedCount++;
+        t.breastfeedMin += l.durationMin ?? 0;
+        if (l.side === "L" || l.side === "both") t.leftCount++;
+        if (l.side === "R" || l.side === "both") t.rightCount++;
+      } else if (l.kind === "bottle") {
+        t.bottleCount++;
+        t.bottleMl += l.amountMl ?? 0;
+      } else if (l.kind === "pump") {
+        t.pumpMl += l.amountMl ?? 0;
+      } else if (l.kind === "solid") {
+        t.solidCount++;
+      } else if (l.kind === "play") {
+        t.playMin += l.durationMin ?? 0;
+      } else if (l.kind === "sleep") {
+        t.sleepMin += l.durationMin ?? 0;
+      } else if (l.kind === "diaper") {
+        t.diaperCount++;
+      }
+    }
+    return t;
+  }, [dayLogs]);
+
+  return (
+    <div className="space-y-4">
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-border">
+        <TabBtn active={tab === "today"}    onClick={() => setTab("today")}>Daily log</TabBtn>
+        <TabBtn active={tab === "schedule"} onClick={() => setTab("schedule")}>Schedule</TabBtn>
+        <TabBtn active={tab === "stats"}    onClick={() => setTab("stats")}>Stats</TabBtn>
+      </div>
+
+      {tab === "today" && (
+        <>
+          {/* Date nav */}
+          <div className="flex items-center gap-2">
+            <button onClick={() => shiftDate(-1)} className="p-1.5 rounded hover:bg-secondary"><ChevronLeft size={14} /></button>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="text-sm bg-secondary/40 rounded px-2 py-1 outline-none focus:bg-secondary/70"
+            />
+            <button onClick={() => shiftDate(1)} className="p-1.5 rounded hover:bg-secondary"><ChevronRight size={14} /></button>
+            <button onClick={() => setDate(todayStr())} className="text-xs px-2 py-1 rounded bg-secondary hover:bg-secondary/70">Today</button>
+            <span className="ml-auto text-xs text-muted-foreground">
+              {format(parseISO(date), "EEEE, d MMM yyyy")}
+            </span>
+          </div>
+
+          {/* Totals strip */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            <TotalCard icon={Milk}     color="text-pink-500"
+              title="Breastfeed"
+              main={`${dayTotals.breastfeedMin} min`}
+              sub={`${dayTotals.breastfeedCount} sessions · L${dayTotals.leftCount}/R${dayTotals.rightCount}`} />
+            <TotalCard icon={Milk}     color="text-sky-500"
+              title="Bottle / Pump"
+              main={`${dayTotals.bottleMl} ml`}
+              sub={`${dayTotals.bottleCount} bottles · ${dayTotals.pumpMl} ml pumped`} />
+            <TotalCard icon={Apple}    color="text-emerald-500"
+              title="Solids"
+              main={`${dayTotals.solidCount}`}
+              sub="meals logged" />
+            <TotalCard icon={PlayIcon} color="text-amber-500"
+              title="Play & Sleep"
+              main={`${dayTotals.playMin} min play`}
+              sub={`${Math.round(dayTotals.sleepMin / 60 * 10) / 10}h sleep · ${dayTotals.diaperCount} diapers`} />
+          </div>
+
+          {/* Quick-log buttons */}
+          <QuickLogBar onAdd={(kind) => addLog({ date, startTime: nowTime(), kind })} />
+
+          {/* Add form */}
+          <RoutineLogForm date={date} onAdd={addLog} />
+
+          {/* Timeline */}
+          <div className="space-y-1.5">
+            <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+              Timeline ({dayLogs.length})
+            </div>
+            {dayLogs.length === 0 && (
+              <p className="text-sm text-muted-foreground italic p-4 text-center border border-dashed border-border rounded-lg">
+                No entries yet for this day. Use the quick buttons or form above to log feeds, play and meals.
+              </p>
+            )}
+            {dayLogs.map(l => (
+              <RoutineLogCard
+                key={l.id}
+                log={l}
+                onPatch={(p) => patchLog(l.id, p)}
+                onDelete={() => removeLog(l.id)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {tab === "schedule" && (
+        <ScheduleEditor
+          schedule={schedule}
+          onChange={onChangeSchedule}
+          onLogFromBlock={(b) => {
+            addLog({
+              date: todayStr(),
+              startTime: b.time,
+              kind: b.kind,
+              durationMin: b.durationMin,
+              notes: b.label,
+            });
+            setTab("today");
+            setDate(todayStr());
+          }}
+        />
+      )}
+
+      {tab === "stats" && (
+        <WeeklyStats logs={logs} />
+      )}
+    </div>
+  );
+}
+
+function TotalCard({ icon: Icon, color, title, main, sub }: {
+  icon: typeof Milk; color: string; title: string; main: string; sub: string;
+}) {
+  return (
+    <div className="border border-border rounded-lg p-3 bg-card/60">
+      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+        <Icon size={12} className={color} /> {title}
+      </div>
+      <div className="text-xl font-bold mt-1">{main}</div>
+      <div className="text-[11px] text-muted-foreground">{sub}</div>
+    </div>
+  );
+}
+
+function QuickLogBar({ onAdd }: { onAdd: (kind: RoutineKind) => void }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold self-center mr-1">
+        Quick log now:
+      </span>
+      {ROUTINE_ORDER.map(k => {
+        const meta = ROUTINE_META[k];
+        return (
+          <button
+            key={k}
+            onClick={() => onAdd(k)}
+            className={`text-xs px-2.5 py-1.5 rounded-full border flex items-center gap-1.5 hover:opacity-80 ${meta.bg}`}
+          >
+            <meta.icon size={12} className={meta.color} />
+            <span className="font-medium">{meta.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function RoutineLogForm({ date, onAdd }: { date: string; onAdd: (l: Omit<RoutineLog, "id">) => void }) {
+  const [kind, setKind] = useState<RoutineKind>("breastfeed");
+  const [start, setStart] = useState(nowTime());
+  const [end, setEnd] = useState("");
+  const [side, setSide] = useState<"L" | "R" | "both" | "">("");
+  const [amount, setAmount] = useState("");
+  const [food, setFood] = useState("");
+  const [activity, setActivity] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const submit = () => {
+    const base: Omit<RoutineLog, "id"> = { date, startTime: start, kind };
+    if (end) base.endTime = end;
+    if (kind === "breastfeed" && side) base.side = side as "L" | "R" | "both";
+    if ((kind === "bottle" || kind === "pump") && amount) base.amountMl = Number(amount);
+    if (kind === "solid" && food) base.food = food;
+    if (kind === "play" && activity) base.activity = activity;
+    if (notes) base.notes = notes;
+    onAdd(base);
+    setEnd(""); setAmount(""); setFood(""); setActivity(""); setNotes("");
+    setStart(nowTime());
+  };
+
+  return (
+    <div className="border border-border rounded-lg p-3 bg-card/40 space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <select value={kind} onChange={(e) => setKind(e.target.value as RoutineKind)}
+          className="text-xs bg-secondary/40 rounded px-2 py-1.5 outline-none">
+          {ROUTINE_ORDER.map(k => <option key={k} value={k}>{ROUTINE_META[k].label}</option>)}
+        </select>
+        <label className="text-[10px] text-muted-foreground">Start</label>
+        <input type="time" value={start} onChange={(e) => setStart(e.target.value)}
+          className="text-xs bg-secondary/40 rounded px-2 py-1.5 outline-none" />
+        <label className="text-[10px] text-muted-foreground">End</label>
+        <input type="time" value={end} onChange={(e) => setEnd(e.target.value)}
+          className="text-xs bg-secondary/40 rounded px-2 py-1.5 outline-none" />
+
+        {kind === "breastfeed" && (
+          <div className="flex gap-1">
+            {(["L", "R", "both"] as const).map(s => (
+              <button key={s} onClick={() => setSide(side === s ? "" : s)}
+                className={`text-xs px-2 py-1 rounded ${side === s ? "bg-pink-500/30 text-pink-500" : "bg-secondary/40 hover:bg-secondary/70"}`}>
+                {s === "both" ? "Both" : s}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {(kind === "bottle" || kind === "pump") && (
+          <input type="number" value={amount} onChange={(e) => setAmount(e.target.value)}
+            placeholder="ml" className="text-xs bg-secondary/40 rounded px-2 py-1.5 outline-none w-20" />
+        )}
+
+        {kind === "solid" && (
+          <input value={food} onChange={(e) => setFood(e.target.value)}
+            placeholder="What baby ate (purée, banana…)"
+            className="text-xs bg-secondary/40 rounded px-2 py-1.5 outline-none flex-1 min-w-[160px]" />
+        )}
+
+        {kind === "play" && (
+          <input value={activity} onChange={(e) => setActivity(e.target.value)}
+            placeholder="Activity (tummy time, mirror, sensory…)"
+            className="text-xs bg-secondary/40 rounded px-2 py-1.5 outline-none flex-1 min-w-[160px]" />
+        )}
+
+        <input value={notes} onChange={(e) => setNotes(e.target.value)}
+          placeholder="Notes"
+          className="text-xs bg-secondary/40 rounded px-2 py-1.5 outline-none flex-1 min-w-[120px]" />
+
+        <button onClick={submit}
+          className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground font-medium hover:opacity-90 flex items-center gap-1">
+          <Plus size={12} /> Log
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function RoutineLogCard({ log, onPatch, onDelete }: {
+  log: RoutineLog;
+  onPatch: (p: Partial<RoutineLog>) => void;
+  onDelete: () => void;
+}) {
+  const meta = ROUTINE_META[log.kind];
+  const detail: string[] = [];
+  if (log.kind === "breastfeed" && log.side) detail.push(log.side === "both" ? "Both" : `Side ${log.side}`);
+  if ((log.kind === "bottle" || log.kind === "pump") && log.amountMl) detail.push(`${log.amountMl} ml`);
+  if (log.kind === "solid" && log.food) detail.push(log.food);
+  if (log.kind === "play" && log.activity) detail.push(log.activity);
+  if (log.durationMin) detail.push(`${log.durationMin} min`);
+
+  return (
+    <div className={`border rounded-lg p-2.5 flex items-start gap-2.5 ${meta.bg}`}>
+      <meta.icon size={16} className={`${meta.color} mt-0.5 flex-shrink-0`} />
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-xs font-semibold">{meta.label}</span>
+          <span className="text-[11px] text-muted-foreground font-mono">
+            {log.startTime}{log.endTime ? `–${log.endTime}` : ""}
+          </span>
+          {detail.length > 0 && (
+            <span className="text-[11px] text-foreground/80">· {detail.join(" · ")}</span>
+          )}
+        </div>
+        {log.notes && <p className="text-[11px] text-muted-foreground mt-0.5">{log.notes}</p>}
+        {!log.endTime && (
+          <button
+            onClick={() => onPatch({ endTime: nowTime() })}
+            className="text-[10px] mt-1 px-1.5 py-0.5 rounded bg-background/60 hover:bg-background border border-border"
+          >
+            <Timer size={10} className="inline mr-1" /> End now
+          </button>
+        )}
+      </div>
+      <button onClick={onDelete} className="text-muted-foreground hover:text-destructive p-1">
+        <Trash2 size={12} />
+      </button>
+    </div>
+  );
+}
+
+function ScheduleEditor({
+  schedule, onChange, onLogFromBlock,
+}: {
+  schedule: RoutineBlock[];
+  onChange: (next: RoutineBlock[]) => void;
+  onLogFromBlock: (b: RoutineBlock) => void;
+}) {
+  const sorted = useMemo(
+    () => [...schedule].sort((a, b) => a.time.localeCompare(b.time)),
+    [schedule]
+  );
+  const [time, setTime] = useState("08:00");
+  const [kind, setKind] = useState<RoutineKind>("play");
+  const [label, setLabel] = useState("");
+  const [dur, setDur] = useState("");
+
+  const add = () => {
+    if (!time) return;
+    onChange([
+      ...schedule,
+      { id: uuid(), time, kind, label: label || undefined, durationMin: dur ? Number(dur) : undefined },
+    ]);
+    setLabel(""); setDur("");
+  };
+
+  const patch = (id: string, p: Partial<RoutineBlock>) =>
+    onChange(schedule.map(b => b.id === id ? { ...b, ...p } : b));
+  const remove = (id: string) => onChange(schedule.filter(b => b.id !== id));
+  const resetDefaults = () => onChange(DEFAULT_ROUTINE_SCHEDULE);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          Recommended daily rhythm. Tap <strong>Log</strong> on any block to record it as done now.
+        </p>
+        <button onClick={resetDefaults}
+          className="text-[11px] px-2 py-1 rounded bg-secondary hover:bg-secondary/70">
+          Reset to default
+        </button>
+      </div>
+
+      {/* Add block */}
+      <div className="border border-border rounded-lg p-3 bg-card/40 flex flex-wrap gap-2 items-center">
+        <input type="time" value={time} onChange={(e) => setTime(e.target.value)}
+          className="text-xs bg-secondary/40 rounded px-2 py-1.5 outline-none" />
+        <select value={kind} onChange={(e) => setKind(e.target.value as RoutineKind)}
+          className="text-xs bg-secondary/40 rounded px-2 py-1.5 outline-none">
+          {ROUTINE_ORDER.map(k => <option key={k} value={k}>{ROUTINE_META[k].label}</option>)}
+        </select>
+        <input value={label} onChange={(e) => setLabel(e.target.value)}
+          placeholder="Label (e.g. Morning feed)"
+          className="text-xs bg-secondary/40 rounded px-2 py-1.5 outline-none flex-1 min-w-[160px]" />
+        <input type="number" value={dur} onChange={(e) => setDur(e.target.value)}
+          placeholder="min" className="text-xs bg-secondary/40 rounded px-2 py-1.5 outline-none w-20" />
+        <button onClick={add}
+          className="text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground font-medium hover:opacity-90 flex items-center gap-1">
+          <Plus size={12} /> Add block
+        </button>
+      </div>
+
+      {/* Blocks */}
+      <div className="space-y-1.5">
+        {sorted.map(b => {
+          const meta = ROUTINE_META[b.kind];
+          return (
+            <div key={b.id} className={`border rounded-lg p-2.5 flex items-center gap-2 ${meta.bg}`}>
+              <input type="time" value={b.time} onChange={(e) => patch(b.id, { time: e.target.value })}
+                className="text-xs bg-background/40 rounded px-2 py-1 outline-none font-mono w-24" />
+              <meta.icon size={14} className={meta.color} />
+              <select value={b.kind} onChange={(e) => patch(b.id, { kind: e.target.value as RoutineKind })}
+                className="text-xs bg-background/40 rounded px-2 py-1 outline-none">
+                {ROUTINE_ORDER.map(k => <option key={k} value={k}>{ROUTINE_META[k].label}</option>)}
+              </select>
+              <input value={b.label ?? ""} onChange={(e) => patch(b.id, { label: e.target.value })}
+                placeholder="Label"
+                className="text-xs bg-background/40 rounded px-2 py-1 outline-none flex-1 min-w-0" />
+              <input type="number" value={b.durationMin ?? ""} onChange={(e) => patch(b.id, { durationMin: e.target.value ? Number(e.target.value) : undefined })}
+                placeholder="min" className="text-xs bg-background/40 rounded px-2 py-1 outline-none w-16" />
+              <button onClick={() => onLogFromBlock(b)}
+                className="text-[11px] px-2 py-1 rounded bg-background/60 hover:bg-background border border-border">
+                Log
+              </button>
+              <button onClick={() => remove(b.id)} className="text-muted-foreground hover:text-destructive p-1">
+                <Trash2 size={12} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function WeeklyStats({ logs }: { logs: RoutineLog[] }) {
+  const days = useMemo(() => {
+    const out: { date: string; label: string; logs: RoutineLog[] }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = addDays(new Date(), -i);
+      const ds = format(d, "yyyy-MM-dd");
+      out.push({ date: ds, label: format(d, "EEE"), logs: logs.filter(l => l.date === ds) });
+    }
+    return out;
+  }, [logs]);
+
+  const maxBreastMin = Math.max(60, ...days.map(d => d.logs.filter(l => l.kind === "breastfeed").reduce((s, l) => s + (l.durationMin ?? 0), 0)));
+  const maxBottleMl  = Math.max(100, ...days.map(d => d.logs.filter(l => l.kind === "bottle").reduce((s, l) => s + (l.amountMl ?? 0), 0)));
+  const maxPlayMin   = Math.max(30, ...days.map(d => d.logs.filter(l => l.kind === "play").reduce((s, l) => s + (l.durationMin ?? 0), 0)));
+
+  const sevenDayAvg = (kind: RoutineKind, field: "durationMin" | "amountMl" | "count") => {
+    const totals = days.map(d => {
+      const ks = d.logs.filter(l => l.kind === kind);
+      if (field === "count") return ks.length;
+      return ks.reduce((s, l) => s + ((l as any)[field] ?? 0), 0);
+    });
+    return Math.round(totals.reduce((a, b) => a + b, 0) / 7);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <TotalCard icon={Milk}     color="text-pink-500"    title="Avg breastfeed/day" main={`${sevenDayAvg("breastfeed", "durationMin")} min`} sub={`${sevenDayAvg("breastfeed", "count")} sessions`} />
+        <TotalCard icon={Milk}     color="text-sky-500"     title="Avg bottle/day"     main={`${sevenDayAvg("bottle", "amountMl")} ml`}     sub={`${sevenDayAvg("bottle", "count")} bottles`} />
+        <TotalCard icon={Apple}    color="text-emerald-500" title="Avg solids/day"     main={`${sevenDayAvg("solid", "count")}`}            sub="meals" />
+        <TotalCard icon={PlayIcon} color="text-amber-500"   title="Avg play/day"       main={`${sevenDayAvg("play", "durationMin")} min`}   sub={`${sevenDayAvg("play", "count")} sessions`} />
+      </div>
+
+      <StatBars title="Breastfeeding minutes (last 7 days)" color="bg-pink-500/70"
+        data={days.map(d => ({ label: d.label, value: d.logs.filter(l => l.kind === "breastfeed").reduce((s, l) => s + (l.durationMin ?? 0), 0) }))}
+        max={maxBreastMin} unit="min" />
+      <StatBars title="Bottle volume (last 7 days)" color="bg-sky-500/70"
+        data={days.map(d => ({ label: d.label, value: d.logs.filter(l => l.kind === "bottle").reduce((s, l) => s + (l.amountMl ?? 0), 0) }))}
+        max={maxBottleMl} unit="ml" />
+      <StatBars title="Play minutes (last 7 days)" color="bg-amber-500/70"
+        data={days.map(d => ({ label: d.label, value: d.logs.filter(l => l.kind === "play").reduce((s, l) => s + (l.durationMin ?? 0), 0) }))}
+        max={maxPlayMin} unit="min" />
+    </div>
+  );
+}
+
+function StatBars({ title, color, data, max, unit }: {
+  title: string; color: string;
+  data: { label: string; value: number }[]; max: number; unit: string;
+}) {
+  return (
+    <div className="border border-border rounded-lg p-3 bg-card/40">
+      <div className="flex items-center gap-1.5 mb-2 text-xs font-semibold">
+        <BarChart3 size={12} className="text-muted-foreground" /> {title}
+      </div>
+      <div className="flex items-end gap-2 h-28">
+        {data.map(d => (
+          <div key={d.label} className="flex-1 flex flex-col items-center gap-1">
+            <div className="text-[10px] text-muted-foreground">{d.value || ""}</div>
+            <div className="w-full bg-secondary/40 rounded-t flex-1 flex items-end overflow-hidden">
+              <div className={`w-full ${color} rounded-t transition-all`} style={{ height: `${Math.max(2, (d.value / max) * 100)}%` }} />
+            </div>
+            <div className="text-[10px] text-muted-foreground">{d.label}</div>
+          </div>
+        ))}
+      </div>
+      <div className="text-[10px] text-muted-foreground text-right mt-1">unit: {unit}</div>
+    </div>
+  );
+}
