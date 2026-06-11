@@ -67,7 +67,32 @@ export type DevelopmentArea =
 
 type SectionId =
   | "priorities" | "vaccines" | "appointments" | "milestones" | "health" | "growth"
-  | "play" | "toys" | "food" | "documents" | "education";
+  | "play" | "toys" | "food" | "routine" | "documents" | "education";
+
+export type RoutineKind = "breastfeed" | "bottle" | "pump" | "solid" | "play" | "sleep" | "diaper";
+
+export interface RoutineLog {
+  id: string;
+  date: string;          // YYYY-MM-DD
+  startTime: string;     // HH:MM
+  endTime?: string;      // HH:MM
+  kind: RoutineKind;
+  side?: "L" | "R" | "both";   // breastfeed
+  durationMin?: number;
+  amountMl?: number;     // bottle/pump
+  food?: string;         // solid
+  activity?: string;     // play
+  mood?: Sentiment;
+  notes?: string;
+}
+
+export interface RoutineBlock {
+  id: string;
+  time: string;          // HH:MM
+  kind: RoutineKind;
+  label?: string;
+  durationMin?: number;
+}
 
 interface BabyData {
   birthDate?: string;
@@ -82,12 +107,34 @@ interface BabyData {
   food: BabyEntry[];
   documents: BabyEntry[];
   education: BabyEntry[];
+  routineLogs?: RoutineLog[];
+  routineSchedule?: RoutineBlock[];
 }
+
+const DEFAULT_ROUTINE_SCHEDULE: RoutineBlock[] = [
+  { id: "r1",  time: "07:00", kind: "breastfeed", label: "Morning feed",   durationMin: 25 },
+  { id: "r2",  time: "07:45", kind: "diaper",     label: "Change & dress" },
+  { id: "r3",  time: "08:30", kind: "play",       label: "Tummy time",     durationMin: 15 },
+  { id: "r4",  time: "09:30", kind: "sleep",      label: "Morning nap",    durationMin: 60 },
+  { id: "r5",  time: "10:30", kind: "breastfeed", label: "Mid-morning feed", durationMin: 20 },
+  { id: "r6",  time: "11:15", kind: "play",       label: "Sensory play",   durationMin: 20 },
+  { id: "r7",  time: "12:30", kind: "solid",      label: "Lunch (purée)" },
+  { id: "r8",  time: "13:30", kind: "sleep",      label: "Afternoon nap",  durationMin: 90 },
+  { id: "r9",  time: "15:00", kind: "breastfeed", label: "Afternoon feed", durationMin: 20 },
+  { id: "r10", time: "16:00", kind: "play",       label: "Floor / mirror play", durationMin: 20 },
+  { id: "r11", time: "17:30", kind: "solid",      label: "Dinner" },
+  { id: "r12", time: "18:30", kind: "play",       label: "Bath & wind-down", durationMin: 20 },
+  { id: "r13", time: "19:00", kind: "breastfeed", label: "Bedtime feed",   durationMin: 25 },
+  { id: "r14", time: "19:30", kind: "sleep",      label: "Night sleep" },
+  { id: "r15", time: "23:00", kind: "breastfeed", label: "Dream feed",     durationMin: 15 },
+];
 
 const DEFAULT_DATA: BabyData = {
   priorities: [],
   vaccines: [], appointments: [], milestones: [], health: [], growth: [],
   play: [], toys: { listId: null }, food: [], documents: [], education: [],
+  routineLogs: [],
+  routineSchedule: DEFAULT_ROUTINE_SCHEDULE,
 };
 
 export const DEVELOPMENT_AREAS: { id: DevelopmentArea; label: string; icon: typeof Brain; color: string }[] = [
