@@ -111,23 +111,72 @@ interface BabyData {
   routineSchedule?: RoutineBlock[];
 }
 
-const DEFAULT_ROUTINE_SCHEDULE: RoutineBlock[] = [
-  { id: "r1",  time: "07:00", kind: "breastfeed", label: "Morning feed",   durationMin: 25 },
-  { id: "r2",  time: "07:45", kind: "diaper",     label: "Change & dress" },
-  { id: "r3",  time: "08:30", kind: "play",       label: "Tummy time",     durationMin: 15 },
-  { id: "r4",  time: "09:30", kind: "sleep",      label: "Morning nap",    durationMin: 60 },
-  { id: "r5",  time: "10:30", kind: "breastfeed", label: "Mid-morning feed", durationMin: 20 },
-  { id: "r6",  time: "11:15", kind: "play",       label: "Sensory play",   durationMin: 20 },
-  { id: "r7",  time: "12:30", kind: "solid",      label: "Lunch (purée)" },
-  { id: "r8",  time: "13:30", kind: "sleep",      label: "Afternoon nap",  durationMin: 90 },
-  { id: "r9",  time: "15:00", kind: "breastfeed", label: "Afternoon feed", durationMin: 20 },
-  { id: "r10", time: "16:00", kind: "play",       label: "Floor / mirror play", durationMin: 20 },
-  { id: "r11", time: "17:30", kind: "solid",      label: "Dinner" },
-  { id: "r12", time: "18:30", kind: "play",       label: "Bath & wind-down", durationMin: 20 },
-  { id: "r13", time: "19:00", kind: "breastfeed", label: "Bedtime feed",   durationMin: 25 },
-  { id: "r14", time: "19:30", kind: "sleep",      label: "Night sleep" },
-  { id: "r15", time: "23:00", kind: "breastfeed", label: "Dream feed",     durationMin: 15 },
+// Goodnight Aryan — EAT → PLAY → SLEEP rhythm.
+// Day window 7am–7pm, feeds every 3h, full feed (up to 45min), short wake window, then sleep.
+
+// Weeks 4–10: ~1h awake (incl. feed) + ~2h sleep
+const PRESET_WEEKS_4_10: RoutineBlock[] = [
+  { id: "a1",  time: "07:00", kind: "breastfeed", label: "Feed Aryan (keep awake)",  durationMin: 45 },
+  { id: "a2",  time: "07:45", kind: "play",       label: "Wind-down / burp",          durationMin: 15 },
+  { id: "a3",  time: "08:00", kind: "sleep",      label: "Nap",                       durationMin: 120 },
+  { id: "a4",  time: "10:00", kind: "breastfeed", label: "Feed Aryan",                durationMin: 45 },
+  { id: "a5",  time: "10:45", kind: "play",       label: "Tummy time",                durationMin: 15 },
+  { id: "a6",  time: "11:00", kind: "sleep",      label: "Nap",                       durationMin: 120 },
+  { id: "a7",  time: "13:00", kind: "breastfeed", label: "Feed Aryan",                durationMin: 45 },
+  { id: "a8",  time: "13:45", kind: "play",       label: "Cuddle / mirror play",      durationMin: 15 },
+  { id: "a9",  time: "14:00", kind: "sleep",      label: "Nap",                       durationMin: 120 },
+  { id: "a10", time: "16:00", kind: "breastfeed", label: "Feed Aryan",                durationMin: 45 },
+  { id: "a11", time: "16:45", kind: "play",       label: "Wind-down",                 durationMin: 15 },
+  { id: "a12", time: "17:00", kind: "sleep",      label: "Catnap",                    durationMin: 90 },
+  { id: "a13", time: "18:30", kind: "play",       label: "Bath & bedtime routine",    durationMin: 30 },
+  { id: "a14", time: "19:00", kind: "breastfeed", label: "Bedtime feed",              durationMin: 30 },
+  { id: "a15", time: "19:30", kind: "sleep",      label: "Night sleep (do not wake)" },
+  { id: "a16", time: "23:00", kind: "breastfeed", label: "Optional dream feed",       durationMin: 20 },
 ];
+
+// Weeks 10 – 6 months: ~1.5h awake + ~1.5h sleep
+const PRESET_WEEKS_10_6M: RoutineBlock[] = [
+  { id: "b1",  time: "07:00", kind: "breastfeed", label: "Feed Aryan",                durationMin: 30 },
+  { id: "b2",  time: "07:30", kind: "play",       label: "Tummy time / floor play",   durationMin: 60 },
+  { id: "b3",  time: "08:30", kind: "sleep",      label: "Morning nap",               durationMin: 90 },
+  { id: "b4",  time: "10:00", kind: "breastfeed", label: "Feed Aryan",                durationMin: 30 },
+  { id: "b5",  time: "10:30", kind: "play",       label: "Sensory / outdoor",         durationMin: 60 },
+  { id: "b6",  time: "11:30", kind: "sleep",      label: "Midday nap",                durationMin: 90 },
+  { id: "b7",  time: "13:00", kind: "breastfeed", label: "Feed Aryan",                durationMin: 30 },
+  { id: "b8",  time: "13:30", kind: "play",       label: "Play / interaction",        durationMin: 60 },
+  { id: "b9",  time: "14:30", kind: "sleep",      label: "Afternoon nap",             durationMin: 90 },
+  { id: "b10", time: "16:00", kind: "breastfeed", label: "Feed Aryan",                durationMin: 30 },
+  { id: "b11", time: "16:30", kind: "play",       label: "Quiet play",                durationMin: 90 },
+  { id: "b12", time: "18:00", kind: "play",       label: "Bath & bedtime routine",    durationMin: 30 },
+  { id: "b13", time: "19:00", kind: "breastfeed", label: "Bedtime feed",              durationMin: 30 },
+  { id: "b14", time: "19:30", kind: "sleep",      label: "Night sleep (do not wake)" },
+];
+
+// 6–12 months: feeds + solids every ~4h, 2 longer naps
+const PRESET_6M_12M: RoutineBlock[] = [
+  { id: "c1",  time: "07:00", kind: "breastfeed", label: "Milk feed",                 durationMin: 20 },
+  { id: "c2",  time: "07:30", kind: "solid",      label: "Breakfast (solids)" },
+  { id: "c3",  time: "08:00", kind: "play",       label: "Active play",               durationMin: 60 },
+  { id: "c4",  time: "09:00", kind: "sleep",      label: "Morning nap",               durationMin: 120 },
+  { id: "c5",  time: "11:00", kind: "breastfeed", label: "Milk feed",                 durationMin: 20 },
+  { id: "c6",  time: "11:30", kind: "solid",      label: "Lunch (solids)" },
+  { id: "c7",  time: "12:00", kind: "play",       label: "Play / outdoor",            durationMin: 60 },
+  { id: "c8",  time: "13:00", kind: "sleep",      label: "Afternoon nap",             durationMin: 120 },
+  { id: "c9",  time: "15:00", kind: "breastfeed", label: "Milk feed",                 durationMin: 20 },
+  { id: "c10", time: "15:30", kind: "play",       label: "Play / interaction",       durationMin: 120 },
+  { id: "c11", time: "17:30", kind: "solid",      label: "Dinner (solids)" },
+  { id: "c12", time: "18:15", kind: "play",       label: "Bath & bedtime routine",    durationMin: 30 },
+  { id: "c13", time: "19:00", kind: "breastfeed", label: "Bedtime milk feed",         durationMin: 25 },
+  { id: "c14", time: "19:30", kind: "sleep",      label: "Night sleep (do not wake)" },
+];
+
+export const ROUTINE_PRESETS: { id: string; label: string; description: string; blocks: RoutineBlock[] }[] = [
+  { id: "w4-10",  label: "Weeks 4–10",       description: "~1h awake + ~2h sleep · feeds every 3h",          blocks: PRESET_WEEKS_4_10 },
+  { id: "w10-6m", label: "Weeks 10 – 6 mo",  description: "~1.5h awake + ~1.5h sleep · feeds every 3h",      blocks: PRESET_WEEKS_10_6M },
+  { id: "6m-12m", label: "6 – 12 months",    description: "Milk + solids every ~4h · 2 longer naps",          blocks: PRESET_6M_12M },
+];
+
+const DEFAULT_ROUTINE_SCHEDULE: RoutineBlock[] = PRESET_WEEKS_4_10;
 
 const DEFAULT_DATA: BabyData = {
   priorities: [],
@@ -2600,17 +2649,39 @@ function ScheduleEditor({
     onChange(schedule.map(b => b.id === id ? { ...b, ...p } : b));
   const remove = (id: string) => onChange(schedule.filter(b => b.id !== id));
   const resetDefaults = () => onChange(DEFAULT_ROUTINE_SCHEDULE);
+  const applyPreset = (id: string) => {
+    const p = ROUTINE_PRESETS.find(x => x.id === id);
+    if (!p) return;
+    if (schedule.length && !confirm(`Replace current schedule with "${p.label}" preset?`)) return;
+    // Clone blocks with fresh ids so user can edit freely
+    onChange(p.blocks.map(b => ({ ...b, id: uuid() })));
+  };
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          Recommended daily rhythm. Tap <strong>Log</strong> on any block to record it as done now.
-        </p>
-        <button onClick={resetDefaults}
-          className="text-[11px] px-2 py-1 rounded bg-secondary hover:bg-secondary/70">
-          Reset to default
-        </button>
+      <div className="rounded-lg border border-border bg-card/40 p-3 space-y-2">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <p className="text-xs font-semibold">Goodnight Aryan — EAT → PLAY → SLEEP</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Full feed on waking · short awake window · then sleep. Day feeds every 3h (7, 10, 13, 16, 19).
+              Don't wake Aryan at night. Tap <strong>Log</strong> on a block to record it now.
+            </p>
+          </div>
+          <button onClick={resetDefaults}
+            className="text-[11px] px-2 py-1 rounded bg-secondary hover:bg-secondary/70 shrink-0">
+            Reset
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {ROUTINE_PRESETS.map(p => (
+            <button key={p.id} onClick={() => applyPreset(p.id)}
+              title={p.description}
+              className="text-[11px] px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20">
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Add block */}
