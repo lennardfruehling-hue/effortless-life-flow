@@ -305,6 +305,7 @@ export default function BabyView({ projects, tasks, onSaveTasks }: Props) {
           {SECTIONS.map(s => {
             const count =
               s.id === "toys" ? (safe.toys.listId ? 1 : 0)
+              : s.id === "routine" ? (safe.routineLogs?.length ?? 0)
               : (safe[s.id] as BabyEntry[]).length;
             return (
               <button
