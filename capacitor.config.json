@@ -1,0 +1,9 @@
+{
+  "appId": "app.lovable.9a4da70c241842ed98905e9602f3fe8c",
+  "appName": "effortless-life-flow",
+  "webDir": "dist",
+  "server": {
+    "url": "https://9a4da70c-2418-42ed-9890-5e9602f3fe8c.lovableproject.com?forceHideBadge=true",
+    "cleartext": true
+  }
+}
