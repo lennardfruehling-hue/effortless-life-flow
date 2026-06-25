@@ -67,7 +67,7 @@ export type DevelopmentArea =
 
 type SectionId =
   | "priorities" | "vaccines" | "appointments" | "milestones" | "health" | "growth"
-  | "play" | "toys" | "food" | "routine" | "documents" | "education";
+  | "play" | "toys" | "togetlist" | "tracker" | "food" | "routine" | "documents" | "education";
 
 export type RoutineKind = "breastfeed" | "bottle" | "pump" | "solid" | "play" | "sleep" | "diaper";
 
@@ -104,6 +104,7 @@ interface BabyData {
   growth: BabyEntry[];
   play: BabyEntry[];
   toys: { listId?: string | null };
+  togetlist: { listId?: string | null };
   food: BabyEntry[];
   documents: BabyEntry[];
   education: BabyEntry[];
@@ -181,7 +182,7 @@ const DEFAULT_ROUTINE_SCHEDULE: RoutineBlock[] = PRESET_WEEKS_4_10;
 const DEFAULT_DATA: BabyData = {
   priorities: [],
   vaccines: [], appointments: [], milestones: [], health: [], growth: [],
-  play: [], toys: { listId: null }, food: [], documents: [], education: [],
+  play: [], toys: { listId: null }, togetlist: { listId: null }, food: [], documents: [], education: [],
   routineLogs: [],
   routineSchedule: DEFAULT_ROUTINE_SCHEDULE,
 };
@@ -264,6 +265,8 @@ const SECTIONS: SectionDef[] = [
   { id: "growth",       label: "Size & Weight",    icon: Ruler,            hasDate: true, growth: true,   placeholder: "Measurement label (optional)" },
   { id: "play",         label: "Play Tracker",     icon: ToyBrick,         hasDate: true,                 placeholder: "Activity (e.g. tummy time)" },
   { id: "toys",         label: "Toys & Wishlist",  icon: Gift,             list: true,                    placeholder: "" },
+  { id: "togetlist",    label: "Baby to Get",      icon: Gift,             list: true,                    placeholder: "" },
+  { id: "tracker",      label: "Tracker",          icon: Milk,                                            placeholder: "" },
   { id: "food",         label: "Food Schedule",    icon: UtensilsCrossed,  hasDate: true, hasTime: true,  placeholder: "Meal (e.g. Breakfast – purée)" },
   { id: "routine",      label: "Routine Tracker",  icon: Repeat,                                          placeholder: "" },
   { id: "documents",    label: "Documents",        icon: FileText,         upload: true,                  placeholder: "Document name" },
@@ -354,6 +357,8 @@ export default function BabyView({ projects, tasks, onSaveTasks }: Props) {
           {SECTIONS.map(s => {
             const count =
               s.id === "toys" ? (safe.toys.listId ? 1 : 0)
+              : s.id === "togetlist" ? (safe.togetlist.listId ? 1 : 0)
+              : s.id === "tracker" ? (safe.routineLogs?.length ?? 0)
               : s.id === "routine" ? (safe.routineLogs?.length ?? 0)
               : (safe[s.id] as BabyEntry[]).length;
             return (
@@ -500,6 +505,32 @@ export default function BabyView({ projects, tasks, onSaveTasks }: Props) {
                   updateSection("toys", { listId: (created as TaskList).id });
                 }
               }}
+            />
+          )}
+
+          {active === "togetlist" && (
+            <ToysSection
+              listId={safe.togetlist.listId}
+              lists={lists}
+              onChange={(listId) => updateSection("togetlist", { listId })}
+              onCreateList={async (name) => {
+                const { data: created } = await supabase
+                  .from("task_lists")
+                  .insert({ name, created_by: user?.id ?? null })
+                  .select()
+                  .single();
+                if (created) {
+                  setLists(l => [created as TaskList, ...l]);
+                  updateSection("togetlist", { listId: (created as TaskList).id });
+                }
+              }}
+            />
+          )}
+
+          {active === "tracker" && (
+            <BabyTrackerQuick
+              logs={safe.routineLogs ?? []}
+              onChange={(next) => setData({ ...safe, routineLogs: next })}
             />
           )}
 
@@ -2806,3 +2837,250 @@ function StatBars({ title, color, data, max, unit }: {
     </div>
   );
 }
+
+// ============================================================
+// QUICK BABY TRACKER — one-tap logging for feeds, pump, sleep
+// ============================================================
+function BabyTrackerQuick({
+  logs,
+  onChange,
+}: {
+  logs: RoutineLog[];
+  onChange: (next: RoutineLog[]) => void;
+}) {
+  const [date, setDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
+  const [sleepStart, setSleepStart] = useState<string | null>(null);
+  const [bfStart, setBfStart] = useState<{ t: string; side: "L" | "R" | "both" } | null>(null);
+
+  const nowHM = () => format(new Date(), "HH:mm");
+  const add = (l: Omit<RoutineLog, "id">) => onChange([{ id: uuid(), ...l }, ...logs]);
+  const remove = (id: string) => onChange(logs.filter(x => x.id !== id));
+
+  // Quick adders ---------------------------------------------------------
+  const addFormula = (ml: number) =>
+    add({ date, startTime: nowHM(), kind: "bottle", amountMl: ml, notes: "Formula" });
+  const addBreastBottle = (ml: number) =>
+    add({ date, startTime: nowHM(), kind: "bottle", amountMl: ml, notes: "Breast milk" });
+  const addPump = (ml: number, side: "L" | "R" | "both") =>
+    add({ date, startTime: nowHM(), kind: "pump", amountMl: ml, side });
+  const startBreastfeed = (side: "L" | "R" | "both") => setBfStart({ t: nowHM(), side });
+  const stopBreastfeed = () => {
+    if (!bfStart) return;
+    const end = nowHM();
+    const dur = minutesBetween(bfStart.t, end);
+    add({ date, startTime: bfStart.t, endTime: end, kind: "breastfeed", side: bfStart.side, durationMin: dur });
+    setBfStart(null);
+  };
+  const startSleep = () => setSleepStart(nowHM());
+  const stopSleep = () => {
+    if (!sleepStart) return;
+    const end = nowHM();
+    const dur = minutesBetween(sleepStart, end);
+    add({ date, startTime: sleepStart, endTime: end, kind: "sleep", durationMin: dur });
+    setSleepStart(null);
+  };
+
+  // Day totals -----------------------------------------------------------
+  const today = logs.filter(l => l.date === date);
+  const totalFormula = today.filter(l => l.kind === "bottle" && (l.notes ?? "").toLowerCase().includes("formula"))
+    .reduce((s, l) => s + (l.amountMl ?? 0), 0);
+  const totalBreastBottle = today.filter(l => l.kind === "bottle" && (l.notes ?? "").toLowerCase().includes("breast"))
+    .reduce((s, l) => s + (l.amountMl ?? 0), 0);
+  const totalPump = today.filter(l => l.kind === "pump").reduce((s, l) => s + (l.amountMl ?? 0), 0);
+  const totalBfMin = today.filter(l => l.kind === "breastfeed").reduce((s, l) => s + (l.durationMin ?? 0), 0);
+  const totalSleepMin = today.filter(l => l.kind === "sleep").reduce((s, l) => s + (l.durationMin ?? 0), 0);
+
+  const sorted = [...today].sort((a, b) => b.startTime.localeCompare(a.startTime));
+
+  return (
+    <div className="space-y-4">
+      {/* Date + day totals */}
+      <div className="flex items-center gap-3 flex-wrap p-3 rounded-lg border border-border bg-card/60">
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="text-sm bg-secondary/40 rounded px-2 py-1 outline-none"
+        />
+        <span className="text-xs text-muted-foreground">Quick log — taps go to <strong>now</strong></span>
+        <div className="ml-auto flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+          <span>Formula <strong className="text-foreground">{totalFormula}ml</strong></span>
+          <span>Breast btl <strong className="text-foreground">{totalBreastBottle}ml</strong></span>
+          <span>Pump <strong className="text-foreground">{totalPump}ml</strong></span>
+          <span>Breastfeed <strong className="text-foreground">{totalBfMin}m</strong></span>
+          <span>Sleep <strong className="text-foreground">{Math.floor(totalSleepMin/60)}h {totalSleepMin%60}m</strong></span>
+        </div>
+      </div>
+
+      {/* Quick action tiles */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <QuickTile icon={Milk} label="Formula" color="text-amber-500">
+          <PresetRow presets={[60, 90, 120, 150, 180]} unit="ml" onPick={addFormula} />
+          <CustomMl onAdd={addFormula} />
+        </QuickTile>
+
+        <QuickTile icon={Droplet} label="Breast milk (bottle)" color="text-pink-500">
+          <PresetRow presets={[60, 90, 120, 150]} unit="ml" onPick={addBreastBottle} />
+          <CustomMl onAdd={addBreastBottle} />
+        </QuickTile>
+
+        <QuickTile icon={Timer} label="Breastfeed" color="text-rose-500">
+          {bfStart ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs">Started <strong>{bfStart.t}</strong> ({bfStart.side})</span>
+              <button onClick={stopBreastfeed} className="ml-auto text-xs bg-rose-500 text-white px-3 py-1 rounded">Stop</button>
+            </div>
+          ) : (
+            <div className="flex gap-2 flex-wrap">
+              <button onClick={() => startBreastfeed("L")} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Start L</button>
+              <button onClick={() => startBreastfeed("R")} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Start R</button>
+              <button onClick={() => startBreastfeed("both")} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Start both</button>
+            </div>
+          )}
+          <ManualBreastfeed onAdd={(side, min) => add({ date, startTime: nowHM(), kind: "breastfeed", side, durationMin: min })} />
+        </QuickTile>
+
+        <QuickTile icon={Droplet} label="Pumped" color="text-purple-500">
+          <ManualPump onAdd={addPump} />
+          <PresetRow presets={[30, 60, 90, 120]} unit="ml (both)" onPick={(v) => addPump(v, "both")} />
+        </QuickTile>
+
+        <QuickTile icon={Moon} label="Sleep" color="text-indigo-500">
+          {sleepStart ? (
+            <div className="flex items-center gap-2">
+              <span className="text-xs">Sleeping since <strong>{sleepStart}</strong></span>
+              <button onClick={stopSleep} className="ml-auto text-xs bg-indigo-500 text-white px-3 py-1 rounded">Wake</button>
+            </div>
+          ) : (
+            <div className="flex gap-2 flex-wrap">
+              <button onClick={startSleep} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Start sleep</button>
+              {[30, 60, 90, 120].map(m => (
+                <button key={m}
+                  onClick={() => add({ date, startTime: nowHM(), kind: "sleep", durationMin: m })}
+                  className="text-xs bg-secondary px-2 py-1 rounded hover:bg-secondary/70">+{m}m</button>
+              ))}
+            </div>
+          )}
+        </QuickTile>
+
+        <QuickTile icon={Apple} label="Diaper / quick note" color="text-emerald-500">
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => add({ date, startTime: nowHM(), kind: "diaper", notes: "Wet" })} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Wet</button>
+            <button onClick={() => add({ date, startTime: nowHM(), kind: "diaper", notes: "Dirty" })} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Dirty</button>
+            <button onClick={() => add({ date, startTime: nowHM(), kind: "diaper", notes: "Mixed" })} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Mixed</button>
+          </div>
+        </QuickTile>
+      </div>
+
+      {/* Today's log */}
+      <div>
+        <div className="text-xs font-semibold text-muted-foreground mb-2">Today's log ({sorted.length})</div>
+        <div className="space-y-1">
+          {sorted.length === 0 && <p className="text-xs italic text-muted-foreground">No entries yet — tap a tile above.</p>}
+          {sorted.map(l => (
+            <div key={l.id} className="flex items-center gap-2 p-2 rounded border border-border bg-card text-xs">
+              <span className="font-mono text-muted-foreground w-12">{l.startTime}</span>
+              <span className="capitalize w-20 font-medium">{l.kind}</span>
+              <span className="flex-1 text-muted-foreground">
+                {l.side && `${l.side} `}
+                {l.amountMl != null && `${l.amountMl}ml `}
+                {l.durationMin != null && `${l.durationMin}m `}
+                {l.notes && `· ${l.notes}`}
+              </span>
+              <button onClick={() => remove(l.id)} className="text-muted-foreground hover:text-destructive">
+                <Trash2 size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function QuickTile({ icon: Icon, label, color, children }: { icon: any; label: string; color: string; children: React.ReactNode }) {
+  return (
+    <div className="p-3 rounded-lg border border-border bg-card space-y-2">
+      <div className="flex items-center gap-2">
+        <Icon size={16} className={color} />
+        <span className="text-sm font-semibold">{label}</span>
+      </div>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function PresetRow({ presets, unit, onPick }: { presets: number[]; unit: string; onPick: (v: number) => void }) {
+  return (
+    <div className="flex gap-1 flex-wrap">
+      {presets.map(p => (
+        <button key={p}
+          onClick={() => onPick(p)}
+          className="text-xs bg-secondary px-2 py-1 rounded hover:bg-secondary/70">
+          +{p} {unit}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function CustomMl({ onAdd }: { onAdd: (ml: number) => void }) {
+  const [v, setV] = useState("");
+  return (
+    <div className="flex gap-2">
+      <input
+        type="number"
+        inputMode="numeric"
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        placeholder="custom ml"
+        className="flex-1 text-xs bg-secondary/40 rounded px-2 py-1 outline-none"
+      />
+      <button
+        onClick={() => { const n = Number(v); if (n > 0) { onAdd(n); setV(""); } }}
+        className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded">Log</button>
+    </div>
+  );
+}
+
+function ManualBreastfeed({ onAdd }: { onAdd: (side: "L" | "R" | "both", min: number) => void }) {
+  const [side, setSide] = useState<"L" | "R" | "both">("both");
+  const [min, setMin] = useState("");
+  return (
+    <div className="flex gap-2 items-center">
+      <select value={side} onChange={(e) => setSide(e.target.value as any)} className="text-xs bg-secondary/40 rounded px-2 py-1">
+        <option value="L">L</option><option value="R">R</option><option value="both">Both</option>
+      </select>
+      <input type="number" value={min} onChange={(e) => setMin(e.target.value)} placeholder="minutes"
+        className="flex-1 text-xs bg-secondary/40 rounded px-2 py-1 outline-none" />
+      <button onClick={() => { const n = Number(min); if (n > 0) { onAdd(side, n); setMin(""); } }}
+        className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded">Log</button>
+    </div>
+  );
+}
+
+function ManualPump({ onAdd }: { onAdd: (ml: number, side: "L" | "R" | "both") => void }) {
+  const [side, setSide] = useState<"L" | "R" | "both">("both");
+  const [ml, setMl] = useState("");
+  return (
+    <div className="flex gap-2 items-center">
+      <select value={side} onChange={(e) => setSide(e.target.value as any)} className="text-xs bg-secondary/40 rounded px-2 py-1">
+        <option value="L">L</option><option value="R">R</option><option value="both">Both</option>
+      </select>
+      <input type="number" value={ml} onChange={(e) => setMl(e.target.value)} placeholder="ml"
+        className="flex-1 text-xs bg-secondary/40 rounded px-2 py-1 outline-none" />
+      <button onClick={() => { const n = Number(ml); if (n > 0) { onAdd(n, side); setMl(""); } }}
+        className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded">Log</button>
+    </div>
+  );
+}
+
+function minutesBetweenHM(a: string, b: string): number {
+  const [ah, am] = a.split(":").map(Number);
+  const [bh, bm] = b.split(":").map(Number);
+  let d = (bh * 60 + bm) - (ah * 60 + am);
+  if (d < 0) d += 24 * 60;
+  return d;
+}
+
+
