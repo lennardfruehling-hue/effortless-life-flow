@@ -534,6 +534,7 @@ export default function BabyView({ projects, tasks, onSaveTasks }: Props) {
             />
           )}
 
+          {(active === "health" || active === "documents" || active === "play") && (
             <EntryListSection
               section={sectionDef}
               entries={(safe[sectionDef.id] as BabyEntry[]) ?? []}
