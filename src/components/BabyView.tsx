@@ -2851,10 +2851,25 @@ function BabyTrackerQuick({
   const [date, setDate] = useState<string>(format(new Date(), "yyyy-MM-dd"));
   const [sleepStart, setSleepStart] = useState<string | null>(null);
   const [bfStart, setBfStart] = useState<{ t: string; side: "L" | "R" | "both" } | null>(null);
+  const [pumpStart, setPumpStart] = useState<string | null>(null);
+  const [tab, setTab] = useState<"log" | "day" | "analytics">("log");
+  const [noteText, setNoteText] = useState("");
+  const [, setTick] = useState(0);
+
+  // Live ticker so timers update every second
+  useEffect(() => {
+    if (!sleepStart && !bfStart && !pumpStart) return;
+    const i = setInterval(() => setTick(t => t + 1), 1000);
+    return () => clearInterval(i);
+  }, [sleepStart, bfStart, pumpStart]);
 
   const nowHM = () => format(new Date(), "HH:mm");
   const add = (l: Omit<RoutineLog, "id">) => onChange([{ id: uuid(), ...l }, ...logs]);
   const remove = (id: string) => onChange(logs.filter(x => x.id !== id));
+  const elapsed = (t: string) => {
+    const m = minutesBetween(t, nowHM()) ?? 0;
+    return `${Math.floor(m / 60)}h ${m % 60}m`;
+  };
 
   // Quick adders ---------------------------------------------------------
   const addFormula = (ml: number) =>
@@ -2879,124 +2894,448 @@ function BabyTrackerQuick({
     add({ date, startTime: sleepStart, endTime: end, kind: "sleep", durationMin: dur });
     setSleepStart(null);
   };
+  const startPump = () => setPumpStart(nowHM());
+  const stopPumpWithMl = (ml: number, side: "L" | "R" | "both") => {
+    if (!pumpStart) return;
+    const end = nowHM();
+    const dur = minutesBetween(pumpStart, end);
+    add({ date, startTime: pumpStart, endTime: end, kind: "pump", amountMl: ml, side, durationMin: dur });
+    setPumpStart(null);
+  };
 
-  // Day totals -----------------------------------------------------------
-  const today = logs.filter(l => l.date === date);
-  const totalFormula = today.filter(l => l.kind === "bottle" && (l.notes ?? "").toLowerCase().includes("formula"))
-    .reduce((s, l) => s + (l.amountMl ?? 0), 0);
-  const totalBreastBottle = today.filter(l => l.kind === "bottle" && (l.notes ?? "").toLowerCase().includes("breast"))
-    .reduce((s, l) => s + (l.amountMl ?? 0), 0);
-  const totalPump = today.filter(l => l.kind === "pump").reduce((s, l) => s + (l.amountMl ?? 0), 0);
-  const totalBfMin = today.filter(l => l.kind === "breastfeed").reduce((s, l) => s + (l.durationMin ?? 0), 0);
-  const totalSleepMin = today.filter(l => l.kind === "sleep").reduce((s, l) => s + (l.durationMin ?? 0), 0);
-
-  const sorted = [...today].sort((a, b) => b.startTime.localeCompare(a.startTime));
+  // Today snapshot -------------------------------------------------------
+  const todayLogs = logs.filter(l => l.date === date);
+  const tot = summarizeDay(todayLogs);
+  const sorted = [...todayLogs].sort((a, b) => b.startTime.localeCompare(a.startTime));
 
   return (
     <div className="space-y-4">
-      {/* Date + day totals */}
-      <div className="flex items-center gap-3 flex-wrap p-3 rounded-lg border border-border bg-card/60">
+      {/* Tabs */}
+      <div className="flex gap-1 border-b border-border">
+        {([
+          { id: "log", label: "Quick log" },
+          { id: "day", label: "Daily overview" },
+          { id: "analytics", label: "Analytics" },
+        ] as const).map(t => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={`text-xs px-3 py-2 border-b-2 transition-colors ${
+              tab === t.id
+                ? "border-primary text-primary font-semibold"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "log" && (
+        <>
+          {/* Date + day totals */}
+          <div className="flex items-center gap-3 flex-wrap p-3 rounded-lg border border-border bg-card/60">
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="text-sm bg-secondary/40 rounded px-2 py-1 outline-none"
+            />
+            <span className="text-xs text-muted-foreground">Taps log at <strong>now</strong></span>
+            <div className="ml-auto flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+              <span>Formula <strong className="text-foreground">{tot.formulaMl}ml</strong></span>
+              <span>BM btl <strong className="text-foreground">{tot.breastBottleMl}ml</strong></span>
+              <span>Pump <strong className="text-foreground">{tot.pumpMl}ml</strong></span>
+              <span>BF <strong className="text-foreground">{tot.breastfeedMin}m</strong></span>
+              <span>Sleep <strong className="text-foreground">{Math.floor(tot.sleepMin/60)}h {tot.sleepMin%60}m</strong></span>
+              <span>Diapers <strong className="text-foreground">{tot.diapers}</strong></span>
+            </div>
+          </div>
+
+          {/* Quick action tiles */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <QuickTile icon={Milk} label="Formula" color="text-amber-500">
+              <PresetRow presets={[60, 90, 120, 150, 180]} unit="ml" onPick={addFormula} />
+              <CustomMl onAdd={addFormula} />
+            </QuickTile>
+
+            <QuickTile icon={Droplet} label="Breast milk (bottle)" color="text-pink-500">
+              <PresetRow presets={[60, 90, 120, 150]} unit="ml" onPick={addBreastBottle} />
+              <CustomMl onAdd={addBreastBottle} />
+            </QuickTile>
+
+            <QuickTile icon={Timer} label="Breastfeed (timer)" color="text-rose-500">
+              {bfStart ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs">
+                    {bfStart.side} · started <strong>{bfStart.t}</strong> · <strong>{elapsed(bfStart.t)}</strong>
+                  </span>
+                  <button onClick={stopBreastfeed} className="ml-auto text-xs bg-rose-500 text-white px-3 py-1 rounded">Stop & log</button>
+                </div>
+              ) : (
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={() => startBreastfeed("L")} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Start L</button>
+                  <button onClick={() => startBreastfeed("R")} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Start R</button>
+                  <button onClick={() => startBreastfeed("both")} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Start both</button>
+                </div>
+              )}
+              <ManualBreastfeed onAdd={(side, min) => add({ date, startTime: nowHM(), kind: "breastfeed", side, durationMin: min })} />
+            </QuickTile>
+
+            <QuickTile icon={Droplet} label="Pumped (timer + ml)" color="text-purple-500">
+              {pumpStart ? (
+                <div className="space-y-2">
+                  <div className="text-xs">Pumping since <strong>{pumpStart}</strong> · <strong>{elapsed(pumpStart)}</strong></div>
+                  <PumpStopForm onStop={stopPumpWithMl} />
+                </div>
+              ) : (
+                <button onClick={startPump} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Start pump</button>
+              )}
+              <ManualPump onAdd={addPump} />
+              <PresetRow presets={[30, 60, 90, 120]} unit="ml (both)" onPick={(v) => addPump(v, "both")} />
+            </QuickTile>
+
+            <QuickTile icon={Moon} label="Sleep (timer)" color="text-indigo-500">
+              {sleepStart ? (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs">Sleeping since <strong>{sleepStart}</strong> · <strong>{elapsed(sleepStart)}</strong></span>
+                  <button onClick={stopSleep} className="ml-auto text-xs bg-indigo-500 text-white px-3 py-1 rounded">Wake & log</button>
+                </div>
+              ) : (
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={startSleep} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Start sleep</button>
+                  {[30, 60, 90, 120].map(m => (
+                    <button key={m}
+                      onClick={() => add({ date, startTime: nowHM(), kind: "sleep", durationMin: m })}
+                      className="text-xs bg-secondary px-2 py-1 rounded hover:bg-secondary/70">+{m}m</button>
+                  ))}
+                </div>
+              )}
+            </QuickTile>
+
+            <QuickTile icon={Apple} label="Diapers" color="text-emerald-500">
+              <div className="flex gap-2 flex-wrap">
+                <button onClick={() => add({ date, startTime: nowHM(), kind: "diaper", notes: "Wet" })} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">💧 Wet</button>
+                <button onClick={() => add({ date, startTime: nowHM(), kind: "diaper", notes: "Poo" })} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">💩 Poo</button>
+                <button onClick={() => add({ date, startTime: nowHM(), kind: "diaper", notes: "Mixed" })} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">🌀 Mixed</button>
+              </div>
+            </QuickTile>
+
+            <QuickTile icon={FileText} label="Other / noticed" color="text-sky-500">
+              <div className="flex gap-2">
+                <input
+                  value={noteText}
+                  onChange={(e) => setNoteText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && noteText.trim()) {
+                      add({ date, startTime: nowHM(), kind: "play", activity: "Note", notes: noteText.trim() });
+                      setNoteText("");
+                    }
+                  }}
+                  placeholder="e.g. rash, hiccups, smiled at dad…"
+                  className="flex-1 text-xs bg-secondary/40 rounded px-2 py-1 outline-none"
+                />
+                <button
+                  onClick={() => {
+                    if (!noteText.trim()) return;
+                    add({ date, startTime: nowHM(), kind: "play", activity: "Note", notes: noteText.trim() });
+                    setNoteText("");
+                  }}
+                  className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded">Log</button>
+              </div>
+            </QuickTile>
+          </div>
+
+          {/* Today's log */}
+          <div>
+            <div className="text-xs font-semibold text-muted-foreground mb-2">Today's log ({sorted.length})</div>
+            <div className="space-y-1">
+              {sorted.length === 0 && <p className="text-xs italic text-muted-foreground">No entries yet — tap a tile above.</p>}
+              {sorted.map(l => (
+                <div key={l.id} className="flex items-center gap-2 p-2 rounded border border-border bg-card text-xs">
+                  <span className="font-mono text-muted-foreground w-12">{l.startTime}</span>
+                  <span className="capitalize w-20 font-medium">{l.kind}</span>
+                  <span className="flex-1 text-muted-foreground">
+                    {l.side && `${l.side} `}
+                    {l.amountMl != null && `${l.amountMl}ml `}
+                    {l.durationMin != null && `${l.durationMin}m `}
+                    {l.notes && `· ${l.notes}`}
+                  </span>
+                  <button onClick={() => remove(l.id)} className="text-muted-foreground hover:text-destructive">
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {tab === "day" && (
+        <DailyOverview date={date} setDate={setDate} logs={todayLogs} />
+      )}
+
+      {tab === "analytics" && (
+        <AnalyticsView logs={logs} />
+      )}
+    </div>
+  );
+}
+
+// ---------- Daily overview ----------
+function DailyOverview({
+  date, setDate, logs,
+}: { date: string; setDate: (d: string) => void; logs: RoutineLog[] }) {
+  const tot = summarizeDay(logs);
+  const byHour: number[] = Array(24).fill(0);
+  logs.forEach(l => {
+    const h = Number(l.startTime.split(":")[0] || 0);
+    byHour[h] += 1;
+  });
+  const maxH = Math.max(1, ...byHour);
+  const notes = logs.filter(l => l.activity === "Note" && l.notes);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card/60">
         <input
           type="date"
           value={date}
           onChange={(e) => setDate(e.target.value)}
           className="text-sm bg-secondary/40 rounded px-2 py-1 outline-none"
         />
-        <span className="text-xs text-muted-foreground">Quick log — taps go to <strong>now</strong></span>
-        <div className="ml-auto flex flex-wrap gap-3 text-[11px] text-muted-foreground">
-          <span>Formula <strong className="text-foreground">{totalFormula}ml</strong></span>
-          <span>Breast btl <strong className="text-foreground">{totalBreastBottle}ml</strong></span>
-          <span>Pump <strong className="text-foreground">{totalPump}ml</strong></span>
-          <span>Breastfeed <strong className="text-foreground">{totalBfMin}m</strong></span>
-          <span>Sleep <strong className="text-foreground">{Math.floor(totalSleepMin/60)}h {totalSleepMin%60}m</strong></span>
-        </div>
+        <span className="text-xs text-muted-foreground">{logs.length} entries</span>
       </div>
 
-      {/* Quick action tiles */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <QuickTile icon={Milk} label="Formula" color="text-amber-500">
-          <PresetRow presets={[60, 90, 120, 150, 180]} unit="ml" onPick={addFormula} />
-          <CustomMl onAdd={addFormula} />
-        </QuickTile>
-
-        <QuickTile icon={Droplet} label="Breast milk (bottle)" color="text-pink-500">
-          <PresetRow presets={[60, 90, 120, 150]} unit="ml" onPick={addBreastBottle} />
-          <CustomMl onAdd={addBreastBottle} />
-        </QuickTile>
-
-        <QuickTile icon={Timer} label="Breastfeed" color="text-rose-500">
-          {bfStart ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs">Started <strong>{bfStart.t}</strong> ({bfStart.side})</span>
-              <button onClick={stopBreastfeed} className="ml-auto text-xs bg-rose-500 text-white px-3 py-1 rounded">Stop</button>
-            </div>
-          ) : (
-            <div className="flex gap-2 flex-wrap">
-              <button onClick={() => startBreastfeed("L")} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Start L</button>
-              <button onClick={() => startBreastfeed("R")} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Start R</button>
-              <button onClick={() => startBreastfeed("both")} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Start both</button>
-            </div>
-          )}
-          <ManualBreastfeed onAdd={(side, min) => add({ date, startTime: nowHM(), kind: "breastfeed", side, durationMin: min })} />
-        </QuickTile>
-
-        <QuickTile icon={Droplet} label="Pumped" color="text-purple-500">
-          <ManualPump onAdd={addPump} />
-          <PresetRow presets={[30, 60, 90, 120]} unit="ml (both)" onPick={(v) => addPump(v, "both")} />
-        </QuickTile>
-
-        <QuickTile icon={Moon} label="Sleep" color="text-indigo-500">
-          {sleepStart ? (
-            <div className="flex items-center gap-2">
-              <span className="text-xs">Sleeping since <strong>{sleepStart}</strong></span>
-              <button onClick={stopSleep} className="ml-auto text-xs bg-indigo-500 text-white px-3 py-1 rounded">Wake</button>
-            </div>
-          ) : (
-            <div className="flex gap-2 flex-wrap">
-              <button onClick={startSleep} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Start sleep</button>
-              {[30, 60, 90, 120].map(m => (
-                <button key={m}
-                  onClick={() => add({ date, startTime: nowHM(), kind: "sleep", durationMin: m })}
-                  className="text-xs bg-secondary px-2 py-1 rounded hover:bg-secondary/70">+{m}m</button>
-              ))}
-            </div>
-          )}
-        </QuickTile>
-
-        <QuickTile icon={Apple} label="Diaper / quick note" color="text-emerald-500">
-          <div className="flex gap-2 flex-wrap">
-            <button onClick={() => add({ date, startTime: nowHM(), kind: "diaper", notes: "Wet" })} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Wet</button>
-            <button onClick={() => add({ date, startTime: nowHM(), kind: "diaper", notes: "Dirty" })} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Dirty</button>
-            <button onClick={() => add({ date, startTime: nowHM(), kind: "diaper", notes: "Mixed" })} className="text-xs bg-secondary px-3 py-1 rounded hover:bg-secondary/70">Mixed</button>
-          </div>
-        </QuickTile>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <StatCard label="Formula" value={`${tot.formulaMl}ml`} hint={`${tot.formulaCount} feeds`} />
+        <StatCard label="Breast btl" value={`${tot.breastBottleMl}ml`} hint={`${tot.breastBottleCount} feeds`} />
+        <StatCard label="Breastfeed" value={`${tot.breastfeedMin}m`} hint={`${tot.breastfeedCount} sessions`} />
+        <StatCard label="Pumped" value={`${tot.pumpMl}ml`} hint={`${tot.pumpCount} sessions`} />
+        <StatCard label="Sleep" value={`${Math.floor(tot.sleepMin/60)}h ${tot.sleepMin%60}m`} hint={`${tot.sleepCount} naps`} />
+        <StatCard label="Diapers" value={`${tot.diapers}`} hint={`${tot.diaperWet}💧 ${tot.diaperPoo}💩 ${tot.diaperMixed}🌀`} />
+        <StatCard label="Total intake" value={`${tot.formulaMl + tot.breastBottleMl}ml`} hint="formula + BM btl" />
+        <StatCard label="Notes" value={`${notes.length}`} hint="observations" />
       </div>
 
-      {/* Today's log */}
-      <div>
-        <div className="text-xs font-semibold text-muted-foreground mb-2">Today's log ({sorted.length})</div>
-        <div className="space-y-1">
-          {sorted.length === 0 && <p className="text-xs italic text-muted-foreground">No entries yet — tap a tile above.</p>}
-          {sorted.map(l => (
-            <div key={l.id} className="flex items-center gap-2 p-2 rounded border border-border bg-card text-xs">
-              <span className="font-mono text-muted-foreground w-12">{l.startTime}</span>
-              <span className="capitalize w-20 font-medium">{l.kind}</span>
-              <span className="flex-1 text-muted-foreground">
-                {l.side && `${l.side} `}
-                {l.amountMl != null && `${l.amountMl}ml `}
-                {l.durationMin != null && `${l.durationMin}m `}
-                {l.notes && `· ${l.notes}`}
-              </span>
-              <button onClick={() => remove(l.id)} className="text-muted-foreground hover:text-destructive">
-                <Trash2 size={12} />
-              </button>
+      <div className="p-3 rounded-lg border border-border bg-card">
+        <div className="text-xs font-semibold mb-2">Activity by hour</div>
+        <div className="flex items-end gap-0.5 h-20">
+          {byHour.map((v, h) => (
+            <div key={h} className="flex-1 flex flex-col items-center justify-end gap-0.5">
+              <div
+                className="w-full bg-primary/70 rounded-t"
+                style={{ height: `${(v / maxH) * 100}%` }}
+                title={`${h}:00 — ${v} entries`}
+              />
+              {h % 3 === 0 && <span className="text-[8px] text-muted-foreground">{h}</span>}
             </div>
           ))}
         </div>
       </div>
+
+      {notes.length > 0 && (
+        <div className="p-3 rounded-lg border border-border bg-card">
+          <div className="text-xs font-semibold mb-2">Observations</div>
+          <ul className="space-y-1 text-xs">
+            {notes.map(n => (
+              <li key={n.id}><span className="font-mono text-muted-foreground">{n.startTime}</span> — {n.notes}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
+
+// ---------- Analytics ----------
+function AnalyticsView({ logs }: { logs: RoutineLog[] }) {
+  const [range, setRange] = useState<7 | 14 | 30 | 90>(7);
+  const [metric, setMetric] = useState<"intakeMl" | "sleepMin" | "breastfeedMin" | "pumpMl" | "diapers">("intakeMl");
+
+  const days = useMemo(() => {
+    const out: { date: string; label: string; sum: ReturnType<typeof summarizeDay> }[] = [];
+    for (let i = range - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const ds = format(d, "yyyy-MM-dd");
+      out.push({
+        date: ds,
+        label: format(d, range > 14 ? "d MMM" : "EEE d"),
+        sum: summarizeDay(logs.filter(l => l.date === ds)),
+      });
+    }
+    return out;
+  }, [logs, range]);
+
+  const series = days.map(d => {
+    const s = d.sum;
+    const val =
+      metric === "intakeMl" ? s.formulaMl + s.breastBottleMl :
+      metric === "sleepMin" ? s.sleepMin :
+      metric === "breastfeedMin" ? s.breastfeedMin :
+      metric === "pumpMl" ? s.pumpMl :
+      s.diapers;
+    return { ...d, value: val };
+  });
+  const max = Math.max(1, ...series.map(d => d.value));
+  const avg = series.reduce((s, d) => s + d.value, 0) / Math.max(1, series.length);
+  const unit =
+    metric === "intakeMl" || metric === "pumpMl" ? "ml" :
+    metric === "sleepMin" || metric === "breastfeedMin" ? "min" : "";
+
+  // Hour-of-day heatmap across range
+  const heat: number[] = Array(24).fill(0);
+  days.forEach(d => {
+    logs.filter(l => l.date === d.date).forEach(l => {
+      const h = Number(l.startTime.split(":")[0] || 0);
+      heat[h] += 1;
+    });
+  });
+  const heatMax = Math.max(1, ...heat);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg border border-border bg-card/60">
+        <label className="text-xs text-muted-foreground">Range</label>
+        {[7, 14, 30, 90].map(r => (
+          <button key={r} onClick={() => setRange(r as any)}
+            className={`text-xs px-2 py-1 rounded ${range === r ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-secondary/70"}`}>
+            {r}d
+          </button>
+        ))}
+        <label className="text-xs text-muted-foreground ml-3">Metric</label>
+        <select value={metric} onChange={(e) => setMetric(e.target.value as any)}
+          className="text-xs bg-secondary/40 rounded px-2 py-1 outline-none">
+          <option value="intakeMl">Total intake (ml)</option>
+          <option value="sleepMin">Sleep (min)</option>
+          <option value="breastfeedMin">Breastfeed (min)</option>
+          <option value="pumpMl">Pumped (ml)</option>
+          <option value="diapers">Diapers (count)</option>
+        </select>
+        <span className="ml-auto text-xs text-muted-foreground">
+          Avg: <strong className="text-foreground">{Math.round(avg)} {unit}</strong>
+        </span>
+      </div>
+
+      {/* Bar chart */}
+      <div className="p-3 rounded-lg border border-border bg-card">
+        <div className="flex items-end gap-1 h-40">
+          {series.map(d => (
+            <div key={d.date} className="flex-1 flex flex-col items-center justify-end gap-1 group">
+              <div className="text-[9px] text-muted-foreground opacity-0 group-hover:opacity-100">{d.value}</div>
+              <div
+                className="w-full bg-primary/80 rounded-t hover:bg-primary transition-colors"
+                style={{ height: `${Math.max(2, (d.value / max) * 100)}%` }}
+                title={`${d.label}: ${d.value} ${unit}`}
+              />
+              <div className="text-[9px] text-muted-foreground rotate-[-30deg] origin-top-left">{d.label}</div>
+            </div>
+          ))}
+        </div>
+        <div className="text-[10px] text-muted-foreground text-right mt-1">unit: {unit || "count"}</div>
+      </div>
+
+      {/* Rolling totals */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <StatCard label="Range total" value={`${series.reduce((s, d) => s + d.value, 0)} ${unit}`} hint={`${range} days`} />
+        <StatCard label="Daily avg" value={`${Math.round(avg)} ${unit}`} hint="per day" />
+        <StatCard label="Best day" value={`${Math.max(...series.map(s => s.value))} ${unit}`} hint={series.find(s => s.value === Math.max(...series.map(s => s.value)))?.label ?? ""} />
+        <StatCard label="Days logged" value={`${series.filter(s => s.value > 0).length}/${range}`} hint="non-zero" />
+      </div>
+
+      {/* Hour heatmap */}
+      <div className="p-3 rounded-lg border border-border bg-card">
+        <div className="text-xs font-semibold mb-2">Activity by hour-of-day (across {range}d)</div>
+        <div className="flex items-end gap-0.5 h-20">
+          {heat.map((v, h) => (
+            <div key={h} className="flex-1 flex flex-col items-center justify-end gap-0.5">
+              <div className="w-full bg-indigo-500/70 rounded-t" style={{ height: `${(v / heatMax) * 100}%` }} title={`${h}:00 — ${v}`} />
+              {h % 3 === 0 && <span className="text-[8px] text-muted-foreground">{h}</span>}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Breakdown table */}
+      <div className="p-3 rounded-lg border border-border bg-card overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="text-muted-foreground">
+            <tr className="text-left">
+              <th className="py-1 pr-2">Day</th>
+              <th className="text-right">Intake</th>
+              <th className="text-right">BF</th>
+              <th className="text-right">Pump</th>
+              <th className="text-right">Sleep</th>
+              <th className="text-right">Diap.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {days.slice().reverse().map(d => (
+              <tr key={d.date} className="border-t border-border/50">
+                <td className="py-1 pr-2">{d.label}</td>
+                <td className="text-right">{d.sum.formulaMl + d.sum.breastBottleMl}ml</td>
+                <td className="text-right">{d.sum.breastfeedMin}m</td>
+                <td className="text-right">{d.sum.pumpMl}ml</td>
+                <td className="text-right">{Math.floor(d.sum.sleepMin/60)}h{d.sum.sleepMin%60 ? ` ${d.sum.sleepMin%60}m` : ""}</td>
+                <td className="text-right">{d.sum.diapers}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className="p-3 rounded-lg border border-border bg-card">
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-lg font-bold mt-0.5">{value}</div>
+      {hint && <div className="text-[10px] text-muted-foreground mt-0.5">{hint}</div>}
+    </div>
+  );
+}
+
+function PumpStopForm({ onStop }: { onStop: (ml: number, side: "L" | "R" | "both") => void }) {
+  const [ml, setMl] = useState("");
+  const [side, setSide] = useState<"L" | "R" | "both">("both");
+  return (
+    <div className="flex gap-2 items-center">
+      <select value={side} onChange={(e) => setSide(e.target.value as any)} className="text-xs bg-secondary/40 rounded px-2 py-1">
+        <option value="L">L</option><option value="R">R</option><option value="both">Both</option>
+      </select>
+      <input type="number" value={ml} onChange={(e) => setMl(e.target.value)} placeholder="ml pumped"
+        className="flex-1 text-xs bg-secondary/40 rounded px-2 py-1 outline-none" />
+      <button onClick={() => { const n = Number(ml); if (n >= 0) onStop(n, side); }}
+        className="text-xs bg-purple-500 text-white px-3 py-1 rounded">Stop & log</button>
+    </div>
+  );
+}
+
+function summarizeDay(logs: RoutineLog[]) {
+  const isFormula = (l: RoutineLog) => l.kind === "bottle" && (l.notes ?? "").toLowerCase().includes("formula");
+  const isBreastBottle = (l: RoutineLog) => l.kind === "bottle" && (l.notes ?? "").toLowerCase().includes("breast");
+  const diaperOf = (s: string) => logs.filter(l => l.kind === "diaper" && (l.notes ?? "").toLowerCase().includes(s)).length;
+  return {
+    formulaMl: logs.filter(isFormula).reduce((s, l) => s + (l.amountMl ?? 0), 0),
+    formulaCount: logs.filter(isFormula).length,
+    breastBottleMl: logs.filter(isBreastBottle).reduce((s, l) => s + (l.amountMl ?? 0), 0),
+    breastBottleCount: logs.filter(isBreastBottle).length,
+    pumpMl: logs.filter(l => l.kind === "pump").reduce((s, l) => s + (l.amountMl ?? 0), 0),
+    pumpCount: logs.filter(l => l.kind === "pump").length,
+    breastfeedMin: logs.filter(l => l.kind === "breastfeed").reduce((s, l) => s + (l.durationMin ?? 0), 0),
+    breastfeedCount: logs.filter(l => l.kind === "breastfeed").length,
+    sleepMin: logs.filter(l => l.kind === "sleep").reduce((s, l) => s + (l.durationMin ?? 0), 0),
+    sleepCount: logs.filter(l => l.kind === "sleep").length,
+    diapers: logs.filter(l => l.kind === "diaper").length,
+    diaperWet: diaperOf("wet"),
+    diaperPoo: diaperOf("poo") + diaperOf("dirty"),
+    diaperMixed: diaperOf("mixed"),
+  };
+}
+
 
 function QuickTile({ icon: Icon, label, color, children }: { icon: any; label: string; color: string; children: React.ReactNode }) {
   return (
