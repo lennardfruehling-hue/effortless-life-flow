@@ -182,7 +182,7 @@ const DEFAULT_ROUTINE_SCHEDULE: RoutineBlock[] = PRESET_WEEKS_4_10;
 const DEFAULT_DATA: BabyData = {
   priorities: [],
   vaccines: [], appointments: [], milestones: [], health: [], growth: [],
-  play: [], toys: { listId: null }, food: [], documents: [], education: [],
+  play: [], toys: { listId: null }, togetlist: { listId: null }, food: [], documents: [], education: [],
   routineLogs: [],
   routineSchedule: DEFAULT_ROUTINE_SCHEDULE,
 };
