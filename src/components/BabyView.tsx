@@ -508,7 +508,32 @@ export default function BabyView({ projects, tasks, onSaveTasks }: Props) {
             />
           )}
 
-          {(active === "health" || active === "documents" || active === "play") && (
+          {active === "togetlist" && (
+            <ToysSection
+              listId={safe.togetlist.listId}
+              lists={lists}
+              onChange={(listId) => updateSection("togetlist", { listId })}
+              onCreateList={async (name) => {
+                const { data: created } = await supabase
+                  .from("task_lists")
+                  .insert({ name, created_by: user?.id ?? null })
+                  .select()
+                  .single();
+                if (created) {
+                  setLists(l => [created as TaskList, ...l]);
+                  updateSection("togetlist", { listId: (created as TaskList).id });
+                }
+              }}
+            />
+          )}
+
+          {active === "tracker" && (
+            <BabyTrackerQuick
+              logs={safe.routineLogs ?? []}
+              onChange={(next) => setData({ ...safe, routineLogs: next })}
+            />
+          )}
+
             <EntryListSection
               section={sectionDef}
               entries={(safe[sectionDef.id] as BabyEntry[]) ?? []}
