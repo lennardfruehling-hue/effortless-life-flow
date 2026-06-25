@@ -104,6 +104,7 @@ interface BabyData {
   growth: BabyEntry[];
   play: BabyEntry[];
   toys: { listId?: string | null };
+  togetlist: { listId?: string | null };
   food: BabyEntry[];
   documents: BabyEntry[];
   education: BabyEntry[];
