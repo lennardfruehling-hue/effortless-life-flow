@@ -265,6 +265,8 @@ const SECTIONS: SectionDef[] = [
   { id: "growth",       label: "Size & Weight",    icon: Ruler,            hasDate: true, growth: true,   placeholder: "Measurement label (optional)" },
   { id: "play",         label: "Play Tracker",     icon: ToyBrick,         hasDate: true,                 placeholder: "Activity (e.g. tummy time)" },
   { id: "toys",         label: "Toys & Wishlist",  icon: Gift,             list: true,                    placeholder: "" },
+  { id: "togetlist",    label: "Baby to Get",      icon: Gift,             list: true,                    placeholder: "" },
+  { id: "tracker",      label: "Tracker",          icon: Milk,                                            placeholder: "" },
   { id: "food",         label: "Food Schedule",    icon: UtensilsCrossed,  hasDate: true, hasTime: true,  placeholder: "Meal (e.g. Breakfast – purée)" },
   { id: "routine",      label: "Routine Tracker",  icon: Repeat,                                          placeholder: "" },
   { id: "documents",    label: "Documents",        icon: FileText,         upload: true,                  placeholder: "Document name" },
