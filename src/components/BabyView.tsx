@@ -67,7 +67,7 @@ export type DevelopmentArea =
 
 type SectionId =
   | "priorities" | "vaccines" | "appointments" | "milestones" | "health" | "growth"
-  | "play" | "toys" | "food" | "routine" | "documents" | "education";
+  | "play" | "toys" | "togetlist" | "tracker" | "food" | "routine" | "documents" | "education";
 
 export type RoutineKind = "breastfeed" | "bottle" | "pump" | "solid" | "play" | "sleep" | "diaper";
 
