@@ -3075,11 +3075,12 @@ function ManualPump({ onAdd }: { onAdd: (ml: number, side: "L" | "R" | "both") =
   );
 }
 
-function minutesBetween(a: string, b: string): number {
+function minutesBetweenHM(a: string, b: string): number {
   const [ah, am] = a.split(":").map(Number);
   const [bh, bm] = b.split(":").map(Number);
   let d = (bh * 60 + bm) - (ah * 60 + am);
   if (d < 0) d += 24 * 60;
   return d;
 }
+
 
