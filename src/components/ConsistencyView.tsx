@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Task } from "@/lib/types";
 import { computeConsistency, ionianProgress, IONIAN_GOAL } from "@/lib/pride";
 import { Flame, Trophy, Compass } from "lucide-react";
+import HabitTracker from "./HabitTracker";
 
 interface Props {
   tasks: Task[];
@@ -118,7 +119,12 @@ export default function ConsistencyView({ tasks }: Props) {
         </div>
       </section>
 
-      {/* Today checklist */}
+      {/* Editable habits tracker */}
+      <div className="mb-6">
+        <HabitTracker />
+      </div>
+
+      {/* Today checklist (from recurring tasks) */}
       <section className="rounded-lg border border-border bg-card p-4">
         <h3 className="text-sm font-medium text-foreground mb-3">Today's habits</h3>
         {dailyTasks.length === 0 ? (
