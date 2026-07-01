@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Task } from "@/lib/types";
 import { computeConsistency, ionianProgress, IONIAN_GOAL } from "@/lib/pride";
 import { Flame, Trophy, Compass } from "lucide-react";
+import HabitTracker from "./HabitTracker";
 
 interface Props {
   tasks: Task[];
