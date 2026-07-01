@@ -13,6 +13,7 @@ export const CLOUD_KEYS = {
   weeklyStructure: "serpent-weekly-structure",
   cars: "serpent-cars",
   baby: "serpent-baby",
+  habits: "serpent-habits",
 } as const;
 
 /**
@@ -37,6 +38,7 @@ const PERSONAL_KEYS: string[] = [
   CLOUD_KEYS.chatHistory,
   CLOUD_KEYS.dailySchedule,
   CLOUD_KEYS.tasks,
+  CLOUD_KEYS.habits,
 ];
 
 /** Write a value directly to another user's personal cloud row (used for task assignment duplication). */
