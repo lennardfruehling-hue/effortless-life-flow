@@ -111,18 +111,20 @@ export async function syncHabitsToTasksAndReminders(userId: string, habits: Habi
   }
   await cloudSet(userId, CLOUD_KEYS.tasks, nextTasks);
 
-  // ---- Reminders (localStorage) ----
+  // ---- Reminders (localStorage) — only for slots with an actual time. ----
+  const desiredTimed = desired.filter((d) => d.hasTime);
+  const desiredTimedById = new Map(desiredTimed.map((d) => [d.habitId, d]));
   const reminders = store.getReminders();
   const seenRem = new Set<string>();
   const nextRem: Reminder[] = [];
   for (const r of reminders) {
     if (r.habitId) {
-      if (!desiredById.has(r.habitId)) continue;
-      const d = desiredById.get(r.habitId)!;
+      if (!desiredTimedById.has(r.habitId)) continue;
+      const d = desiredTimedById.get(r.habitId)!;
       nextRem.push({
         ...r,
         title: d.title,
-        datetime: nextDatetimeForTime(d.dueTime, d.weeklyDay),
+        datetime: nextDatetimeForTime(d.dueTime!, d.weeklyDay),
         recurring: d.recurrence,
         completed: false,
       });
@@ -131,12 +133,12 @@ export async function syncHabitsToTasksAndReminders(userId: string, habits: Habi
       nextRem.push(r);
     }
   }
-  for (const d of desired) {
+  for (const d of desiredTimed) {
     if (seenRem.has(d.habitId)) continue;
     nextRem.push({
       id: `${HABIT_PREFIX}rem-${d.habitId}`,
       title: d.title,
-      datetime: nextDatetimeForTime(d.dueTime, d.weeklyDay),
+      datetime: nextDatetimeForTime(d.dueTime!, d.weeklyDay),
       recurring: d.recurrence,
       completed: false,
       habitId: d.habitId,
