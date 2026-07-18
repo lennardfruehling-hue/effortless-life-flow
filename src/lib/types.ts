@@ -60,7 +60,10 @@ export interface Task {
   createdBy?: string;
   /** Mark task as baby-related — surfaces a baby icon on the card. */
   isBabyRelated?: boolean;
+  /** If auto-generated from a habit slot, this is `${habitId}:${slot}` (slot = time or "any"). */
+  habitId?: string;
 }
+
 
 export interface Project {
   id: string;
@@ -77,7 +80,10 @@ export interface Reminder {
   datetime: string;
   recurring?: "daily" | "weekly" | "monthly";
   completed: boolean;
+  /** If auto-generated from a habit slot, this is `${habitId}:${slot}`. */
+  habitId?: string;
 }
+
 
 export type ViewMode = "tasks" | "projects" | "lifeplan" | "reminders" | "research" | "lists" | "calendar" | "ai" | "consistency";
 
