@@ -28,23 +28,36 @@ function nextDatetimeForTime(time: string, weeklyDay?: number): string {
 interface Desired {
   habitId: string;
   title: string;
-  dueTime: string;
+  dueTime?: string;
   recurrence: "daily" | "weekly";
   weeklyDay?: number;
+  hasTime: boolean;
 }
 
 function buildDesired(habits: Habit[]): Desired[] {
   const out: Desired[] = [];
   for (const h of habits) {
-    if (!h.times || h.times.length === 0) continue;
     const recurrence: "daily" | "weekly" = h.frequency === "weekly" ? "weekly" : "daily";
-    for (const t of h.times) {
+    const title = `${h.emoji ? h.emoji + " " : ""}${h.name}`;
+    if (h.times && h.times.length > 0) {
+      for (const t of h.times) {
+        out.push({
+          habitId: slotKey(h, t),
+          title,
+          dueTime: t,
+          recurrence,
+          weeklyDay: recurrence === "weekly" ? h.weeklyDay ?? 1 : undefined,
+          hasTime: true,
+        });
+      }
+    } else if (h.pushedToTasks) {
+      // No time slot — mirror as a plain to-do (any time).
       out.push({
-        habitId: slotKey(h, t),
-        title: `${h.emoji ? h.emoji + " " : ""}${h.name}`,
-        dueTime: t,
+        habitId: slotKey(h, "any"),
+        title,
         recurrence,
         weeklyDay: recurrence === "weekly" ? h.weeklyDay ?? 1 : undefined,
+        hasTime: false,
       });
     }
   }
@@ -98,18 +111,20 @@ export async function syncHabitsToTasksAndReminders(userId: string, habits: Habi
   }
   await cloudSet(userId, CLOUD_KEYS.tasks, nextTasks);
 
-  // ---- Reminders (localStorage) ----
+  // ---- Reminders (localStorage) — only for slots with an actual time. ----
+  const desiredTimed = desired.filter((d) => d.hasTime);
+  const desiredTimedById = new Map(desiredTimed.map((d) => [d.habitId, d]));
   const reminders = store.getReminders();
   const seenRem = new Set<string>();
   const nextRem: Reminder[] = [];
   for (const r of reminders) {
     if (r.habitId) {
-      if (!desiredById.has(r.habitId)) continue;
-      const d = desiredById.get(r.habitId)!;
+      if (!desiredTimedById.has(r.habitId)) continue;
+      const d = desiredTimedById.get(r.habitId)!;
       nextRem.push({
         ...r,
         title: d.title,
-        datetime: nextDatetimeForTime(d.dueTime, d.weeklyDay),
+        datetime: nextDatetimeForTime(d.dueTime!, d.weeklyDay),
         recurring: d.recurrence,
         completed: false,
       });
@@ -118,12 +133,12 @@ export async function syncHabitsToTasksAndReminders(userId: string, habits: Habi
       nextRem.push(r);
     }
   }
-  for (const d of desired) {
+  for (const d of desiredTimed) {
     if (seenRem.has(d.habitId)) continue;
     nextRem.push({
       id: `${HABIT_PREFIX}rem-${d.habitId}`,
       title: d.title,
-      datetime: nextDatetimeForTime(d.dueTime, d.weeklyDay),
+      datetime: nextDatetimeForTime(d.dueTime!, d.weeklyDay),
       recurring: d.recurrence,
       completed: false,
       habitId: d.habitId,

@@ -35,17 +35,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Check, Flame, Pencil, Plus, Trash2, X, Clock } from "lucide-react";
+import { Check, Flame, Pencil, Plus, Trash2, X, Clock, ListChecks } from "lucide-react";
 
 const EMPTY_HABIT: Omit<Habit, "id" | "createdAt" | "log"> = {
   name: "",
   emoji: "",
   frequency: "daily",
-  weekdays: [1, 2, 3, 4, 5],
+  weekdays: [0, 1, 2, 3, 4, 5, 6],
   weeklyDay: 1,
   cycleStart: todayISO(),
   times: [],
   notes: "",
+  pushedToTasks: false,
 };
 
 export default function HabitTracker() {
@@ -72,14 +73,19 @@ export default function HabitTracker() {
 
 
 
-  const dueToday = useMemo(
-    () => habits.filter((h) => isHabitDue(h, today)),
-    [habits, today]
-  );
-  const otherHabits = useMemo(
-    () => habits.filter((h) => !isHabitDue(h, today)),
-    [habits, today]
-  );
+  const sorted = useMemo(() => {
+    const arr = [...habits];
+    arr.sort((a, b) => {
+      const ad = isHabitDue(a, today) ? 0 : 1;
+      const bd = isHabitDue(b, today) ? 0 : 1;
+      if (ad !== bd) return ad - bd;
+      const at = a.times[0] ?? "99:99";
+      const bt = b.times[0] ?? "99:99";
+      if (at !== bt) return at.localeCompare(bt);
+      return a.name.localeCompare(b.name);
+    });
+    return arr;
+  }, [habits, today]);
 
   const openNew = () => {
     setEditing({
@@ -138,21 +144,27 @@ export default function HabitTracker() {
         </p>
       )}
 
-      {dueToday.length > 0 && (
-        <div className="space-y-2 mb-4">
-          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-mono">Today</p>
-          {dueToday.map((h) => (
-            <HabitRow key={h.id} habit={h} onToggle={(slot) => toggleSlot(h, slot)} onEdit={() => openEdit(h)} onDelete={() => remove(h.id)} today={today} />
-          ))}
-        </div>
-      )}
-
-      {otherHabits.length > 0 && (
+      {sorted.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-mono">Other · not scheduled today</p>
-          {otherHabits.map((h) => (
-            <HabitRow key={h.id} habit={h} onToggle={(slot) => toggleSlot(h, slot)} onEdit={() => openEdit(h)} onDelete={() => remove(h.id)} today={today} muted />
-          ))}
+          {sorted.map((h) => {
+            const due = isHabitDue(h, today);
+            return (
+              <HabitRow
+                key={h.id}
+                habit={h}
+                onToggle={(slot) => toggleSlot(h, slot)}
+                onEdit={() => openEdit(h)}
+                onDelete={() => remove(h.id)}
+                onTogglePush={() =>
+                  setHabits((prev) =>
+                    prev.map((x) => (x.id === h.id ? { ...x, pushedToTasks: !x.pushedToTasks } : x))
+                  )
+                }
+                today={today}
+                muted={!due}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -176,6 +188,7 @@ function HabitRow({
   onToggle,
   onEdit,
   onDelete,
+  onTogglePush,
   muted,
 }: {
   habit: Habit;
@@ -183,6 +196,7 @@ function HabitRow({
   onToggle: (slot: string) => void;
   onEdit: () => void;
   onDelete: () => void;
+  onTogglePush: () => void;
   muted?: boolean;
 }) {
   const streak = habitStreak(habit);
@@ -190,9 +204,10 @@ function HabitRow({
   const complete = isHabitCompleteOn(habit, today);
   const doneToday = habit.log[today] ?? [];
   const slots = habit.times.length ? habit.times : ["any"];
+  const pushed = !!habit.pushedToTasks || habit.times.length > 0;
 
   return (
-    <div className={`rounded-md border border-border bg-background/40 p-3 ${muted ? "opacity-70" : ""}`}>
+    <div className={`rounded-md border border-border bg-background/40 p-3 ${muted ? "opacity-60" : ""}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -201,6 +216,9 @@ function HabitRow({
               {habit.name}
             </span>
             {complete && <Check size={14} className="text-primary" />}
+            {muted && (
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-mono">off today</span>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground mt-0.5 font-mono">
             <span>{frequencyLabel(habit)}</span>
@@ -212,9 +230,31 @@ function HabitRow({
             <span className="flex items-center gap-1">
               <Flame size={10} className="text-cat-f" /> {streak}d · best {best}d
             </span>
+            {pushed && (
+              <span className="flex items-center gap-1 text-primary">
+                <ListChecks size={10} /> in tasks
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={onTogglePush}
+            disabled={habit.times.length > 0}
+            title={
+              habit.times.length > 0
+                ? "Habits with times are always in the to-do list"
+                : pushed
+                ? "Remove from to-do list"
+                : "Push to to-do list"
+            }
+            className={`p-1.5 rounded hover:bg-muted ${
+              pushed ? "text-primary" : "text-muted-foreground"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            aria-label="Push habit to tasks"
+          >
+            <ListChecks size={13} />
+          </button>
           <button
             onClick={onEdit}
             className="p-1.5 rounded hover:bg-muted text-muted-foreground"
@@ -231,6 +271,7 @@ function HabitRow({
           </button>
         </div>
       </div>
+
 
       <div className="flex flex-wrap gap-1.5 mt-2">
         {slots.map((slot) => {
