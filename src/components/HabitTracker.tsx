@@ -188,6 +188,7 @@ function HabitRow({
   onToggle,
   onEdit,
   onDelete,
+  onTogglePush,
   muted,
 }: {
   habit: Habit;
@@ -195,6 +196,7 @@ function HabitRow({
   onToggle: (slot: string) => void;
   onEdit: () => void;
   onDelete: () => void;
+  onTogglePush: () => void;
   muted?: boolean;
 }) {
   const streak = habitStreak(habit);
@@ -202,9 +204,10 @@ function HabitRow({
   const complete = isHabitCompleteOn(habit, today);
   const doneToday = habit.log[today] ?? [];
   const slots = habit.times.length ? habit.times : ["any"];
+  const pushed = !!habit.pushedToTasks || habit.times.length > 0;
 
   return (
-    <div className={`rounded-md border border-border bg-background/40 p-3 ${muted ? "opacity-70" : ""}`}>
+    <div className={`rounded-md border border-border bg-background/40 p-3 ${muted ? "opacity-60" : ""}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
@@ -213,6 +216,9 @@ function HabitRow({
               {habit.name}
             </span>
             {complete && <Check size={14} className="text-primary" />}
+            {muted && (
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-mono">off today</span>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground mt-0.5 font-mono">
             <span>{frequencyLabel(habit)}</span>
@@ -224,9 +230,31 @@ function HabitRow({
             <span className="flex items-center gap-1">
               <Flame size={10} className="text-cat-f" /> {streak}d · best {best}d
             </span>
+            {pushed && (
+              <span className="flex items-center gap-1 text-primary">
+                <ListChecks size={10} /> in tasks
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-1 shrink-0">
+          <button
+            onClick={onTogglePush}
+            disabled={habit.times.length > 0}
+            title={
+              habit.times.length > 0
+                ? "Habits with times are always in the to-do list"
+                : pushed
+                ? "Remove from to-do list"
+                : "Push to to-do list"
+            }
+            className={`p-1.5 rounded hover:bg-muted ${
+              pushed ? "text-primary" : "text-muted-foreground"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            aria-label="Push habit to tasks"
+          >
+            <ListChecks size={13} />
+          </button>
           <button
             onClick={onEdit}
             className="p-1.5 rounded hover:bg-muted text-muted-foreground"
@@ -243,6 +271,7 @@ function HabitRow({
           </button>
         </div>
       </div>
+
 
       <div className="flex flex-wrap gap-1.5 mt-2">
         {slots.map((slot) => {
