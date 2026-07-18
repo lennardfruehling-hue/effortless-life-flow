@@ -73,14 +73,19 @@ export default function HabitTracker() {
 
 
 
-  const dueToday = useMemo(
-    () => habits.filter((h) => isHabitDue(h, today)),
-    [habits, today]
-  );
-  const otherHabits = useMemo(
-    () => habits.filter((h) => !isHabitDue(h, today)),
-    [habits, today]
-  );
+  const sorted = useMemo(() => {
+    const arr = [...habits];
+    arr.sort((a, b) => {
+      const ad = isHabitDue(a, today) ? 0 : 1;
+      const bd = isHabitDue(b, today) ? 0 : 1;
+      if (ad !== bd) return ad - bd;
+      const at = a.times[0] ?? "99:99";
+      const bt = b.times[0] ?? "99:99";
+      if (at !== bt) return at.localeCompare(bt);
+      return a.name.localeCompare(b.name);
+    });
+    return arr;
+  }, [habits, today]);
 
   const openNew = () => {
     setEditing({
