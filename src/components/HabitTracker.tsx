@@ -1,6 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useCloudState } from "@/hooks/useCloudState";
+import { useAuth } from "@/hooks/useAuth";
 import { CLOUD_KEYS } from "@/lib/cloudStore";
+import { syncHabitsToTasksAndReminders } from "@/lib/habitSync";
+
 import {
   Habit,
   HabitFrequency,
@@ -47,9 +50,27 @@ const EMPTY_HABIT: Omit<Habit, "id" | "createdAt" | "log"> = {
 
 export default function HabitTracker() {
   const [habits, setHabits, loaded] = useCloudState<Habit[]>(CLOUD_KEYS.habits, []);
+  const { user } = useAuth();
   const [editing, setEditing] = useState<Habit | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const today = todayISO();
+
+  // Sync habits with times → to-do tasks + reminders whenever habits change.
+  const syncTimer = useRef<number | null>(null);
+  useEffect(() => {
+    if (!user || !loaded) return;
+    if (syncTimer.current) window.clearTimeout(syncTimer.current);
+    syncTimer.current = window.setTimeout(() => {
+      syncHabitsToTasksAndReminders(user.id, habits).catch((e) =>
+        console.warn("[habits] sync failed", e)
+      );
+    }, 600);
+    return () => {
+      if (syncTimer.current) window.clearTimeout(syncTimer.current);
+    };
+  }, [habits, user?.id, loaded]);
+
+
 
   const dueToday = useMemo(
     () => habits.filter((h) => isHabitDue(h, today)),
