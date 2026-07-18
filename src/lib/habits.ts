@@ -18,6 +18,8 @@ export interface Habit {
   createdAt: string;
   /** Completion log per date: dateISO -> array of completed time slot keys ("any" or "HH:MM"). */
   log: Record<string, string[]>;
+  /** When true, mirror this habit into the to-do list even if no times are set. */
+  pushedToTasks?: boolean;
 }
 
 export function todayISO(d = new Date()): string {
