@@ -28,23 +28,36 @@ function nextDatetimeForTime(time: string, weeklyDay?: number): string {
 interface Desired {
   habitId: string;
   title: string;
-  dueTime: string;
+  dueTime?: string;
   recurrence: "daily" | "weekly";
   weeklyDay?: number;
+  hasTime: boolean;
 }
 
 function buildDesired(habits: Habit[]): Desired[] {
   const out: Desired[] = [];
   for (const h of habits) {
-    if (!h.times || h.times.length === 0) continue;
     const recurrence: "daily" | "weekly" = h.frequency === "weekly" ? "weekly" : "daily";
-    for (const t of h.times) {
+    const title = `${h.emoji ? h.emoji + " " : ""}${h.name}`;
+    if (h.times && h.times.length > 0) {
+      for (const t of h.times) {
+        out.push({
+          habitId: slotKey(h, t),
+          title,
+          dueTime: t,
+          recurrence,
+          weeklyDay: recurrence === "weekly" ? h.weeklyDay ?? 1 : undefined,
+          hasTime: true,
+        });
+      }
+    } else if (h.pushedToTasks) {
+      // No time slot — mirror as a plain to-do (any time).
       out.push({
-        habitId: slotKey(h, t),
-        title: `${h.emoji ? h.emoji + " " : ""}${h.name}`,
-        dueTime: t,
+        habitId: slotKey(h, "any"),
+        title,
         recurrence,
         weeklyDay: recurrence === "weekly" ? h.weeklyDay ?? 1 : undefined,
+        hasTime: false,
       });
     }
   }
