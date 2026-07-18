@@ -144,21 +144,27 @@ export default function HabitTracker() {
         </p>
       )}
 
-      {dueToday.length > 0 && (
-        <div className="space-y-2 mb-4">
-          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-mono">Today</p>
-          {dueToday.map((h) => (
-            <HabitRow key={h.id} habit={h} onToggle={(slot) => toggleSlot(h, slot)} onEdit={() => openEdit(h)} onDelete={() => remove(h.id)} today={today} />
-          ))}
-        </div>
-      )}
-
-      {otherHabits.length > 0 && (
+      {sorted.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[11px] uppercase tracking-widest text-muted-foreground font-mono">Other · not scheduled today</p>
-          {otherHabits.map((h) => (
-            <HabitRow key={h.id} habit={h} onToggle={(slot) => toggleSlot(h, slot)} onEdit={() => openEdit(h)} onDelete={() => remove(h.id)} today={today} muted />
-          ))}
+          {sorted.map((h) => {
+            const due = isHabitDue(h, today);
+            return (
+              <HabitRow
+                key={h.id}
+                habit={h}
+                onToggle={(slot) => toggleSlot(h, slot)}
+                onEdit={() => openEdit(h)}
+                onDelete={() => remove(h.id)}
+                onTogglePush={() =>
+                  setHabits((prev) =>
+                    prev.map((x) => (x.id === h.id ? { ...x, pushedToTasks: !x.pushedToTasks } : x))
+                  )
+                }
+                today={today}
+                muted={!due}
+              />
+            );
+          })}
         </div>
       )}
 
