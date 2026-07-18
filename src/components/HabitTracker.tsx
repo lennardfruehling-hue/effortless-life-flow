@@ -35,17 +35,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Check, Flame, Pencil, Plus, Trash2, X, Clock } from "lucide-react";
+import { Check, Flame, Pencil, Plus, Trash2, X, Clock, ListChecks } from "lucide-react";
 
 const EMPTY_HABIT: Omit<Habit, "id" | "createdAt" | "log"> = {
   name: "",
   emoji: "",
   frequency: "daily",
-  weekdays: [1, 2, 3, 4, 5],
+  weekdays: [0, 1, 2, 3, 4, 5, 6],
   weeklyDay: 1,
   cycleStart: todayISO(),
   times: [],
   notes: "",
+  pushedToTasks: false,
 };
 
 export default function HabitTracker() {
