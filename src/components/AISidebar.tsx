@@ -74,14 +74,40 @@ export default function AISidebar({ tasks, projects, onSaveTasks, onSaveProjects
           </button>
         </div>
       </div>
-      <div className="flex-1 overflow-hidden">
-        <AIChat
-          tasks={tasks}
-          projects={projects}
-          onSaveTasks={onSaveTasks}
-          onSaveProjects={onSaveProjects}
-        />
+      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border">
+        {([
+          { id: "voice", label: "Voice", icon: AudioLines },
+          { id: "chat", label: "Chat", icon: MessageSquare },
+        ] as const).map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+              tab === id ? "bg-sidebar-accent text-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Icon size={13} /> {label}
+          </button>
+        ))}
       </div>
+      <div className="flex-1 overflow-hidden">
+        {tab === "voice" ? (
+          <VoiceAssistant
+            tasks={tasks}
+            projects={projects}
+            onSaveTasks={onSaveTasks}
+            onSaveProjects={onSaveProjects}
+          />
+        ) : (
+          <AIChat
+            tasks={tasks}
+            projects={projects}
+            onSaveTasks={onSaveTasks}
+            onSaveProjects={onSaveProjects}
+          />
+        )}
+      </div>
+
     </aside>
     {voiceOpen && <VoiceTaskDialog onClose={() => setVoiceOpen(false)} onSave={handleVoiceSave} />}
     </>
