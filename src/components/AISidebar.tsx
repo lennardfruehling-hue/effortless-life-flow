@@ -38,7 +38,15 @@ export default function AISidebar({ tasks, projects, onSaveTasks, onSaveProjects
           </button>
           <Bot size={20} className="text-primary/60 mt-3" />
           <button
+            onClick={() => { setTab("voice"); setOpen(true); }}
+            className="mt-3 p-2 text-muted-foreground hover:text-primary"
+            title="Open voice assistant"
+          >
+            <AudioLines size={18} />
+          </button>
+          <button
             onClick={() => setVoiceOpen(true)}
+
             className="mt-3 p-2 text-muted-foreground hover:text-primary"
             title="Add task by voice"
           >
