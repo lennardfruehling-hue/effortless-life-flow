@@ -98,6 +98,17 @@ export default function Index() {
     setLifePlanProjects(loadLifePlanProjects());
   }, [view]);
 
+  // Voice assistant navigation
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const v = (e as CustomEvent).detail as ViewMode;
+      if (v) setView(v);
+    };
+    window.addEventListener("serpent-navigate", handler);
+    return () => window.removeEventListener("serpent-navigate", handler);
+  }, []);
+
+
   // Cross-device realtime sync: refresh local state when syncBridge updates localStorage
   useEffect(() => {
     const handler = (e: StorageEvent) => {

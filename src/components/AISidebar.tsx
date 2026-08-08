@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Bot, ChevronRight, ChevronLeft, Mic } from "lucide-react";
+import { Bot, ChevronRight, ChevronLeft, Mic, AudioLines, MessageSquare } from "lucide-react";
 import { Task, Project } from "@/lib/types";
 import AIChat from "./AIChat";
+import VoiceAssistant from "./VoiceAssistant";
 import VoiceTaskDialog from "./VoiceTaskDialog";
 
 interface Props {
@@ -16,11 +17,13 @@ export default function AISidebar({ tasks, projects, onSaveTasks, onSaveProjects
     typeof window !== "undefined" ? window.innerWidth >= 1024 : true,
   );
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [tab, setTab] = useState<"voice" | "chat">("voice");
 
   const handleVoiceSave = (task: Task) => {
     onSaveTasks((prev) => [task, ...prev]);
     setVoiceOpen(false);
   };
+
 
   if (!open) {
     return (
@@ -35,7 +38,15 @@ export default function AISidebar({ tasks, projects, onSaveTasks, onSaveProjects
           </button>
           <Bot size={20} className="text-primary/60 mt-3" />
           <button
+            onClick={() => { setTab("voice"); setOpen(true); }}
+            className="mt-3 p-2 text-muted-foreground hover:text-primary"
+            title="Open voice assistant"
+          >
+            <AudioLines size={18} />
+          </button>
+          <button
             onClick={() => setVoiceOpen(true)}
+
             className="mt-3 p-2 text-muted-foreground hover:text-primary"
             title="Add task by voice"
           >
@@ -71,14 +82,40 @@ export default function AISidebar({ tasks, projects, onSaveTasks, onSaveProjects
           </button>
         </div>
       </div>
-      <div className="flex-1 overflow-hidden">
-        <AIChat
-          tasks={tasks}
-          projects={projects}
-          onSaveTasks={onSaveTasks}
-          onSaveProjects={onSaveProjects}
-        />
+      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border">
+        {([
+          { id: "voice", label: "Voice", icon: AudioLines },
+          { id: "chat", label: "Chat", icon: MessageSquare },
+        ] as const).map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`flex-1 flex items-center justify-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+              tab === id ? "bg-sidebar-accent text-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Icon size={13} /> {label}
+          </button>
+        ))}
       </div>
+      <div className="flex-1 overflow-hidden">
+        {tab === "voice" ? (
+          <VoiceAssistant
+            tasks={tasks}
+            projects={projects}
+            onSaveTasks={onSaveTasks}
+            onSaveProjects={onSaveProjects}
+          />
+        ) : (
+          <AIChat
+            tasks={tasks}
+            projects={projects}
+            onSaveTasks={onSaveTasks}
+            onSaveProjects={onSaveProjects}
+          />
+        )}
+      </div>
+
     </aside>
     {voiceOpen && <VoiceTaskDialog onClose={() => setVoiceOpen(false)} onSave={handleVoiceSave} />}
     </>
