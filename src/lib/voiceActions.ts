@@ -110,6 +110,28 @@ function setPath(obj: any, path: string, value: any) {
   return obj;
 }
 
+/**
+ * Life Plan is where the app's real projects live (serpent-lifeplan-v2).
+ * The legacy `serpent-projects` list is barely surfaced, so voice-created
+ * projects must land in the Life Plan to actually be visible.
+ */
+async function addLifePlanProject(name: string, userId?: string) {
+  let data: any = { notes: "", planning: [], projects: [] };
+  try {
+    const raw = localStorage.getItem(CLOUD_KEYS.lifeplanV2);
+    if (raw) data = { ...data, ...JSON.parse(raw) };
+  } catch {}
+  if (!Array.isArray(data.projects)) data.projects = [];
+  const group = { id: uuid(), name, tasks: [] as any[] };
+  data.projects = [...data.projects, group];
+  try { localStorage.setItem(CLOUD_KEYS.lifeplanV2, JSON.stringify(data)); } catch {}
+  if (userId) await cloudSet(userId, CLOUD_KEYS.lifeplanV2, data);
+  window.dispatchEvent(new StorageEvent("storage", { key: CLOUD_KEYS.lifeplanV2 }));
+  window.dispatchEvent(new Event("lifeplan-updated"));
+  return group;
+}
+
+
 /** Execute a batch of assistant actions. Returns short human-readable summaries. */
 export async function runVoiceActions(actions: VoiceAction[], ctx: VoiceCtx): Promise<string[]> {
   const done: string[] = [];
