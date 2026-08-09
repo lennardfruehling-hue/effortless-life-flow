@@ -190,16 +190,23 @@ export async function runVoiceActions(actions: VoiceAction[], ctx: VoiceCtx): Pr
           break;
         }
         case "create_project": {
+          const name = String(a.name ?? "New project");
           const p: Project = {
             id: uuid(),
-            name: String(a.name ?? "New project"),
+            name,
             description: a.description,
             createdAt: new Date().toISOString(),
           };
-          ctx.setProjects((prev) => [...prev, p]);
-          done.push(`Project “${p.name}” created`);
+          // Persist directly (survives regardless of React props) …
+          store.saveProjects([...store.getProjects(), p]);
+          window.dispatchEvent(new StorageEvent("storage", { key: "serpent-projects" }));
+          ctx.setProjects((prev) => (prev.some((x) => x.id === p.id) ? prev : [...prev, p]));
+          // … and create it in the Life Plan, where projects are actually shown.
+          await addLifePlanProject(name, ctx.userId);
+          done.push(`Project “${name}” created`);
           break;
         }
+
         case "create_reminder": {
           const r = a.reminder ?? {};
           const reminder: Reminder = {
