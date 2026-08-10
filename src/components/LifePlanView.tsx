@@ -299,6 +299,15 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
     }));
   };
 
+  const updateProjectName = (id: string, value: string) => {
+    setData((d) => ({
+      ...d,
+      projects: d.projects.map((p) => (p.id === id ? { ...p, name: value } : p)),
+    }));
+  };
+
+
+
   const addTask = (projectId: string) => {
     setData((d) => ({
       ...d,
@@ -525,7 +534,16 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
                 {/* Project header */}
                 <div className="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-secondary/50 transition-colors" onClick={() => toggleCollapse(project.id)}>
                   {isCollapsed ? <ChevronRight size={14} className="text-muted-foreground" /> : <ChevronDown size={14} className="text-muted-foreground" />}
-                  <span className="font-medium text-sm text-foreground flex-1">{project.name}</span>
+                  <input
+                    value={project.name}
+                    onChange={(e) => updateProjectName(project.id, e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => { e.stopPropagation(); if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+                    placeholder="Project name"
+                    title="Click to rename"
+                    className="font-medium text-sm text-foreground flex-1 bg-transparent rounded px-1 py-0.5 cursor-text focus:outline-none focus:ring-1 focus:ring-primary hover:bg-secondary/60"
+                  />
+
                   {onNavigateToTasks && (
                     <button
                       onClick={(e) => { e.stopPropagation(); onNavigateToTasks(`lp-${project.id}`); }}
