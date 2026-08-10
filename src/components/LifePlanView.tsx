@@ -299,6 +299,15 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
     }));
   };
 
+  const updateProjectName = (id: string, value: string) => {
+    setData((d) => ({
+      ...d,
+      projects: d.projects.map((p) => (p.id === id ? { ...p, name: value } : p)),
+    }));
+  };
+
+
+
   const addTask = (projectId: string) => {
     setData((d) => ({
       ...d,
