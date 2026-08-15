@@ -94,7 +94,12 @@ function useNotifications(enabled: boolean) {
 export default function MobileToday() {
   const [tasks, setTasks] = useCloudState<Task[]>(CLOUD_KEYS.tasks, []);
   const [structure] = useCloudState<WeeklyStructureBlock[]>(CLOUD_KEYS.weeklyStructure, []);
-  const [lifePlan, setLifePlan] = useState<LPGroup[]>(loadLifePlan);
+  const [lifePlanCloud] = useCloudState<{ projects?: LPGroup[] } | null>(CLOUD_KEYS.lifeplanV2, null);
+  const [lifePlanLocal, setLifePlanLocal] = useState<LPGroup[]>(loadLifePlan);
+  const lifePlan = useMemo<LPGroup[]>(() => {
+    const cloud = (lifePlanCloud?.projects || []).filter((p) => !p.archived);
+    return cloud.length ? cloud : lifePlanLocal;
+  }, [lifePlanCloud, lifePlanLocal]);
   const [flow, setFlow] = useState<SerpentFlowDayState>(loadFlowState);
   const [cutoffs, setCutoffs] = useState<FlowCutoffs>(loadCutoffs);
   const [notifsOn, setNotifsOn] = useState(() => localStorage.getItem(NOTIF_FLAG_KEY) === "1");
@@ -103,7 +108,7 @@ export default function MobileToday() {
 
   // Keep local mirrors fresh (cloud hydration fires storage/lifeplan events).
   useEffect(() => {
-    const refresh = () => { setLifePlan(loadLifePlan()); setCutoffs(loadCutoffs()); };
+    const refresh = () => { setLifePlanLocal(loadLifePlan()); setCutoffs(loadCutoffs()); };
     window.addEventListener("storage", refresh);
     window.addEventListener("lifeplan-updated", refresh as EventListener);
     const t = window.setInterval(() => { refresh(); setTick((n) => n + 1); }, 60_000);
@@ -120,13 +125,31 @@ export default function MobileToday() {
   const dow = new Date().getDay();
 
   /* 1. Daily Serpent list */
+  /* Order: 1) tasks scheduled for today, 2) daily recurring, 3) everything else. */
+  const dueToday = useMemo(
+    () =>
+      tasks
+        .filter((t) => !t.completed && !t.recurrence && t.dueDate === iso)
+        .sort((a, b) => (a.dueTime || "99:99").localeCompare(b.dueTime || "99:99") || rankTask(b) - rankTask(a)),
+    [tasks, iso]
+  );
   const dailyRecurring = useMemo(
-    () => tasks.filter((t) => t.recurrence === "daily" && t.lastCompletedPeriod !== iso),
+    () =>
+      tasks
+        .filter((t) => t.recurrence === "daily" && t.lastCompletedPeriod !== iso)
+        .sort((a, b) => (a.dueTime || "99:99").localeCompare(b.dueTime || "99:99") || rankTask(b) - rankTask(a)),
     [tasks, iso]
   );
   const rankedToday = useMemo(
-    () => tasks.filter((t) => !t.completed && !t.recurrence).sort((a, b) => rankTask(b) - rankTask(a)),
-    [tasks]
+    () =>
+      tasks
+        .filter((t) => !t.completed && !t.recurrence && t.dueDate !== iso)
+        .sort((a, b) => rankTask(b) - rankTask(a)),
+    [tasks, iso]
+  );
+  const serpentList = useMemo(
+    () => [...dueToday, ...dailyRecurring, ...rankedToday],
+    [dueToday, dailyRecurring, rankedToday]
   );
 
   /* 2. Life plan priorities */
@@ -254,7 +277,7 @@ export default function MobileToday() {
   const share = async () => {
     const text =
       `🐍 Serpent · ${format(new Date(), "EEE d MMM")}\n\n` +
-      `TODAY\n${[...dailyRecurring, ...rankedToday].slice(0, 20).map((t, i) => `${i + 1}. ${t.title}`).join("\n")}\n\n` +
+      `TODAY\n${serpentList.slice(0, 20).map((t, i) => `${i + 1}. ${t.title}`).join("\n")}\n\n` +
       `OVERDUE\n${overdue.map((o) => `- ${o.task.title} (${o.why})`).join("\n") || "- none"}\n\n` +
       `STRUCTURE\n${structureToday.map((b) => `${b.startTime}–${b.endTime} ${titleFor(b)}`).join("\n") || "- none"}`;
     if (navigator.share) {
@@ -323,9 +346,9 @@ export default function MobileToday() {
         </Section>
 
         {/* 1. Daily Serpent list */}
-        <Section icon={<ListChecks size={13} />} title={`Daily Serpent List · ${dailyRecurring.length + rankedToday.length}`}>
+        <Section icon={<ListChecks size={13} />} title={`Daily Serpent List · ${serpentList.length}`}>
           <ul className="divide-y divide-border/60">
-            {[...dailyRecurring, ...rankedToday].map((t, i) => {
+            {serpentList.map((t, i) => {
               const done = t.recurrence === "daily" ? t.lastCompletedPeriod === iso : t.completed;
               return (
                 <li key={t.id} className="flex items-start gap-2 py-1.5">
@@ -350,7 +373,7 @@ export default function MobileToday() {
                 </li>
               );
             })}
-            {dailyRecurring.length + rankedToday.length === 0 && <Empty>Nothing queued for today.</Empty>}
+            {serpentList.length === 0 && <Empty>Nothing queued for today.</Empty>}
           </ul>
         </Section>
 
