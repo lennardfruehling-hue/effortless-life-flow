@@ -106,6 +106,12 @@ export default function MobileToday() {
   const [cutoffs, setCutoffs] = useState<FlowCutoffs>(loadCutoffs);
   const [notifsOn, setNotifsOn] = useState(() => localStorage.getItem(NOTIF_FLAG_KEY) === "1");
   const [tick, setTick] = useState(0);
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [projects, setProjects] = useCloudState<Project[]>(CLOUD_KEYS.projects, []);
+  const allProjects = useMemo<Project[]>(
+    () => [...projects, ...lifePlan.map((g) => ({ id: g.id, name: g.name }))],
+    [projects, lifePlan],
+  );
   const { permission, request, notify } = useNotifications(notifsOn);
 
   // Keep local mirrors fresh (cloud hydration fires storage/lifeplan events).
