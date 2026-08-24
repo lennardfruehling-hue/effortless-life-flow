@@ -3,13 +3,15 @@ import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import {
   Bell, BellRing, ListChecks, Target, Clock, AlertTriangle,
-  CalendarRange, LayoutGrid, ArrowLeft, RefreshCw, Check, Share2,
+  CalendarRange, LayoutGrid, ArrowLeft, RefreshCw, Check, Share2, Mic, X,
 } from "lucide-react";
-import { Task, WeeklyStructureBlock } from "@/lib/types";
+import { Task, WeeklyStructureBlock, Project } from "@/lib/types";
 import { useCloudState } from "@/hooks/useCloudState";
 import { CLOUD_KEYS } from "@/lib/cloudStore";
 import { loadCutoffs, FlowCutoffs } from "@/lib/flowSettings";
 import { loadFlowState, saveFlowState, onFlowStateChange, SerpentFlowDayState } from "@/lib/serpentFlowState";
+import VoiceAssistant from "@/components/VoiceAssistant";
+
 
 /* ---------------- Life plan (localStorage, hydrated from cloud) ---------------- */
 const LIFEPLAN_KEY = "serpent-lifeplan-v2";
@@ -104,6 +106,12 @@ export default function MobileToday() {
   const [cutoffs, setCutoffs] = useState<FlowCutoffs>(loadCutoffs);
   const [notifsOn, setNotifsOn] = useState(() => localStorage.getItem(NOTIF_FLAG_KEY) === "1");
   const [tick, setTick] = useState(0);
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [projects, setProjects] = useCloudState<Project[]>(CLOUD_KEYS.projects, []);
+  const allProjects = useMemo<Project[]>(
+    () => [...projects, ...lifePlan.map((g) => ({ id: g.id, name: g.name, createdAt: new Date().toISOString() } as Project))],
+    [projects, lifePlan],
+  );
   const { permission, request, notify } = useNotifications(notifsOn);
 
   // Keep local mirrors fresh (cloud hydration fires storage/lifeplan events).
@@ -449,6 +457,40 @@ export default function MobileToday() {
           </ul>
         </Section>
       </main>
+
+      {/* Voice assistant */}
+      <button
+        onClick={() => setVoiceOpen(true)}
+        aria-label="Voice assistant"
+        className="fixed bottom-5 right-4 z-30 flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-3 shadow-lg active:scale-95 transition-transform"
+      >
+        <Mic size={18} />
+        <span className="text-xs font-medium">Add by voice</span>
+      </button>
+
+      {voiceOpen && (
+        <div className="fixed inset-0 z-40 flex flex-col justify-end bg-black/50" onClick={() => setVoiceOpen(false)}>
+          <div
+            className="bg-background rounded-t-2xl border-t border-border h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+              <span className="text-sm font-medium">Serpent voice</span>
+              <button onClick={() => setVoiceOpen(false)} className="p-1 text-muted-foreground" aria-label="Close">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <VoiceAssistant
+                tasks={tasks}
+                projects={allProjects}
+                onSaveTasks={setTasks}
+                onSaveProjects={setProjects}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
