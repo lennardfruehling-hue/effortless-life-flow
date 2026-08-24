@@ -7,12 +7,12 @@ export interface FlowCutoffs {
   evening: string; // Evening Review must be done by
 }
 
-const KEY = "serpent-flow-cutoffs";
+const KEY = "serpent-flow-cutoffs-v2";
 
 export const DEFAULT_CUTOFFS: FlowCutoffs = {
-  start: "10:00",
-  midday: "13:00",
-  evening: "21:20",
+  start: "05:50",
+  midday: "13:20",
+  evening: "18:30",
 };
 
 const isHHMM = (s: unknown): s is string =>
