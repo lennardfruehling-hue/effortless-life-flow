@@ -457,6 +457,40 @@ export default function MobileToday() {
           </ul>
         </Section>
       </main>
+
+      {/* Voice assistant */}
+      <button
+        onClick={() => setVoiceOpen(true)}
+        aria-label="Voice assistant"
+        className="fixed bottom-5 right-4 z-30 flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-3 shadow-lg active:scale-95 transition-transform"
+      >
+        <Mic size={18} />
+        <span className="text-xs font-medium">Add by voice</span>
+      </button>
+
+      {voiceOpen && (
+        <div className="fixed inset-0 z-40 flex flex-col justify-end bg-black/50" onClick={() => setVoiceOpen(false)}>
+          <div
+            className="bg-background rounded-t-2xl border-t border-border h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+              <span className="text-sm font-medium">Serpent voice</span>
+              <button onClick={() => setVoiceOpen(false)} className="p-1 text-muted-foreground" aria-label="Close">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <VoiceAssistant
+                tasks={tasks}
+                projects={allProjects}
+                onSaveTasks={setTasks}
+                onSaveProjects={setProjects}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
