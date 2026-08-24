@@ -3,13 +3,15 @@ import { Link } from "react-router-dom";
 import { format } from "date-fns";
 import {
   Bell, BellRing, ListChecks, Target, Clock, AlertTriangle,
-  CalendarRange, LayoutGrid, ArrowLeft, RefreshCw, Check, Share2,
+  CalendarRange, LayoutGrid, ArrowLeft, RefreshCw, Check, Share2, Mic, X,
 } from "lucide-react";
-import { Task, WeeklyStructureBlock } from "@/lib/types";
+import { Task, WeeklyStructureBlock, Project } from "@/lib/types";
 import { useCloudState } from "@/hooks/useCloudState";
 import { CLOUD_KEYS } from "@/lib/cloudStore";
 import { loadCutoffs, FlowCutoffs } from "@/lib/flowSettings";
 import { loadFlowState, saveFlowState, onFlowStateChange, SerpentFlowDayState } from "@/lib/serpentFlowState";
+import VoiceAssistant from "@/components/VoiceAssistant";
+
 
 /* ---------------- Life plan (localStorage, hydrated from cloud) ---------------- */
 const LIFEPLAN_KEY = "serpent-lifeplan-v2";
