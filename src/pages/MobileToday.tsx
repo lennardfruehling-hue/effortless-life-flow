@@ -109,7 +109,7 @@ export default function MobileToday() {
   const [voiceOpen, setVoiceOpen] = useState(false);
   const [projects, setProjects] = useCloudState<Project[]>(CLOUD_KEYS.projects, []);
   const allProjects = useMemo<Project[]>(
-    () => [...projects, ...lifePlan.map((g) => ({ id: g.id, name: g.name }))],
+    () => [...projects, ...lifePlan.map((g) => ({ id: g.id, name: g.name, createdAt: new Date().toISOString() } as Project))],
     [projects, lifePlan],
   );
   const { permission, request, notify } = useNotifications(notifsOn);
