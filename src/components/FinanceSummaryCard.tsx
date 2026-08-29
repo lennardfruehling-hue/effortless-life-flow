@@ -316,6 +316,30 @@ export default function FinanceSummaryCard() {
             )}
           </Section>
 
+          {/* Top financial tips */}
+          <Section
+            open={sections.tips}
+            onToggle={() => toggleSection("tips")}
+            icon={<Lightbulb size={12} />}
+            title="Top financial tips"
+            badge={`${tips.length}`}
+            badgeTone="text-primary"
+          >
+            <ol className="space-y-1.5">
+              {tips.map((t, i) => (
+                <li
+                  key={t.id}
+                  className="flex items-start gap-2 rounded-md border border-border bg-secondary/40 px-2.5 py-1.5 text-xs text-foreground"
+                >
+                  <span className="font-mono text-[10px] text-primary mt-0.5 shrink-0">{i + 1}.</span>
+                  <span>{t.text}</span>
+                </li>
+              ))}
+            </ol>
+          </Section>
+
+
+
           {/* Spending breakdown */}
           <Section
             open={sections.spending}
