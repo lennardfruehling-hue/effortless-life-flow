@@ -21,7 +21,7 @@ export const CATEGORY_META: Record<Category, { label: string; description: strin
   H: { label: "H · Proud", description: "Things that make me proud", color: "cat-h" },
   I: { label: "I · Avoid", description: "Don't want to know about or touch", color: "cat-i" },
   J: { label: "J · Long Term", description: "Part of bigger evolving projects", color: "cat-j" },
-  K: { label: "K · Non-Negotiable for Célida", description: "Non-negotiable commitments to Célida", color: "cat-k" },
+  K: { label: "K · Non-Negotiable", description: "Non-negotiable commitments", color: "cat-k" },
 };
 
 export interface Task {

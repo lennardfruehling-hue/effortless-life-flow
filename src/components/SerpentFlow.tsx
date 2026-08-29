@@ -37,7 +37,7 @@ const FLOWS: Record<FlowKind, { label: string; steps: Step[] }> = {
       { title: "Review yesterday's tasks", body: "Open Tasks and scan what carried over from yesterday.", target: '[data-tour="nav-tasks"]', requires: { kind: "click-target" }, hint: "Click the Tasks nav item to open the list." },
       { title: "Add today's tasks", body: "Drop in anything new for today.", target: '[data-tour="add-task"]', requires: { kind: "click-target" }, hint: "Click Add Task to add new items." },
       { title: "Anything you don't want to know?", body: "Mark tasks to hide / defer (Avoid / Hate categories). Tick when reviewed.", requires: { kind: "none" } },
-      { title: "Check non-negotiables for Célida (K)", body: "Confirm K-category items for Célida are in today's list.", requires: { kind: "none" } },
+      { title: "Check non-negotiables (K)", body: "Confirm K-category items are in today's list.", requires: { kind: "none" } },
       { title: "Build today's schedule", body: "Open Schedule and drag tasks into time blocks.", target: '[data-tour="schedule-toggle"]', requires: { kind: "progress-event", event: "schedule-block-added" }, hint: "Open Schedule and add at least one block." },
       { title: "Realistic timing — add buffers", body: "Sanity-check durations; add extra time for each task.", requires: { kind: "none" } },
       { title: "Print schedule", body: "Open a printable copy.", target: '[data-tour="print-schedule"]', requires: { kind: "progress-event", event: "schedule-printed" }, hint: "Click Print schedule." },
@@ -53,7 +53,7 @@ const FLOWS: Record<FlowKind, { label: string; steps: Step[] }> = {
   evening: {
     label: "Evening Review 🐍",
     steps: [
-      { title: "Daily Serpent list · A1", body: "Review and check non-negotiable (Célida · K) items.", target: '[data-tour="nav-consistency"]', requires: { kind: "click-target" }, hint: "Open the Consistency view to continue." },
+      { title: "Daily Serpent list · A1", body: "Review and check non-negotiable (K) items.", target: '[data-tour="nav-consistency"]', requires: { kind: "click-target" }, hint: "Open the Consistency view to continue." },
     ],
   },
 };
