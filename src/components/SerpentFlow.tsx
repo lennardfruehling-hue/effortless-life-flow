@@ -751,13 +751,16 @@ function FlowTrioDock({
           ↻
         </button>
         {/* Collapse */}
-        <button
-          onClick={() => setCollapsed(true)}
-          title="Collapse alarm center"
-          className="self-center w-7 h-7 rounded-full bg-white/5 text-white/70 border border-white/15 hover:text-white hover:border-white/40 transition flex items-center justify-center"
-        >
-          <ChevronDown size={14} />
-        </button>
+        {!embedded && (
+          <button
+            onClick={() => setCollapsed(true)}
+            title="Collapse alarm center"
+            className="self-center w-7 h-7 rounded-full bg-white/5 text-white/70 border border-white/15 hover:text-white hover:border-white/40 transition flex items-center justify-center"
+          >
+            <ChevronDown size={14} />
+          </button>
+        )}
+
       </div>
     </div>
   );
