@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Activity, Flame, Lightbulb, MapPin, Star, Target } from "lucide-react";
+import { AlertTriangle, Activity, ArrowRight, Flame, Lightbulb, MapPin, Star, Target } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
 import { Task } from "@/lib/types";
 import { Habit } from "@/lib/habits";
 import { useCloudState } from "@/hooks/useCloudState";
