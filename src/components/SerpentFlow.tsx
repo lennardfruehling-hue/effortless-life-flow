@@ -102,9 +102,12 @@ interface SerpentFlowProps {
   reminders?: Reminder[];
   lifePlanProjects?: LifePlanProject[];
   dailySchedule?: DailyScheduleSlot[];
+  /** Render the command center inline (inside the assistant bar) instead of as a floating dock. */
+  embedded?: boolean;
 }
 
-export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjects = [], dailySchedule = [] }: SerpentFlowProps = {}) {
+export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjects = [], dailySchedule = [], embedded = false }: SerpentFlowProps = {}) {
+
   const [state, setState] = useState<SerpentFlowDayState>(loadFlowState);
   const [active, setActive] = useState<FlowKind | null>(null);
   const [stepIdx, setStepIdx] = useState(0);
