@@ -6,7 +6,6 @@ import CalendarScheduleDay from "@/components/CalendarScheduleDay";
 import GameConsole from "@/components/GameConsole";
 
 import SerpentDailyList from "@/components/SerpentDailyList";
-import ConsistencyPrompt from "@/components/ConsistencyPrompt";
 import ScoreCard from "@/components/ScoreCard";
 import FinanceSummaryCard from "@/components/FinanceSummaryCard";
 import { CategoryBadgeFull } from "@/components/CategoryBadge";
@@ -297,7 +296,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
       )}
       {/* Daily consistency check-in */}
       <ScoreCard tasks={tasks} />
-      <ConsistencyPrompt />
+      {!showSchedule && <div className="mb-4"><GameConsole /></div>}
 
       {/* Overdue tasks — always first, collapsible */}
       {overdueTasks.length > 0 && (
