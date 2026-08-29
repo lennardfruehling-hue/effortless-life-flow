@@ -16,6 +16,7 @@ export const CLOUD_KEYS = {
   habits: "serpent-habits",
   apartments: "serpent-apartments",
   finance: "serpent-finance",
+  consistencyGoal: "serpent-consistency-goal",
 
 } as const;
 
