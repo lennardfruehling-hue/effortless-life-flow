@@ -383,6 +383,23 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
           </p>
         </div>
       )}
+        </div>
+
+        {/* Docked daily calendar — drop tasks here to time-box them */}
+        {showSchedule && (
+          <aside className="min-w-0 xl:sticky xl:top-4">
+            <CalendarScheduleDay
+              compact
+              slots={dailySchedule}
+              tasks={tasks}
+              onSaveSlots={onSaveDailySchedule}
+              onEditTask={(t) => { setEditTask(t); setShowForm(true); }}
+            />
+          </aside>
+        )}
+      </div>
+
+
 
 
       {(showForm || editTask) && (
