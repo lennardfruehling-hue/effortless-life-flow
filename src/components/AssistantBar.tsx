@@ -31,11 +31,6 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
   const nudges = useMemo(() => buildConsistencyNudges(habits || [], game), [habits, game]);
   const consistencyOpen = game.today.due - game.today.completed;
 
-export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProjects, reminders = [], lifePlanProjects = [], dailySchedule = [] }: Props) {
-  const [panel, setPanel] = useState<Panel>(null);
-  const { notifications, dismiss, dismissAll } = useAssignmentNotifications(tasks);
-  const [habits] = useCloudState<Habit[]>(CLOUD_KEYS.habits, []);
-  const tips = useMemo(() => buildOrgTips(tasks, habits || []), [tasks, habits]);
 
   const toggle = (p: Panel) => setPanel((cur) => (cur === p ? null : p));
 
