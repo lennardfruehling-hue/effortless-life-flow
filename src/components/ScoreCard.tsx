@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Task } from "@/lib/types";
 import {
   dailyScore,
   weeklyScore,
   rewardProgress,
+  recordWeek,
   resetRewardProgress,
   upcomingDeadlines,
   overdueTasks,
