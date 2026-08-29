@@ -15,6 +15,8 @@ export const CLOUD_KEYS = {
   baby: "serpent-baby",
   habits: "serpent-habits",
   apartments: "serpent-apartments",
+  finance: "serpent-finance",
+
 } as const;
 
 /**
