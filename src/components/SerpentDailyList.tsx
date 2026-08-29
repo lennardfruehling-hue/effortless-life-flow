@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Task } from "@/lib/types";
 import { Printer, Share2, ListChecks, Check } from "lucide-react";
 import { format } from "date-fns";
+import { setDragTaskId, touchDragProps } from "@/lib/dragTask";
 
 interface Props {
   tasks: Task[];
@@ -162,7 +163,9 @@ export default function SerpentDailyList({ tasks, onToggle, onEdit }: Props) {
             <li
               key={t.id}
               draggable
-              onDragStart={(e) => { e.dataTransfer.setData("text/task-id", t.id); e.dataTransfer.effectAllowed = "copy"; }}
+              onDragStart={(e) => { e.dataTransfer.setData("text/task-id", t.id); e.dataTransfer.effectAllowed = "copy"; setDragTaskId(t.id); }}
+              onDragEnd={() => setDragTaskId(null)}
+              {...touchDragProps(t.id)}
               title="Drag onto the daily calendar to time-box"
               className="flex items-center gap-2 py-0.5 border-b border-dashed border-border/50 last:border-0 cursor-grab active:cursor-grabbing"
             >

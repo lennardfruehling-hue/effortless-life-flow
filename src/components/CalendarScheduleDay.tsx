@@ -4,6 +4,7 @@ import { CategoryBadge } from "./CategoryBadge";
 import { Trash2, Mail, Plus, Printer } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import { toast } from "sonner";
+import { getDragTaskId, TOUCH_DROP_EVENT, TouchDropDetail } from "@/lib/dragTask";
 
 interface Props {
   slots: DailyScheduleSlot[];
@@ -185,16 +186,15 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditT
   }, [slots, tasks]);
 
   // ---- Drag & drop from task list ----
-  const handleDropTask = (e: React.DragEvent) => {
-    e.preventDefault();
-    const taskId = e.dataTransfer.getData("text/task-id");
+  // Duration comes from the task itself; unset → standard 30 minutes.
+  const dropTaskAt = (taskId: string, clientY: number) => {
     if (!taskId || !gridRef.current) return;
     const task = tasks.find((t) => t.id === taskId);
     if (!task) return;
+    const dur = task.duration && task.duration >= 5 ? task.duration : 30;
     const rect = gridRef.current.getBoundingClientRect();
-    const y = e.clientY - rect.top;
-    const startMin = snap(Math.max(0, Math.min(1440 - 30, (y / HOUR_PX) * 60)));
-    const dur = task.duration && task.duration >= 15 ? task.duration : 60;
+    const y = clientY - rect.top;
+    const startMin = snap(Math.max(0, Math.min(1440 - dur, (y / HOUR_PX) * 60)));
     const slot: DailyScheduleSlot = {
       id: uuid(),
       startTime: toHHMM(startMin),
@@ -205,6 +205,26 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditT
     onSaveSlots([...slots, slot].sort((a, b) => toMin(a.startTime) - toMin(b.startTime)));
     window.dispatchEvent(new CustomEvent("serpent-progress", { detail: "schedule-block-added" }));
   };
+
+  const handleDropTask = (e: React.DragEvent) => {
+    e.preventDefault();
+    const taskId = e.dataTransfer.getData("text/task-id") || getDragTaskId() || "";
+    dropTaskAt(taskId, e.clientY);
+  };
+
+  // Touch fallback: finger-drag a task card and release over the calendar.
+  useEffect(() => {
+    const onTouchDrop = (ev: Event) => {
+      const { taskId, clientX, clientY } = (ev as CustomEvent<TouchDropDetail>).detail || ({} as TouchDropDetail);
+      if (!taskId || !gridRef.current) return;
+      const r = gridRef.current.getBoundingClientRect();
+      if (clientX < r.left || clientX > r.right || clientY < r.top || clientY > r.bottom) return;
+      dropTaskAt(taskId, clientY);
+    };
+    window.addEventListener(TOUCH_DROP_EVENT, onTouchDrop);
+    return () => window.removeEventListener(TOUCH_DROP_EVENT, onTouchDrop);
+  });
+
 
   // ---- Click empty area to create custom block ----
   const handleGridClick = (e: React.MouseEvent) => {
