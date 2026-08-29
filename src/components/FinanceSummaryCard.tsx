@@ -77,7 +77,7 @@ export const DEFAULT_FINANCE: FinanceState = {
 const eur = (n: number) =>
   `${n < 0 ? "-" : ""}€${Math.abs(n).toLocaleString("en-IE", { maximumFractionDigits: 0 })}`;
 
-type SectionKey = "health" | "tips" | "spending" | "accounts" | "goals" | "quick";
+type SectionKey = "health" | "tips" | "spending" | "accounts" | "goals";
 
 export default function FinanceSummaryCard() {
   const [finance, setFinance] = useCloudState<FinanceState>(CLOUD_KEYS.finance, DEFAULT_FINANCE);
