@@ -10,6 +10,8 @@ interface Props {
   tasks: Task[];
   onSaveSlots: (slots: DailyScheduleSlot[]) => void;
   onEditTask?: (task: Task) => void;
+  /** Docked side-by-side with the task list: hide the internal palette, drop tasks straight in. */
+  compact?: boolean;
 }
 
 /**
