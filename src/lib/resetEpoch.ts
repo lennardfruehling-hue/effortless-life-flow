@@ -34,3 +34,16 @@ export function setResetEpoch(dateISO?: string) {
 export function countsFromEpoch(dateISO: string): boolean {
   return dateISO >= getResetEpoch();
 }
+
+/** One-time purge of pre-epoch score history (runs on first load after a reset). */
+(function purgeOnce() {
+  try {
+    const marker = "serpent-reset-applied";
+    if (localStorage.getItem(marker) !== DEFAULT_EPOCH) {
+      localStorage.removeItem("serpent-score-history");
+      localStorage.setItem(marker, DEFAULT_EPOCH);
+    }
+  } catch {
+    /* ignore */
+  }
+})();
