@@ -105,8 +105,10 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
             <span className="hidden md:inline">Assistant</span>
           </div>
 
+          {tabBtn("flow", Compass, "Flow")}
           {tabBtn("voice", AudioLines, "Voice")}
           {tabBtn("chat", MessageSquare, "Chat")}
+
 
           <button
             onClick={() => setVoiceOpen(true)}
