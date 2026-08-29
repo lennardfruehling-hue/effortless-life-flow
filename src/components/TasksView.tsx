@@ -126,14 +126,16 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
     return sortTasks(list);
   }, [tasks, filterCat, showCompleted, filterProjectId]);
 
-  // Split the non-recurring list into "Today" and "Upcoming / backlog".
-  const { todayTasks, laterTasks } = useMemo(() => {
+  // Split the non-recurring list into "Overdue", "Today" and "Upcoming / backlog".
+  const { overdueTasks, todayTasks, laterTasks } = useMemo(() => {
     const today = todayKey();
+    const isOverdue = (t: Task) => !t.completed && !!t.dueDate && t.dueDate < today;
     const isToday = (t: Task) =>
       (t.dueDate && t.dueDate <= today) || t.categories.includes("A1");
     return {
-      todayTasks: filteredTasks.filter(isToday),
-      laterTasks: filteredTasks.filter((t) => !isToday(t)),
+      overdueTasks: filteredTasks.filter(isOverdue),
+      todayTasks: filteredTasks.filter((t) => !isOverdue(t) && isToday(t)),
+      laterTasks: filteredTasks.filter((t) => !isOverdue(t) && !isToday(t)),
     };
   }, [filteredTasks]);
 
