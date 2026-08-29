@@ -532,12 +532,13 @@ function FlowTrioDock({
   const alertCount = alerts.length;
   const alarmActive = alertCount > 0;
   const hasNotifs = notifCount > 0;
-  // Faded red palette when alarming, default sidebar otherwise
+  // Light, legible palette: tinted surface + dark text in every state.
   const dockTone = alarmActive
-    ? "bg-red-950/70 border-red-400/40 text-red-50"
+    ? "bg-red-50 border-red-300 text-red-900"
     : hasNotifs
-    ? "bg-indigo-950/70 border-indigo-400/40 text-indigo-50"
-    : "bg-sidebar/85 border-amber-300/30 text-white";
+    ? "bg-blue-50 border-blue-300 text-blue-900"
+    : "bg-card border-border text-foreground";
+
 
   if (collapsed && !embedded) {
     const doneCount = trio.filter(t => t.done).length;
