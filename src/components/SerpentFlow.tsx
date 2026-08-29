@@ -563,95 +563,22 @@ function FlowTrioDock({
       ? `h-full overflow-y-auto scrollbar-thin ${dockTone} border-0 rounded-none`
       : `fixed bottom-16 left-1/2 -translate-x-1/2 z-40 backdrop-blur border rounded-2xl shadow-xl ${dockTone} ${hasOverdue ? "ring-2 ring-red-400/50" : ""}`}>
 
-      {/* Top row: alarm summary + bell */}
-      {alarmActive && (
+      {/* Consolidated summary row — opens the single Notifications center */}
+      {(alarmActive || hasNotifs) && (
         <button
-          onClick={() => setShowPanel(s => !s)}
+          onClick={() => window.dispatchEvent(new CustomEvent("serpent-open-notifications"))}
           className={`w-full flex items-center justify-between gap-2 px-4 py-1.5 border-b border-white/10 text-xs font-medium ${hasOverdue ? "text-red-100" : "text-amber-100"}`}
-          title="Open alarm center"
-        >
-          <span className="flex items-center gap-1.5">
-            <Bell size={13} className={hasOverdue ? "animate-pulse text-red-200" : "text-amber-200"} />
-            {alertCount} {alertCount === 1 ? "alert" : "alerts"} — {hasOverdue ? "overdue" : "warning"}
-          </span>
-          <ChevronUp size={12} className={`transition-transform ${showPanel ? "rotate-180" : ""}`} />
-        </button>
-      )}
-
-      {/* Alarm panel — expandable list */}
-      {alarmActive && showPanel && (
-        <div className="px-3 py-2 border-b border-white/10 max-h-64 overflow-y-auto scrollbar-thin space-y-1 min-w-[280px]">
-          {alerts.map(a => {
-            const Icon =
-              a.kind === "flow" ? Compass :
-              a.kind === "reminder" ? Bell :
-              a.kind === "project" ? AlertTriangle :
-              a.kind === "consistency" ? Clock :
-              AlertTriangle;
-            return (
-              <div key={a.id} className={`flex items-start gap-2 px-2 py-1.5 rounded text-xs ${a.severity === "overdue" ? "bg-red-500/15" : "bg-amber-500/10"}`}>
-                <Icon size={12} className={a.severity === "overdue" ? "text-red-200 mt-0.5" : "text-amber-200 mt-0.5"} />
-                <div className="flex-1 min-w-0">
-                  <div className="truncate font-medium text-white">{a.label}</div>
-                  {a.detail && <div className="text-[10px] text-white/70 truncate">{a.detail}</div>}
-                </div>
-                <span className="text-[9px] uppercase tracking-wider font-mono text-white/60">{a.kind}</span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Notifications summary row: tasks/notes assigned to me */}
-      {hasNotifs && (
-        <button
-          onClick={() => setShowNotifs(s => !s)}
-          className="w-full flex items-center justify-between gap-2 px-4 py-1.5 border-b border-white/10 text-xs font-medium text-indigo-100"
           title="Open notifications"
         >
           <span className="flex items-center gap-1.5">
-            <UserPlus size={13} className="text-indigo-200" />
-            {notifCount} new {notifCount === 1 ? "assignment" : "assignments"}
+            <Bell size={13} className={hasOverdue ? "animate-pulse text-red-200" : "text-amber-200"} />
+            {alertCount + notifCount} {alertCount + notifCount === 1 ? "notification" : "notifications"}
+            {hasOverdue ? " — overdue" : alarmActive ? " — warning" : ""}
           </span>
-          <ChevronUp size={12} className={`transition-transform ${showNotifs ? "rotate-180" : ""}`} />
+          <ChevronUp size={12} />
         </button>
       )}
 
-      {/* Notifications panel */}
-      {hasNotifs && showNotifs && (
-        <div className="px-3 py-2 border-b border-white/10 max-h-64 overflow-y-auto scrollbar-thin space-y-1 min-w-[300px]">
-          <div className="flex items-center justify-between px-1 pb-1">
-            <span className="text-[9px] uppercase tracking-wider font-mono text-white/60">Assigned to you</span>
-            <button
-              onClick={dismissAll}
-              className="text-[10px] text-white/60 hover:text-white underline-offset-2 hover:underline"
-              title="Dismiss all"
-            >
-              Clear all
-            </button>
-          </div>
-          {notifications.map(n => {
-            const Icon = n.kind === "task" ? ListTodo : FileText;
-            return (
-              <div key={n.id} className="flex items-start gap-2 px-2 py-1.5 rounded text-xs bg-indigo-500/15 group">
-                <Icon size={12} className="text-indigo-200 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <div className="truncate font-medium text-white">{n.label}</div>
-                  {n.detail && <div className="text-[10px] text-white/70 truncate">{n.detail}</div>}
-                </div>
-                <span className="text-[9px] uppercase tracking-wider font-mono text-white/60">{n.kind}</span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); dismiss(n.id); }}
-                  className="text-white/40 hover:text-white transition opacity-60 group-hover:opacity-100"
-                  title="Dismiss"
-                >
-                  <X size={12} />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {/* Active flow checklist — step-by-step inside the command center */}
       {activeFlow && activeSteps && (
