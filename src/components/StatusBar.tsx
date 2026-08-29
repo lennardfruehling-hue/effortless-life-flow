@@ -17,6 +17,14 @@ import {
   loadLocation,
   onLocationChange,
 } from "@/lib/dashboardSettings";
+import {
+  SerpentFlowDayState,
+  loadFlowState,
+  onFlowStateChange,
+  autoPhase,
+  phaseLabel,
+} from "@/lib/serpentFlowState";
+
 
 const LIFEPLAN_KEY = "serpent-lifeplan-v2";
 
