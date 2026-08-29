@@ -19,7 +19,42 @@ interface TasksViewProps {
   onClearProjectFilter?: () => void;
 }
 
+/** Collapsible-free section wrapper giving the task list a clear structure. */
+function Section({
+  icon,
+  title,
+  subtitle,
+  count,
+  empty,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  count?: string;
+  empty?: string;
+  children: React.ReactNode;
+}) {
+  const isEmpty = Array.isArray(children) ? children.flat().filter(Boolean).length === 0 : !children;
+  return (
+    <section>
+      <div className="flex items-baseline gap-2 mb-2.5 pb-1.5 border-b border-border">
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+          <span className="text-muted-foreground">{icon}</span>
+          {title}
+        </span>
+        {count && <span className="text-xs font-mono text-muted-foreground">{count}</span>}
+        {subtitle && <span className="ml-auto text-[11px] text-muted-foreground">{subtitle}</span>}
+      </div>
+      <div className="space-y-2">
+        {isEmpty && empty ? <p className="text-xs text-muted-foreground py-3">{empty}</p> : children}
+      </div>
+    </section>
+  );
+}
+
 function sortTasks(tasks: Task[]): Task[] {
+
   return [...tasks].sort((a, b) => {
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
     const aHasA1 = a.categories.includes("A1");
