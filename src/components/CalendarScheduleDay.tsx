@@ -436,8 +436,9 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditT
         </div>
       </div>
 
-      <div className="grid grid-cols-[180px_1fr] gap-3">
+      <div className={compact ? "grid grid-cols-1 gap-3" : "grid grid-cols-[180px_1fr] gap-3"}>
         {/* Task palette — mirrors Serpent Daily List */}
+        {!compact && (
         <div className="border-r border-border pr-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-2">
             Daily list · drag → schedule
