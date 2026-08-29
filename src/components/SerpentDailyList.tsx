@@ -58,9 +58,9 @@ export default function SerpentDailyList({ tasks, onToggle, onEdit }: Props) {
     const rest = tasks
       .filter((t) => {
         if (t.completed || t.recurrence) return false;
-        const dueToday = t.dueDate ? format(new Date(t.dueDate), "yyyy-MM-dd") <= todayKey : false;
-        // Only true "today" work: A1 must-do-today, or explicitly due today/overdue.
-        // Tasks that are merely important/this-week (A2/A3/B2 without a due date) stay out.
+        const dueToday = t.dueDate ? format(new Date(t.dueDate), "yyyy-MM-dd") === todayKey : false;
+        // Only true "today" work: A1 must-do-today, or dated exactly for today.
+        // Merely important/this-week tasks (A2/A3/B1/B2 without today's date) stay out.
         return t.categories.includes("A1") || dueToday;
       })
       .map((t) => ({ t, s: rankTask(t) }))
