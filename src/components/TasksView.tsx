@@ -76,6 +76,8 @@ const SECTION_PREF_KEY = "serpent-task-sections-v1";
 
 export default function TasksView({ tasks, projects, onSave, dailySchedule, onSaveDailySchedule, filterProjectId, onClearProjectFilter }: TasksViewProps) {
   const [showForm, setShowForm] = useState(false);
+  const [showOverdue, setShowOverdue] = useState(() => localStorage.getItem("serpent-overdue-open") !== "false");
+
   const [editTask, setEditTask] = useState<Task | undefined>();
   const [filterCat, setFilterCat] = useState<Category | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
