@@ -50,17 +50,24 @@ function rankTask(t: Task): number {
 export default function SerpentDailyList({ tasks, onToggle, onEdit }: Props) {
   const [open, setOpen] = useState(false);
 
+  const todayKey = format(new Date(), "yyyy-MM-dd");
+
   const { dailyRecurring, ranked, all } = useMemo(() => {
     const daily = tasks.filter((t) => t.recurrence === "daily");
+    // Only tasks that belong to THIS day: due today (or overdue) or flagged A1 must-do-today.
     const rest = tasks
-      .filter((t) => !t.completed && !t.recurrence)
+      .filter((t) => {
+        if (t.completed || t.recurrence) return false;
+        const dueToday = t.dueDate ? format(new Date(t.dueDate), "yyyy-MM-dd") <= todayKey : false;
+        return dueToday || t.categories.includes("A1");
+      })
       .map((t) => ({ t, s: rankTask(t) }))
       .sort((a, b) => b.s - a.s)
       .map((x) => x.t);
     return { dailyRecurring: daily, ranked: rest, all: [...daily, ...rest] };
-  }, [tasks]);
+  }, [tasks, todayKey]);
 
-  const today = format(new Date(), "EEE, d MMM");
+  const today = format(new Date(), "EEEE, d MMMM yyyy");
 
   const handlePrint = () => {
     const w = window.open("", "_blank", "width=420,height=600");
@@ -113,7 +120,7 @@ export default function SerpentDailyList({ tasks, onToggle, onEdit }: Props) {
         <span className="opacity-50">·</span>
         <span className="opacity-60 normal-case tracking-normal">{today}</span>
         <span className="opacity-50">·</span>
-        <span className="opacity-60 normal-case">{dailyRecurring.length} daily + {ranked.length} for today</span>
+        <span className="opacity-60 normal-case">{dailyRecurring.length} daily + {ranked.length} due today</span>
         <span className="ml-auto flex items-center gap-2">
           {open && (
             <>
@@ -146,7 +153,7 @@ export default function SerpentDailyList({ tasks, onToggle, onEdit }: Props) {
         <ol className="px-3 pb-2 pt-0.5 space-y-0.5 text-[12px] font-mono leading-tight">
           {all.length === 0 && (
             <li className="text-muted-foreground italic text-[11px] py-1">
-              Nothing prioritised — add daily recurring tasks or tasks with A1 / B1 / B2 categories.
+              Nothing scheduled for today — add daily recurring tasks, or tasks due today / marked A1.
             </li>
           )}
           {all.map((t, i) => (
