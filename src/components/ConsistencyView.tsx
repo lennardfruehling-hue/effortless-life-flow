@@ -136,6 +136,11 @@ export default function ConsistencyView({ tasks }: Props) {
         </div>
       </div>
 
+      {/* The consistency game */}
+      <div className="mb-6">
+        <ConsistencyGame weeks={goal.weeks || 26} rewardTitle={goal.title} />
+      </div>
+
       {/* Stat tiles */}
       <div className="grid grid-cols-2 gap-3 mb-6">
         <Tile icon={<Flame size={16} className="text-cat-f" />} label="Current streak" value={`${stats.currentStreak}d`} />
