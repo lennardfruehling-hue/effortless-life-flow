@@ -8,7 +8,7 @@ import ConsistencyPrompt from "@/components/ConsistencyPrompt";
 import ScoreCard from "@/components/ScoreCard";
 import FinanceSummaryCard from "@/components/FinanceSummaryCard";
 import { CategoryBadgeFull } from "@/components/CategoryBadge";
-import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat, Sun, CalendarDays, AlertTriangle } from "lucide-react";
+import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat, Sun, CalendarDays, AlertTriangle, ChevronDown } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { applyRecurrenceReset, todayKey, weekKey, totalPride, prideThisWeek } from "@/lib/pride";
 
@@ -76,6 +76,8 @@ const SECTION_PREF_KEY = "serpent-task-sections-v1";
 
 export default function TasksView({ tasks, projects, onSave, dailySchedule, onSaveDailySchedule, filterProjectId, onClearProjectFilter }: TasksViewProps) {
   const [showForm, setShowForm] = useState(false);
+  const [showOverdue, setShowOverdue] = useState(() => localStorage.getItem("serpent-overdue-open") !== "false");
+
   const [editTask, setEditTask] = useState<Task | undefined>();
   const [filterCat, setFilterCat] = useState<Category | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -294,23 +296,35 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
       <ScoreCard tasks={tasks} />
       <ConsistencyPrompt />
 
-      {/* Overdue tasks — always first */}
+      {/* Overdue tasks — always first, collapsible */}
       {overdueTasks.length > 0 && (
         <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
-          <div className="flex items-center gap-2 mb-2">
+          <button
+            type="button"
+            onClick={() => setShowOverdue((v) => { localStorage.setItem("serpent-overdue-open", String(!v)); return !v; })}
+            aria-expanded={showOverdue}
+            className="flex w-full items-center gap-2"
+          >
             <AlertTriangle size={14} className="text-destructive" />
             <h2 className="text-sm font-semibold text-destructive">Overdue</h2>
             <span className="font-mono text-[10px] text-destructive/70">{overdueTasks.length}</span>
-          </div>
-          <div className="space-y-2">
-            <AnimatePresence mode="popLayout">
-              {overdueTasks.map((task) => (
-                <TaskCard key={task.id} task={task} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} onDelete={handleDelete} />
-              ))}
-            </AnimatePresence>
-          </div>
+            <ChevronDown
+              size={14}
+              className={`ml-auto text-destructive/70 transition-transform ${showOverdue ? "rotate-180" : ""}`}
+            />
+          </button>
+          {showOverdue && (
+            <div className="space-y-2 mt-2">
+              <AnimatePresence mode="popLayout">
+                {overdueTasks.map((task) => (
+                  <TaskCard key={task.id} task={task} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} onDelete={handleDelete} />
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       )}
+
 
       {/* Serpent prioritised daily list */}
       <SerpentDailyList tasks={tasks} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} />
