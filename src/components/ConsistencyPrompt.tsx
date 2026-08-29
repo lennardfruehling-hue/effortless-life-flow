@@ -140,6 +140,9 @@ export default function ConsistencyPrompt() {
           })}
         </div>
       )}
+      </div>
+      )}
     </div>
   );
 }
+
