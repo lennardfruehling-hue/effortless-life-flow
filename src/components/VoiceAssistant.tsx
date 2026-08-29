@@ -156,7 +156,7 @@ export default function VoiceAssistant({ tasks, projects, onSaveTasks, onSavePro
       rec.start();
       setListening(true);
     } catch {}
-  }, [supported, send]);
+  }, [supported, send, ensureMicPermission]);
 
   const stopListening = useCallback(() => {
     handsFreeRef.current = false;
