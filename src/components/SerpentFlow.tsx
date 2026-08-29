@@ -7,7 +7,10 @@ import {
   saveFlowState,
   SerpentFlowDayState,
   SerpentPhase,
+  autoPhase,
+  mandatoryFlow,
 } from "@/lib/serpentFlowState";
+
 import { Task, Reminder, LifePlanProject, DailyScheduleSlot } from "@/lib/types";
 import { loadCutoffs, onCutoffsChange, FlowCutoffs } from "@/lib/flowSettings";
 import risingSun from "@/assets/serpent-rising-sun.png";
