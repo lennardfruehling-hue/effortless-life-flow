@@ -138,11 +138,26 @@ export default function HabitTracker() {
 
   return (
     <section className="rounded-lg border border-border bg-card p-4">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
         <h3 className="text-sm font-medium text-foreground">Habits &amp; Consistency Trackers</h3>
         <Button size="sm" variant="outline" onClick={openNew}>
           <Plus size={14} className="mr-1" /> New habit
         </Button>
+      </div>
+
+      <div className="flex items-center gap-2 mb-3">
+        <button onClick={() => shiftDay(-1)} className="p-1 rounded border border-border text-muted-foreground hover:text-foreground" aria-label="Previous day">‹</button>
+        <Input
+          type="date"
+          value={today}
+          max={realToday}
+          onChange={(e) => e.target.value && setToday(e.target.value)}
+          className="h-8 w-40 text-xs"
+        />
+        <button onClick={() => shiftDay(1)} disabled={today >= realToday} className="p-1 rounded border border-border text-muted-foreground hover:text-foreground disabled:opacity-40" aria-label="Next day">›</button>
+        {today !== realToday && (
+          <Button size="sm" variant="ghost" onClick={() => setToday(realToday)}>Today</Button>
+        )}
       </div>
 
       {habits.length === 0 && (
