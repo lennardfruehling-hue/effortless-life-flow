@@ -5,6 +5,8 @@ import { useCloudState } from "@/hooks/useCloudState";
 import { CLOUD_KEYS, cloudAppendForUser } from "@/lib/cloudStore";
 import { store } from "@/lib/store";
 import TopNav from "@/components/TopNav";
+import StatusBar from "@/components/StatusBar";
+import FlowCutoffSettings from "@/components/FlowCutoffSettings";
 import TasksView from "@/components/TasksView";
 import LifePlanView from "@/components/LifePlanView";
 import RemindersView from "@/components/RemindersView";
@@ -43,6 +45,7 @@ export default function Index() {
   const [dailySchedule, setDailySchedule] = useState<DailyScheduleSlot[]>(() => store.getDailySchedule());
   const [lifePlanProjects, setLifePlanProjects] = useState<LifePlanProject[]>(loadLifePlanProjects);
   const [taskFilterProject, setTaskFilterProject] = useState<string | undefined>();
+  const [showDashSettings, setShowDashSettings] = useState(false);
   const [weeklyStructure, setWeeklyStructure] = useCloudState<WeeklyStructureBlock[]>(CLOUD_KEYS.weeklyStructure, []);
 
   // Tasks are stored per-user (PERSONAL_KEYS). When a task is assigned to other
@@ -144,7 +147,10 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background w-full flex flex-col">
       <TopNav active={view} onChange={setView} taskCount={visibleTasks.filter((t) => !t.completed).length} tasks={visibleTasks} />
+      <StatusBar tasks={visibleTasks} onOpenSettings={() => setShowDashSettings(true)} />
+      {showDashSettings && <FlowCutoffSettings onClose={() => setShowDashSettings(false)} />}
       <SyncStatusBanner />
+
       <main className="flex-1 min-w-0 overflow-x-hidden w-full mx-auto max-w-[1400px] px-3 sm:px-5 pt-4 pb-32">
         {view === "tasks" && (
           <TasksView
