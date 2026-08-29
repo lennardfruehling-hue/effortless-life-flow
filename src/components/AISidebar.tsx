@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { Bot, ChevronRight, ChevronLeft, Mic, AudioLines, MessageSquare } from "lucide-react";
+import { Bot, ChevronRight, ChevronLeft, AudioLines, MessageSquare } from "lucide-react";
 import { Task, Project } from "@/lib/types";
 import AIChat from "./AIChat";
 import VoiceAssistant from "./VoiceAssistant";
-import VoiceTaskDialog from "./VoiceTaskDialog";
 
 interface Props {
   tasks: Task[];
@@ -16,13 +15,7 @@ export default function AISidebar({ tasks, projects, onSaveTasks, onSaveProjects
   const [open, setOpen] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth >= 1024 : true,
   );
-  const [voiceOpen, setVoiceOpen] = useState(false);
   const [tab, setTab] = useState<"voice" | "chat">("voice");
-
-  const handleVoiceSave = (task: Task) => {
-    onSaveTasks((prev) => [task, ...prev]);
-    setVoiceOpen(false);
-  };
 
 
   if (!open) {
@@ -44,16 +37,7 @@ export default function AISidebar({ tasks, projects, onSaveTasks, onSaveProjects
           >
             <AudioLines size={18} />
           </button>
-          <button
-            onClick={() => setVoiceOpen(true)}
-
-            className="mt-3 p-2 text-muted-foreground hover:text-primary"
-            title="Add task by voice"
-          >
-            <Mic size={18} />
-          </button>
         </div>
-        {voiceOpen && <VoiceTaskDialog onClose={() => setVoiceOpen(false)} onSave={handleVoiceSave} />}
       </>
     );
   }
@@ -66,13 +50,6 @@ export default function AISidebar({ tasks, projects, onSaveTasks, onSaveProjects
           <Bot size={16} className="text-primary" /> AI Assistant
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={() => setVoiceOpen(true)}
-            className="p-1 text-muted-foreground hover:text-primary"
-            title="Add task by voice"
-          >
-            <Mic size={16} />
-          </button>
           <button
             onClick={() => setOpen(false)}
             className="p-1 text-muted-foreground hover:text-foreground"
@@ -117,7 +94,6 @@ export default function AISidebar({ tasks, projects, onSaveTasks, onSaveProjects
       </div>
 
     </aside>
-    {voiceOpen && <VoiceTaskDialog onClose={() => setVoiceOpen(false)} onSave={handleVoiceSave} />}
     </>
   );
 }

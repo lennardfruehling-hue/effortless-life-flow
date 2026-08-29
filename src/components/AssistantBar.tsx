@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
-import { Bot, Mic, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass, Lightbulb } from "lucide-react";
+import { Bot, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass, Lightbulb } from "lucide-react";
 import { Task, Project, Reminder, LifePlanProject, DailyScheduleSlot } from "@/lib/types";
 import AIChat from "./AIChat";
 import VoiceAssistant from "./VoiceAssistant";
-import VoiceTaskDialog from "./VoiceTaskDialog";
 import SerpentFlow from "./SerpentFlow";
 import { useAssignmentNotifications } from "@/hooks/useAssignmentNotifications";
 import { useCloudState } from "@/hooks/useCloudState";
@@ -25,15 +24,9 @@ type Panel = "flow" | "voice" | "chat" | "tips" | "notifications" | null;
 
 export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProjects, reminders = [], lifePlanProjects = [], dailySchedule = [] }: Props) {
   const [panel, setPanel] = useState<Panel>(null);
-  const [voiceOpen, setVoiceOpen] = useState(false);
   const { notifications, dismiss, dismissAll } = useAssignmentNotifications(tasks);
   const [habits] = useCloudState<Habit[]>(CLOUD_KEYS.habits, []);
   const tips = useMemo(() => buildOrgTips(tasks, habits || []), [tasks, habits]);
-
-  const handleVoiceSave = (task: Task) => {
-    onSaveTasks((prev) => [task, ...prev]);
-    setVoiceOpen(false);
-  };
 
   const toggle = (p: Panel) => setPanel((cur) => (cur === p ? null : p));
 
@@ -146,14 +139,6 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
           {tabBtn("tips", Lightbulb, "Tips")}
 
 
-          <button
-            onClick={() => setVoiceOpen(true)}
-            title="Add task by voice"
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
-          >
-            <Mic size={16} />
-            <span className="hidden sm:inline">Quick add</span>
-          </button>
 
           <div className="flex-1" />
 
@@ -183,7 +168,6 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
         </div>
       </div>
 
-      {voiceOpen && <VoiceTaskDialog onClose={() => setVoiceOpen(false)} onSave={handleVoiceSave} />}
     </>
   );
 }
