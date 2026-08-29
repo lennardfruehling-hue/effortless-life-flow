@@ -10,7 +10,7 @@ export interface OrgTip {
   severity: "info" | "warn" | "good";
 }
 
-const cat = (t: Task) => (t.category || "").toUpperCase();
+const cats = (t: Task) => (t.categories || []).map((c) => String(c).toUpperCase());
 
 /**
  * Behaviour-based organization tips, derived from how the user has actually been
@@ -25,7 +25,7 @@ export function buildOrgTips(tasks: Task[], habits: Habit[]): OrgTip[] {
   const done = (tasks || []).filter((t) => t.completed);
 
   // 1. Too many A1s open at once
-  const a1 = open.filter((t) => cat(t) === "A1");
+  const a1 = open.filter((t) => cats(t).includes("A1"));
   if (a1.length > 3) {
     tips.push({
       id: "a1-overload",
@@ -37,7 +37,7 @@ export function buildOrgTips(tasks: Task[], habits: Habit[]): OrgTip[] {
   }
 
   // 2. Uncategorised tasks
-  const uncategorised = open.filter((t) => !t.category);
+  const uncategorised = open.filter((t) => cats(t).length === 0);
   if (uncategorised.length >= 3) {
     tips.push({
       id: "uncategorised",
