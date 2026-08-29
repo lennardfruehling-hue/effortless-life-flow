@@ -93,6 +93,45 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
                 </div>
               </div>
             )}
+            {panel === "consistency" && (
+              <div className="h-full flex flex-col">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
+                  <span className="text-sm font-semibold text-foreground">Consistency game</span>
+                  <span className="font-mono text-xs text-primary">
+                    {game.points.toLocaleString()} pts · ×{game.multiplier.toFixed(2)}
+                  </span>
+                </div>
+                <div className="px-4 py-3 border-b border-border">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+                    <span>Level {game.level} · {game.levelName}</span>
+                    <span className="font-mono">{Math.round(game.progress * 100)}% to reward</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-primary to-cat-h" style={{ width: `${Math.round(game.progress * 100)}%` }} />
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-2">
+                  {nudges.map((n) => (
+                    <div
+                      key={n.id}
+                      className={`rounded-lg border px-3 py-2.5 ${
+                        n.tone === "warn"
+                          ? "border-amber-500/40 bg-amber-500/5"
+                          : n.tone === "good"
+                          ? "border-emerald-500/30 bg-emerald-500/5"
+                          : "border-border bg-background"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Trophy size={14} className={n.tone === "warn" ? "text-amber-600" : n.tone === "good" ? "text-emerald-600" : "text-primary"} />
+                        <p className="text-sm font-medium text-foreground">{n.title}</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{n.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {panel === "notifications" && (
               <div className="h-full flex flex-col">
                 <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
