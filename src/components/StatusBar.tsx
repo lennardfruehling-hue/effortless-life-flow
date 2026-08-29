@@ -152,11 +152,25 @@ export default function StatusBar({ tasks, onOpenSettings }: { tasks: Task[]; on
   const healthColor =
     health.tone === "good" ? "text-emerald-600" : health.tone === "ok" ? "text-amber-600" : "text-destructive";
 
+  const overdueList = useMemo(() => overdueTasks(tasks || []).slice(0, 5), [tasks]);
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const dueToday = (tasks || []).filter((t) => !t.completed && t.dueDate === todayStr);
+
   return (
     <div className="w-full border-b border-border bg-secondary/40">
       <div className="mx-auto max-w-[1400px] px-3 sm:px-5 py-2 flex flex-wrap items-center gap-2 lg:flex-nowrap lg:overflow-x-auto lg:scrollbar-none">
         {/* Date + time */}
-        <Cell title="Today">
+        <Cell
+          title="Today"
+          details={
+            <>
+              <div>{now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
+              <div>{dueToday.length} task{dueToday.length === 1 ? "" : "s"} due today</div>
+              <div>{overdue} overdue</div>
+            </>
+          }
+          action={{ label: "Open calendar", onClick: () => navigate("calendar") }}
+        >
           <span className="font-semibold">
             {now.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}
           </span>
@@ -166,20 +180,45 @@ export default function StatusBar({ tasks, onOpenSettings }: { tasks: Task[]; on
         </Cell>
 
         {/* Weather + location */}
-        <button
-          onClick={onOpenSettings}
-          title="Change location in settings"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card border border-border text-xs text-foreground whitespace-nowrap hover:border-primary/40 transition-colors"
+        <Cell
+          title="Weather"
+          details={
+            <>
+              <div>
+                {weather ? `${weather.emoji} ${weather.tempC}°C · ${weather.label}` : "Weather unavailable"}
+              </div>
+              <div>Location: {loc.name}</div>
+            </>
+          }
+          action={{ label: "Change location", onClick: () => onOpenSettings?.() }}
         >
           <span>{weather?.emoji ?? "🌡️"}</span>
           <span className="font-semibold">{weather ? `${weather.tempC}°C` : "—"}</span>
           <span className="text-muted-foreground">{weather?.label ?? "weather"}</span>
           <MapPin size={11} className="text-muted-foreground" />
           <span className="text-muted-foreground">{loc.name}</span>
-        </button>
+        </Cell>
 
         {/* Overdue */}
-        <Cell title="Overdue tasks">
+        <Cell
+          title="Overdue tasks"
+          details={
+            overdueList.length === 0 ? (
+              <div>Nothing overdue. Keep it that way.</div>
+            ) : (
+              <ul className="space-y-1">
+                {overdueList.map((t) => (
+                  <li key={t.id} className="truncate">
+                    • {t.title}
+                    {t.dueDate ? ` (${t.dueDate})` : ""}
+                  </li>
+                ))}
+                {overdue > overdueList.length && <li>+{overdue - overdueList.length} more</li>}
+              </ul>
+            )
+          }
+          action={{ label: "Open tasks", onClick: () => navigate("tasks") }}
+        >
           <AlertTriangle size={12} className={overdue > 0 ? "text-destructive" : "text-muted-foreground"} />
           <span className={overdue > 0 ? "font-semibold text-destructive" : "text-muted-foreground"}>
             {overdue} overdue
@@ -187,7 +226,17 @@ export default function StatusBar({ tasks, onOpenSettings }: { tasks: Task[]; on
         </Cell>
 
         {/* Consistency */}
-        <Cell title="Consistency for today">
+        <Cell
+          title="Consistency for today"
+          details={
+            <>
+              <div>{game.today.completed}/{game.today.due} habits logged today</div>
+              <div>Streak: {game.streak} day{game.streak === 1 ? "" : "s"}</div>
+              <div>Points: {game.points} · Level {game.level}</div>
+            </>
+          }
+          action={{ label: "Open consistency", onClick: () => navigate("consistency") }}
+        >
           <Flame size={12} className={consistencyOnTrack ? "text-emerald-600" : "text-amber-600"} />
           <span className={consistencyOnTrack ? "text-emerald-600 font-semibold" : "text-amber-600 font-semibold"}>
             {consistencyOnTrack ? "On track" : `${consistencyPending} habit${consistencyPending === 1 ? "" : "s"} left`}
@@ -197,7 +246,16 @@ export default function StatusBar({ tasks, onOpenSettings }: { tasks: Task[]; on
 
         {/* Serpent health */}
         <Cell
-          title={`Completion ${Math.round(health.completion * 100)}% · on time ${Math.round(health.onTime * 100)}% · consistency ${Math.round(health.consistency * 100)}%`}
+          title="Serpent health"
+          details={
+            <>
+              <div>Score: {health.score}/100 · {health.label}</div>
+              <div>Completion: {Math.round(health.completion * 100)}%</div>
+              <div>On time: {Math.round(health.onTime * 100)}%</div>
+              <div>Consistency: {Math.round(health.consistency * 100)}%</div>
+            </>
+          }
+          action={{ label: "Open tasks", onClick: () => navigate("tasks") }}
         >
           <Activity size={12} className={healthColor} />
           <span className="text-muted-foreground">Serpent health</span>
@@ -206,7 +264,21 @@ export default function StatusBar({ tasks, onOpenSettings }: { tasks: Task[]; on
         </Cell>
 
         {/* Most important task */}
-        <Cell title={topTask?.title || "Nothing open"}>
+        <Cell
+          title="Most important task"
+          details={
+            topTask ? (
+              <>
+                <div className="text-foreground font-medium">{topTask.title}</div>
+                {topTask.categories?.length ? <div>Categories: {topTask.categories.join(", ")}</div> : null}
+                {topTask.dueDate ? <div>Due: {topTask.dueDate}</div> : null}
+              </>
+            ) : (
+              <div>Nothing open.</div>
+            )
+          }
+          action={{ label: "Open tasks", onClick: () => navigate("tasks") }}
+        >
           <Star size={12} className="text-primary" />
           <span className="text-muted-foreground">A1</span>
           <span className="font-medium max-w-[220px] truncate">{topTask?.title || "Nothing open"}</span>
@@ -214,7 +286,20 @@ export default function StatusBar({ tasks, onOpenSettings }: { tasks: Task[]; on
 
         {/* Life plan priorities */}
         {lifePlan.length > 0 && (
-          <Cell title={lifePlan.map((p) => `${p.group}: ${p.task}${p.deadline ? ` (${p.deadline})` : ""}`).join("\n")}>
+          <Cell
+            title="Life plan priorities"
+            details={
+              <ul className="space-y-1">
+                {lifePlan.map((p, i) => (
+                  <li key={i}>
+                    • <span className="text-foreground">{p.group}</span>: {p.task}
+                    {p.deadline ? ` (${p.deadline})` : ""}
+                  </li>
+                ))}
+              </ul>
+            }
+            action={{ label: "Open life plan", onClick: () => navigate("lifeplan") }}
+          >
             <Target size={12} className="text-primary" />
             <span className="text-muted-foreground">Life plan</span>
             <span className="font-medium max-w-[240px] truncate">
@@ -226,12 +311,17 @@ export default function StatusBar({ tasks, onOpenSettings }: { tasks: Task[]; on
 
         {/* Top tip */}
         {topTip && (
-          <Cell title={topTip.detail}>
+          <Cell
+            title={topTip.title}
+            details={<div>{topTip.detail}</div>}
+            action={{ label: "Open tasks", onClick: () => navigate("tasks") }}
+          >
             <Lightbulb size={12} className={topTip.severity === "warn" ? "text-amber-600" : "text-primary"} />
             <span className="font-medium max-w-[260px] truncate">{topTip.title}</span>
           </Cell>
         )}
       </div>
     </div>
+
   );
 }
