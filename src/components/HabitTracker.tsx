@@ -54,7 +54,15 @@ export default function HabitTracker() {
   const { user } = useAuth();
   const [editing, setEditing] = useState<Habit | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const today = todayISO();
+  const realToday = todayISO();
+  const [today, setToday] = useState(realToday);
+  const shiftDay = (delta: number) => {
+    const d = new Date(today + "T00:00:00");
+    d.setDate(d.getDate() + delta);
+    const iso = d.toISOString().slice(0, 10);
+    if (iso > realToday) return;
+    setToday(iso);
+  };
 
   // Sync habits with times → to-do tasks + reminders whenever habits change.
   const syncTimer = useRef<number | null>(null);
