@@ -23,6 +23,12 @@ export default function TaskCard({ task, onToggle, onEdit, onDelete }: TaskCardP
   return (
     <motion.div
       layout
+      draggable
+      onDragStart={(e) => {
+        (e as unknown as React.DragEvent).dataTransfer.setData("text/task-id", task.id);
+        (e as unknown as React.DragEvent).dataTransfer.effectAllowed = "copy";
+      }}
+      title="Drag onto the daily calendar to time-box"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -20 }}

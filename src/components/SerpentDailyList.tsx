@@ -161,7 +161,10 @@ export default function SerpentDailyList({ tasks, onToggle, onEdit }: Props) {
           {all.map((t, i) => (
             <li
               key={t.id}
-              className="flex items-center gap-2 py-0.5 border-b border-dashed border-border/50 last:border-0"
+              draggable
+              onDragStart={(e) => { e.dataTransfer.setData("text/task-id", t.id); e.dataTransfer.effectAllowed = "copy"; }}
+              title="Drag onto the daily calendar to time-box"
+              className="flex items-center gap-2 py-0.5 border-b border-dashed border-border/50 last:border-0 cursor-grab active:cursor-grabbing"
             >
               <span className="text-muted-foreground w-5 text-right">{i + 1}.</span>
               <button
