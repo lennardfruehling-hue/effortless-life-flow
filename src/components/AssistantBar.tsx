@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Bot, Mic, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X } from "lucide-react";
-import { Task, Project } from "@/lib/types";
+import { Bot, Mic, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass } from "lucide-react";
+import { Task, Project, Reminder, LifePlanProject, DailyScheduleSlot } from "@/lib/types";
 import AIChat from "./AIChat";
 import VoiceAssistant from "./VoiceAssistant";
 import VoiceTaskDialog from "./VoiceTaskDialog";
+import SerpentFlow from "./SerpentFlow";
 import { useAssignmentNotifications } from "@/hooks/useAssignmentNotifications";
 
 interface Props {
@@ -11,11 +12,14 @@ interface Props {
   projects: Project[];
   onSaveTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   onSaveProjects: React.Dispatch<React.SetStateAction<Project[]>>;
+  reminders?: Reminder[];
+  lifePlanProjects?: LifePlanProject[];
+  dailySchedule?: DailyScheduleSlot[];
 }
 
-type Panel = "voice" | "chat" | "notifications" | null;
+type Panel = "flow" | "voice" | "chat" | "notifications" | null;
 
-export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProjects }: Props) {
+export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProjects, reminders = [], lifePlanProjects = [], dailySchedule = [] }: Props) {
   const [panel, setPanel] = useState<Panel>(null);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const { notifications, dismiss, dismissAll } = useAssignmentNotifications(tasks);
@@ -26,6 +30,7 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
   };
 
   const toggle = (p: Panel) => setPanel((cur) => (cur === p ? null : p));
+
 
   const tabBtn = (id: Exclude<Panel, null>, Icon: typeof Bot, label: string) => (
     <button
