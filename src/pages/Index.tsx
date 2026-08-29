@@ -144,7 +144,10 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-background w-full flex flex-col">
       <TopNav active={view} onChange={setView} taskCount={visibleTasks.filter((t) => !t.completed).length} tasks={visibleTasks} />
+      <StatusBar tasks={visibleTasks} onOpenSettings={() => setShowDashSettings(true)} />
+      {showDashSettings && <FlowCutoffSettings onClose={() => setShowDashSettings(false)} />}
       <SyncStatusBanner />
+
       <main className="flex-1 min-w-0 overflow-x-hidden w-full mx-auto max-w-[1400px] px-3 sm:px-5 pt-4 pb-32">
         {view === "tasks" && (
           <TasksView
