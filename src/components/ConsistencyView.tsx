@@ -1,16 +1,31 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Task } from "@/lib/types";
-import { computeConsistency, ionianProgress, IONIAN_GOAL } from "@/lib/pride";
-import { Flame, Trophy, Compass } from "lucide-react";
+import { computeConsistency, IONIAN_GOAL } from "@/lib/pride";
+import { Flame, Trophy, Compass, Pencil, Check } from "lucide-react";
 import HabitTracker from "./HabitTracker";
+import { useCloudState } from "@/hooks/useCloudState";
+import { CLOUD_KEYS } from "@/lib/cloudStore";
 
 interface Props {
   tasks: Task[];
 }
 
+interface ConsistencyGoal {
+  title: string;
+  weeks: number;
+  subtitle: string;
+}
+
 export default function ConsistencyView({ tasks }: Props) {
   const stats = useMemo(() => computeConsistency(tasks), [tasks]);
-  const progress = ionianProgress(stats);
+  const [goal, setGoal] = useCloudState<ConsistencyGoal>(CLOUD_KEYS.consistencyGoal, {
+    title: IONIAN_GOAL.title,
+    weeks: IONIAN_GOAL.weeks,
+    subtitle: "Every consistent day brings the boat closer.",
+  });
+  const [editGoal, setEditGoal] = useState(false);
+  const perfectDays = stats.daily.filter((d) => d.total > 0 && d.done >= d.total).length;
+  const progress = Math.min(1, perfectDays / Math.max(1, (goal.weeks || 52) * 7));
   const dailyTasks = tasks.filter((t) => t.recurrence === "daily");
   const weeklyTasks = tasks.filter((t) => t.recurrence === "weekly");
 
