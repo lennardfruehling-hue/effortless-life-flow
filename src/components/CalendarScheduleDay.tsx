@@ -478,6 +478,9 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditT
             ))}
           </div>
         </div>
+        )}
+
+
 
 
         {/* 24h grid (scrollable, opens at current time) */}
