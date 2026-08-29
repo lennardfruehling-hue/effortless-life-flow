@@ -241,7 +241,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
         </div>
       )}
 
-      <div className={showSchedule ? "grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_440px] gap-4 items-start" : ""}>
+      <div className={showSchedule ? "grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_440px] gap-4 items-start" : ""}>
         <div className="min-w-0">
 
       {/* Filter bar */}
