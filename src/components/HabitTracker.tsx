@@ -240,9 +240,14 @@ function HabitRow({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             {habit.emoji && <span className="text-base">{habit.emoji}</span>}
-            <span className={`text-sm font-medium truncate ${complete ? "text-primary" : "text-foreground"}`}>
-              {habit.name}
-            </span>
+            <input
+              value={habit.name}
+              onChange={(e) => onRename(e.target.value)}
+              title="Click to rename"
+              className={`text-sm font-medium bg-transparent border-b border-transparent hover:border-border focus:border-primary outline-none min-w-0 flex-1 ${
+                complete ? "text-primary" : "text-foreground"
+              }`}
+            />
             {complete && <Check size={14} className="text-primary" />}
             {muted && (
               <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-mono">off today</span>
