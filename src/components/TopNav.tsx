@@ -71,7 +71,7 @@ export default function TopNav({
     <>
       <header className="sticky top-0 z-30 flex-shrink-0">
         {/* Serpent phase band */}
-        <div className="relative h-16 overflow-hidden bg-serpent">
+        <div className="relative h-20 overflow-hidden bg-serpent">
           <img
             src={serpentBg}
             alt=""
