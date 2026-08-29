@@ -533,7 +533,7 @@ function FlowTrioDock({
     ? "bg-indigo-950/70 border-indigo-400/40 text-indigo-50"
     : "bg-sidebar/85 border-amber-300/30 text-white";
 
-  if (collapsed) {
+  if (collapsed && !embedded) {
     const doneCount = trio.filter(t => t.done).length;
     const pillLabel = alarmActive
       ? `${alertCount} alert${alertCount === 1 ? "" : "s"}`
@@ -559,7 +559,10 @@ function FlowTrioDock({
   }
 
   return (
-    <div className={`fixed bottom-16 left-1/2 -translate-x-1/2 z-40 backdrop-blur border rounded-2xl shadow-xl ${dockTone} ${hasOverdue ? "ring-2 ring-red-400/50" : ""}`}>
+    <div className={embedded
+      ? `h-full overflow-y-auto scrollbar-thin ${dockTone} border-0 rounded-none`
+      : `fixed bottom-16 left-1/2 -translate-x-1/2 z-40 backdrop-blur border rounded-2xl shadow-xl ${dockTone} ${hasOverdue ? "ring-2 ring-red-400/50" : ""}`}>
+
       {/* Top row: alarm summary + bell */}
       {alarmActive && (
         <button
