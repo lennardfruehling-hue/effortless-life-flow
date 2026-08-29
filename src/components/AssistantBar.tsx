@@ -30,9 +30,15 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
   // Any part of the app (e.g. the Serpent flow summary row) can open the center.
   useEffect(() => {
     const open = () => setPanel("notifications");
+    const openFlow = () => setPanel("flow");
     window.addEventListener("serpent-open-notifications", open);
-    return () => window.removeEventListener("serpent-open-notifications", open);
+    window.addEventListener("serpent-open-flow", openFlow);
+    return () => {
+      window.removeEventListener("serpent-open-notifications", open);
+      window.removeEventListener("serpent-open-flow", openFlow);
+    };
   }, []);
+
   const [habits] = useCloudState<Habit[]>(CLOUD_KEYS.habits, []);
   const tips = useMemo(() => buildOrgTips(tasks, habits || []), [tasks, habits]);
   const game = useMemo(() => computeGame(habits || []), [habits]);
