@@ -120,21 +120,25 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
   // Tracks whether the active step's requirement is satisfied.
   const [stepSatisfied, setStepSatisfied] = useState(false);
 
+  // Phase is derived automatically and re-evaluated every minute.
+  const [clockTick, setClockTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setClockTick((t) => t + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   // Persist + broadcast phase whenever inputs change.
   useEffect(() => {
     const next = { ...state, phase: derivePhase(state, active, manualPhase) };
+    if (next.phase !== state.phase) setState(next);
     saveFlowState(next);
-  }, [state, active, manualPhase]);
+  }, [state, active, manualPhase, clockTick]);
 
-  // Listen for manual phase override from the sidebar (user clicks the phase chip).
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as SerpentPhase | null;
-      setManualPhase(detail || null);
-    };
-    window.addEventListener("serpent-set-phase", handler);
-    return () => window.removeEventListener("serpent-set-phase", handler);
-  }, []);
+  // Which flow the user is required to complete right now.
+  const required = useMemo(() => {
+    void clockTick;
+    return mandatoryFlow(state);
+  }, [state, clockTick]);
 
   const startFlow = (kind: FlowKind) => {
     setTrioOpen(false);
@@ -159,21 +163,14 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
     }
   };
 
-  // Auto-prompt sequence: open trio chooser at noon if midday not done, at 17h if evening not done.
+  // Mandatory: the required flow opens itself and stays open until completed.
   useEffect(() => {
-    const tick = () => {
-      const h = new Date().getHours();
-      if (active) return;
-      if (!state.middayCompleted && state.startCompleted && h >= 12 && h < 17) {
-        setTrioOpen(true);
-      } else if (!state.eveningCompleted && h >= 17) {
-        setTrioOpen(true);
-      }
-    };
-    tick();
-    const id = window.setInterval(tick, 60_000);
-    return () => clearInterval(id);
-  }, [state, active]);
+    if (active || !required) return;
+    setTrioOpen(false);
+    setActive(required);
+    setStepIdx(0);
+  }, [required, active]);
+
 
   const currentStep = active ? FLOWS[active].steps[stepIdx] : undefined;
   const targetRect = useTargetRect(currentStep?.target);
