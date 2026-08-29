@@ -84,7 +84,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
       const raw = localStorage.getItem("serpent-tasks-schedule-dock");
       if (raw !== null) return raw === "1";
     } catch { /* ignore */ }
-    return typeof window !== "undefined" && window.innerWidth >= 1280;
+    return typeof window !== "undefined" && window.innerWidth >= 1024;
   });
 
   useEffect(() => {
@@ -241,7 +241,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
         </div>
       )}
 
-      <div className={showSchedule ? "grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_440px] gap-4 items-start" : ""}>
+      <div className={showSchedule ? "grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_440px] gap-4 items-start" : ""}>
         <div className="min-w-0">
 
       {/* Filter bar */}
@@ -424,7 +424,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
 
         {/* Docked daily calendar — drop tasks here to time-box them */}
         {showSchedule && (
-          <aside className="min-w-0 xl:sticky xl:top-4">
+          <aside className="min-w-0 lg:sticky lg:top-4">
             <CalendarScheduleDay
               compact
               slots={dailySchedule}
