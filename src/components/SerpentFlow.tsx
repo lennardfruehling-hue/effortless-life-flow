@@ -351,6 +351,7 @@ function playAlertChime(ctxRef: { current: AudioContext | null }) {
 function FlowTrioDock({
   trio,
   flow,
+  embedded = false,
   tasks,
   reminders,
   lifePlanProjects,
@@ -367,6 +368,7 @@ function FlowTrioDock({
 }: {
   trio: TrioItem[];
   flow: SerpentFlowDayState;
+  embedded?: boolean;
   tasks: Task[];
   reminders: Reminder[];
   lifePlanProjects: LifePlanProject[];
@@ -383,11 +385,13 @@ function FlowTrioDock({
 }) {
   const KEY = "serpent-trio-collapsed";
   const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem(KEY) === "1"; } catch { return false; }
+    try { return !embedded && localStorage.getItem(KEY) === "1"; } catch { return false; }
   });
   useEffect(() => {
+    if (embedded) return;
     try { localStorage.setItem(KEY, collapsed ? "1" : "0"); } catch {}
-  }, [collapsed]);
+  }, [collapsed, embedded]);
+
 
   const [showPanel, setShowPanel] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
