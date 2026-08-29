@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Bot, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass, Lightbulb } from "lucide-react";
+import { Bot, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass, Lightbulb, Trophy } from "lucide-react";
 import { Task, Project, Reminder, LifePlanProject, DailyScheduleSlot } from "@/lib/types";
 import AIChat from "./AIChat";
 import VoiceAssistant from "./VoiceAssistant";
