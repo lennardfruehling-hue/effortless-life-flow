@@ -114,6 +114,21 @@ export default function StatusBar({ tasks, onOpenSettings }: { tasks: Task[]; on
   const [loc, setLoc] = useState<DashboardLocation>(() => loadLocation());
   const [weather, setWeather] = useState<Weather | null>(null);
   const [lifePlan, setLifePlan] = useState(loadLifePlanPriorities);
+  const [flow, setFlow] = useState<SerpentFlowDayState>(loadFlowState);
+  useEffect(() => onFlowStateChange(setFlow), []);
+  // Recomputed as the clock ticks (now updates every 30s) — never manual.
+  const phase = useMemo(() => {
+    void now;
+    return autoPhase(flow);
+  }, [flow, now]);
+  const phaseChip =
+    phase === "planning"
+      ? "bg-amber-100 text-amber-800 border border-amber-300"
+      : phase === "action"
+      ? "bg-orange-100 text-orange-800 border border-orange-300"
+      : "bg-indigo-100 text-indigo-800 border border-indigo-300";
+
+
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 30_000);
