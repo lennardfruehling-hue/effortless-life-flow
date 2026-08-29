@@ -297,7 +297,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
       )}
       {/* Daily consistency check-in */}
       <ScoreCard tasks={tasks} />
-      <ConsistencyPrompt />
+      {!showSchedule && <div className="mb-4"><GameConsole /></div>}
 
       {/* Overdue tasks — always first, collapsible */}
       {overdueTasks.length > 0 && (
