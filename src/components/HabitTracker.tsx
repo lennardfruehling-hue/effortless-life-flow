@@ -183,6 +183,9 @@ export default function HabitTracker() {
                     prev.map((x) => (x.id === h.id ? { ...x, pushedToTasks: !x.pushedToTasks } : x))
                   )
                 }
+                onRename={(name) =>
+                  setHabits((prev) => prev.map((x) => (x.id === h.id ? { ...x, name } : x)))
+                }
                 today={today}
                 muted={!due}
               />
