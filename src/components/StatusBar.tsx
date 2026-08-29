@@ -57,16 +57,46 @@ function rank(t: Task): number {
   return s;
 }
 
-function Cell({ children, title }: { children: React.ReactNode; title?: string }) {
+function navigate(view: string) {
+  window.dispatchEvent(new CustomEvent("serpent-navigate", { detail: view }));
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function Cell({
+  children,
+  title,
+  details,
+  action,
+}: {
+  children: React.ReactNode;
+  title?: string;
+  details?: React.ReactNode;
+  action?: { label: string; onClick: () => void };
+}) {
+  const cls =
+    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card border border-border text-xs text-foreground whitespace-nowrap hover:border-primary/40 transition-colors";
+  if (!details && !action) {
+    return <div title={title} className={cls}>{children}</div>;
+  }
   return (
-    <div
-      title={title}
-      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card border border-border text-xs text-foreground whitespace-nowrap"
-    >
-      {children}
-    </div>
+    <Popover>
+      <PopoverTrigger asChild>
+        <button type="button" title={title} className={cls}>{children}</button>
+      </PopoverTrigger>
+      <PopoverContent align="start" className="w-72 text-xs space-y-2">
+        {title && <div className="font-semibold text-sm">{title}</div>}
+        <div className="text-muted-foreground space-y-1">{details}</div>
+        {action && (
+          <Button size="sm" className="w-full" onClick={action.onClick}>
+            {action.label}
+            <ArrowRight size={12} className="ml-1" />
+          </Button>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
+
 
 export default function StatusBar({ tasks, onOpenSettings }: { tasks: Task[]; onOpenSettings?: () => void }) {
   const [habits] = useCloudState<Habit[]>(CLOUD_KEYS.habits, []);
