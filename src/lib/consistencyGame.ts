@@ -1,4 +1,5 @@
 import { Habit, isHabitDue, isHabitCompleteOn, requiredCount, todayISO } from "./habits";
+import { getResetEpoch } from "./resetEpoch";
 
 /**
  * Consistency Game — a reward-only scoring system.
@@ -139,9 +140,11 @@ export function computeGame(habits: Habit[], weeks = 26, historyDays = 180): Gam
   let perfectDays = 0;
   const results: DayResult[] = [];
 
+  const epoch = getResetEpoch();
   for (let i = historyDays - 1; i >= 0; i--) {
     const iso = isoOffset(i);
-    const due = list.filter((h) => isHabitDue(h, iso));
+    // Nothing before the reset epoch counts — the system starts from zero there.
+    const due = iso < epoch ? [] : list.filter((h) => isHabitDue(h, iso));
     if (due.length === 0) {
       results.push({ date: iso, due: 0, completed: 0, slotsDone: 0, perfect: false, basePoints: 0, multiplier: multiplierFor(streak), points: 0 });
       continue;
