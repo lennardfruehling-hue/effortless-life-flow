@@ -78,7 +78,18 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
   const [editTask, setEditTask] = useState<Task | undefined>();
   const [filterCat, setFilterCat] = useState<Category | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
-  const [showSchedule, setShowSchedule] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(() => {
+    try {
+      const raw = localStorage.getItem("serpent-tasks-schedule-dock");
+      if (raw !== null) return raw === "1";
+    } catch { /* ignore */ }
+    return typeof window !== "undefined" && window.innerWidth >= 1280;
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem("serpent-tasks-schedule-dock", showSchedule ? "1" : "0"); } catch { /* ignore */ }
+  }, [showSchedule]);
+
   const [activeSections, setActiveSections] = useState<SectionKey[]>(() => {
     try {
       const raw = localStorage.getItem(SECTION_PREF_KEY);
