@@ -106,8 +106,23 @@ export default function VoiceAssistant({ tasks, projects, onSaveTasks, onSavePro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, projects, onSaveTasks, onSaveProjects, user?.id, turns, speak, speakBack]);
 
-  const startListening = useCallback(() => {
+  const ensureMicPermission = useCallback(async (): Promise<boolean> => {
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return true;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((t) => t.stop());
+      return true;
+    } catch {
+      setError("Microphone access is blocked. Allow microphone permission for this app to use voice.");
+      setHandsFree(false);
+      handsFreeRef.current = false;
+      return false;
+    }
+  }, []);
+
+  const startListening = useCallback(async () => {
     if (!supported || busyRef.current) return;
+    if (!(await ensureMicPermission())) return;
     try { recRef.current?.abort?.(); } catch {}
     const rec = getRecognition();
     if (!rec) return;
