@@ -25,7 +25,14 @@ type Panel = "flow" | "voice" | "chat" | "tips" | "consistency" | "notifications
 
 export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProjects, reminders = [], lifePlanProjects = [], dailySchedule = [] }: Props) {
   const [panel, setPanel] = useState<Panel>(null);
-  const { notifications, dismiss, dismissAll } = useAssignmentNotifications(tasks);
+  const { notifications, overdueCount, dismiss, dismissAll } = useNotificationCenter(tasks, reminders, lifePlanProjects);
+
+  // Any part of the app (e.g. the Serpent flow summary row) can open the center.
+  useEffect(() => {
+    const open = () => setPanel("notifications");
+    window.addEventListener("serpent-open-notifications", open);
+    return () => window.removeEventListener("serpent-open-notifications", open);
+  }, []);
   const [habits] = useCloudState<Habit[]>(CLOUD_KEYS.habits, []);
   const tips = useMemo(() => buildOrgTips(tasks, habits || []), [tasks, habits]);
   const game = useMemo(() => computeGame(habits || []), [habits]);
