@@ -20,7 +20,16 @@ interface Props {
   dailySchedule?: DailyScheduleSlot[];
 }
 
-type Panel = "flow" | "voice" | "chat" | "tips" | "notifications" | null;
+type Panel = "flow" | "voice" | "chat" | "tips" | "consistency" | "notifications" | null;
+
+export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProjects, reminders = [], lifePlanProjects = [], dailySchedule = [] }: Props) {
+  const [panel, setPanel] = useState<Panel>(null);
+  const { notifications, dismiss, dismissAll } = useAssignmentNotifications(tasks);
+  const [habits] = useCloudState<Habit[]>(CLOUD_KEYS.habits, []);
+  const tips = useMemo(() => buildOrgTips(tasks, habits || []), [tasks, habits]);
+  const game = useMemo(() => computeGame(habits || []), [habits]);
+  const nudges = useMemo(() => buildConsistencyNudges(habits || [], game), [habits, game]);
+  const consistencyOpen = game.today.due - game.today.completed;
 
 export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProjects, reminders = [], lifePlanProjects = [], dailySchedule = [] }: Props) {
   const [panel, setPanel] = useState<Panel>(null);
