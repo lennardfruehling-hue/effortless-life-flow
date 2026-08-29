@@ -243,10 +243,10 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
               panel === "notifications" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
             }`}
           >
-            <Bell size={16} />
+            {overdueCount > 0 ? <AlertTriangle size={16} className="text-destructive" /> : <Bell size={16} />}
             <span className="hidden sm:inline">Notifications</span>
             {notifications.length > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+              <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center ${overdueCount > 0 ? "bg-destructive text-destructive-foreground animate-pulse" : "bg-amber-500 text-white"}`}>
                 {notifications.length}
               </span>
             )}
