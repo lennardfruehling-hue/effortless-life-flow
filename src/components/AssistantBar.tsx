@@ -182,6 +182,26 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
           {tabBtn("chat", MessageSquare, "Chat")}
           {tabBtn("tips", Lightbulb, "Tips")}
 
+          <button
+            onClick={() => toggle("consistency")}
+            title="Consistency game"
+            className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              panel === "consistency" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+            }`}
+          >
+            <Trophy size={16} />
+            <span className="hidden sm:inline">Game</span>
+            {consistencyOpen > 0 && (
+              <span
+                className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center bg-amber-500 text-white ${
+                  new Date().getHours() >= 20 ? "animate-pulse" : ""
+                }`}
+              >
+                {consistencyOpen}
+              </span>
+            )}
+          </button>
+
 
 
           <div className="flex-1" />
