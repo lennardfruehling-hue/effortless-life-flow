@@ -9,6 +9,7 @@ import { useCloudState } from "@/hooks/useCloudState";
 import { CLOUD_KEYS } from "@/lib/cloudStore";
 import { Habit } from "@/lib/habits";
 import { buildOrgTips } from "@/lib/orgTips";
+import { computeGame, buildConsistencyNudges } from "@/lib/consistencyGame";
 
 interface Props {
   tasks: Task[];
