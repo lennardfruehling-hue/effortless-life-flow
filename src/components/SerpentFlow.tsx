@@ -540,7 +540,7 @@ function FlowTrioDock({
       <button
         onClick={() => setCollapsed(false)}
         title={alarmActive ? `${alertCount} alert${alertCount === 1 ? "" : "s"}` : hasNotifs ? `${notifCount} new assignment${notifCount === 1 ? "" : "s"}` : "Show command center"}
-        className={`fixed bottom-0 left-1/2 -translate-x-1/2 z-40 px-4 py-1 rounded-t-lg backdrop-blur border border-b-0 shadow-lg flex items-center gap-2 hover:opacity-90 transition ${dockTone} ${hasOverdue || hasNotifs ? "animate-pulse" : ""}`}
+        className={`fixed bottom-14 left-1/2 -translate-x-1/2 z-40 px-4 py-1 rounded-t-lg backdrop-blur border border-b-0 shadow-lg flex items-center gap-2 hover:opacity-90 transition ${dockTone} ${hasOverdue || hasNotifs ? "animate-pulse" : ""}`}
       >
         {pillIcon}
         <span className="text-xs font-mono uppercase tracking-wider">{pillLabel}</span>
@@ -550,7 +550,7 @@ function FlowTrioDock({
   }
 
   return (
-    <div className={`fixed bottom-3 left-1/2 -translate-x-1/2 z-40 backdrop-blur border rounded-2xl shadow-xl ${dockTone} ${hasOverdue ? "ring-2 ring-red-400/50" : ""}`}>
+    <div className={`fixed bottom-16 left-1/2 -translate-x-1/2 z-40 backdrop-blur border rounded-2xl shadow-xl ${dockTone} ${hasOverdue ? "ring-2 ring-red-400/50" : ""}`}>
       {/* Top row: alarm summary + bell */}
       {alarmActive && (
         <button
