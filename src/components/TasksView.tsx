@@ -4,6 +4,7 @@ import TaskCard from "@/components/TaskCard";
 import TaskForm from "@/components/TaskForm";
 import CalendarScheduleDay from "@/components/CalendarScheduleDay";
 import SerpentDailyList from "@/components/SerpentDailyList";
+import ConsistencyPrompt from "@/components/ConsistencyPrompt";
 import FinanceSummaryCard from "@/components/FinanceSummaryCard";
 import { CategoryBadgeFull } from "@/components/CategoryBadge";
 import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat, Sun, CalendarDays, AlertTriangle } from "lucide-react";
@@ -277,6 +278,9 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
           <p className="text-xs text-muted-foreground mt-1">{CATEGORY_META[filterCat].description}</p>
         </div>
       )}
+      {/* Daily consistency check-in */}
+      <ConsistencyPrompt />
+
       {/* Overdue tasks — always first */}
       {overdueTasks.length > 0 && (
         <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
