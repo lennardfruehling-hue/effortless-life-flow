@@ -104,7 +104,7 @@ export default function TopNav({
                 className="text-serpent-foreground leading-tight whitespace-nowrap text-[1.75rem] sm:text-[2.25rem]"
                 style={{ fontFamily: "'Great Vibes', 'Allura', cursive", textShadow: "0 2px 10px rgba(0,0,0,0.6)" }}
               >
-                Serpent List
+                Serpent List &amp; Organization Center
               </span>
               <span className="hidden sm:inline text-[11px] font-mono tracking-wide text-serpent-foreground/75">
                 {taskCount} open
