@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 import { AssigneeAvatar } from "./AssigneePicker";
 import { AssigneeStack } from "./MultiAssigneePicker";
+import { setDragTaskId, touchDragProps } from "@/lib/dragTask";
 
 interface TaskCardProps {
   task: Task;
@@ -27,7 +28,10 @@ export default function TaskCard({ task, onToggle, onEdit, onDelete }: TaskCardP
       onDragStart={(e) => {
         (e as unknown as React.DragEvent).dataTransfer.setData("text/task-id", task.id);
         (e as unknown as React.DragEvent).dataTransfer.effectAllowed = "copy";
+        setDragTaskId(task.id);
       }}
+      onDragEnd={() => setDragTaskId(null)}
+      {...touchDragProps(task.id)}
       title="Drag onto the daily calendar to time-box"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}

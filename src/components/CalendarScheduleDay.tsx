@@ -4,6 +4,7 @@ import { CategoryBadge } from "./CategoryBadge";
 import { Trash2, Mail, Plus, Printer } from "lucide-react";
 import { v4 as uuid } from "uuid";
 import { toast } from "sonner";
+import { getDragTaskId, TOUCH_DROP_EVENT, TouchDropDetail } from "@/lib/dragTask";
 
 interface Props {
   slots: DailyScheduleSlot[];
