@@ -226,12 +226,8 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
         </div>
       )}
 
-      {/* Daily Schedule */}
-      {showSchedule && (
-        <div className="mb-6">
-          <CalendarScheduleDay slots={dailySchedule} tasks={tasks} onSaveSlots={onSaveDailySchedule} onEditTask={(t) => { setEditTask(t); setShowForm(true); }} />
-        </div>
-      )}
+      <div className={showSchedule ? "grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_440px] gap-4 items-start" : ""}>
+        <div className="min-w-0">
 
       {/* Filter bar */}
       <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 scrollbar-thin">
