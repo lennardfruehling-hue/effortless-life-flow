@@ -16,6 +16,7 @@ import {
   Target,
   Plus,
   Trash2,
+  Lightbulb,
 } from "lucide-react";
 
 export interface FinanceAccount {
@@ -76,7 +77,7 @@ export const DEFAULT_FINANCE: FinanceState = {
 const eur = (n: number) =>
   `${n < 0 ? "-" : ""}€${Math.abs(n).toLocaleString("en-IE", { maximumFractionDigits: 0 })}`;
 
-type SectionKey = "health" | "spending" | "accounts" | "goals" | "quick";
+type SectionKey = "health" | "tips" | "spending" | "accounts" | "goals" | "quick";
 
 export default function FinanceSummaryCard() {
   const [finance, setFinance] = useCloudState<FinanceState>(CLOUD_KEYS.finance, DEFAULT_FINANCE);
@@ -84,6 +85,7 @@ export default function FinanceSummaryCard() {
   const [editing, setEditing] = useState(false);
   const [sections, setSections] = useState<Record<SectionKey, boolean>>({
     health: true,
+    tips: true,
     spending: false,
     accounts: false,
     goals: false,
