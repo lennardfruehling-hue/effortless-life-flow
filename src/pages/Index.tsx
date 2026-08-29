@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCloudState } from "@/hooks/useCloudState";
 import { CLOUD_KEYS, cloudAppendForUser } from "@/lib/cloudStore";
 import { store } from "@/lib/store";
-import Sidebar from "@/components/Sidebar";
+import TopNav from "@/components/TopNav";
 import TasksView from "@/components/TasksView";
 import LifePlanView from "@/components/LifePlanView";
 import RemindersView from "@/components/RemindersView";
@@ -12,7 +12,8 @@ import ResearchTabs from "@/components/ResearchTabs";
 import ListsView from "@/components/ListsView";
 import CalendarView from "@/components/CalendarView";
 import AIChat from "@/components/AIChat";
-import AISidebar from "@/components/AISidebar";
+import AssistantBar from "@/components/AssistantBar";
+
 import ConsistencyView from "@/components/ConsistencyView";
 import ReminderWatcher from "@/components/ReminderWatcher";
 import WeeklyIntentionWatcher from "@/components/WeeklyIntentionWatcher";
@@ -141,11 +142,10 @@ export default function Index() {
   };
 
   return (
-    <div className="flex min-h-screen bg-background w-full">
-      <Sidebar active={view} onChange={setView} taskCount={visibleTasks.filter((t) => !t.completed).length} tasks={visibleTasks} />
-      <div className="flex-1 min-w-0 flex flex-col">
-        <SyncStatusBanner />
-      <main className="flex-1 min-w-0 overflow-x-hidden">
+    <div className="min-h-screen bg-background w-full flex flex-col">
+      <TopNav active={view} onChange={setView} taskCount={visibleTasks.filter((t) => !t.completed).length} tasks={visibleTasks} />
+      <SyncStatusBanner />
+      <main className="flex-1 min-w-0 overflow-x-hidden w-full mx-auto max-w-[1400px] px-3 sm:px-5 pt-4 pb-32">
         {view === "tasks" && (
           <TasksView
             tasks={visibleTasks}
@@ -183,11 +183,11 @@ export default function Index() {
         {view === "consistency" && <ConsistencyView tasks={visibleTasks} />}
         {view === "ai" && <AIChat tasks={visibleTasks} projects={allProjects} onSaveTasks={setVisibleTasks} onSaveProjects={setProjects} />}
       </main>
-      </div>
-      <AISidebar tasks={visibleTasks} projects={allProjects} onSaveTasks={setVisibleTasks} onSaveProjects={setProjects} />
+      <AssistantBar tasks={visibleTasks} projects={allProjects} onSaveTasks={setVisibleTasks} onSaveProjects={setProjects} />
       <ReminderWatcher reminders={reminders} onUpdate={setReminders} />
       <WeeklyIntentionWatcher tasks={visibleTasks} />
       <SerpentFlow tasks={visibleTasks} reminders={reminders} lifePlanProjects={lifePlanProjects} dailySchedule={dailySchedule} />
     </div>
   );
 }
+
