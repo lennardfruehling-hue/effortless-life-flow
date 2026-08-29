@@ -3,6 +3,7 @@ import { Task } from "@/lib/types";
 import { computeConsistency, IONIAN_GOAL } from "@/lib/pride";
 import { Flame, Trophy, Compass, Pencil, Check } from "lucide-react";
 import HabitTracker from "./HabitTracker";
+import ConsistencyGame from "./ConsistencyGame";
 import { useCloudState } from "@/hooks/useCloudState";
 import { CLOUD_KEYS } from "@/lib/cloudStore";
 
@@ -134,6 +135,11 @@ export default function ConsistencyView({ tasks }: Props) {
             </g>
           </svg>
         </div>
+      </div>
+
+      {/* The consistency game */}
+      <div className="mb-6">
+        <ConsistencyGame weeks={goal.weeks || 26} rewardTitle={goal.title} />
       </div>
 
       {/* Stat tiles */}

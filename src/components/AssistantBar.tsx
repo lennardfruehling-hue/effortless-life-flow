@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Bot, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass, Lightbulb } from "lucide-react";
+import { Bot, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass, Lightbulb, Trophy } from "lucide-react";
 import { Task, Project, Reminder, LifePlanProject, DailyScheduleSlot } from "@/lib/types";
 import AIChat from "./AIChat";
 import VoiceAssistant from "./VoiceAssistant";
@@ -9,6 +9,7 @@ import { useCloudState } from "@/hooks/useCloudState";
 import { CLOUD_KEYS } from "@/lib/cloudStore";
 import { Habit } from "@/lib/habits";
 import { buildOrgTips } from "@/lib/orgTips";
+import { computeGame, buildConsistencyNudges } from "@/lib/consistencyGame";
 
 interface Props {
   tasks: Task[];
@@ -20,13 +21,17 @@ interface Props {
   dailySchedule?: DailyScheduleSlot[];
 }
 
-type Panel = "flow" | "voice" | "chat" | "tips" | "notifications" | null;
+type Panel = "flow" | "voice" | "chat" | "tips" | "consistency" | "notifications" | null;
 
 export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProjects, reminders = [], lifePlanProjects = [], dailySchedule = [] }: Props) {
   const [panel, setPanel] = useState<Panel>(null);
   const { notifications, dismiss, dismissAll } = useAssignmentNotifications(tasks);
   const [habits] = useCloudState<Habit[]>(CLOUD_KEYS.habits, []);
   const tips = useMemo(() => buildOrgTips(tasks, habits || []), [tasks, habits]);
+  const game = useMemo(() => computeGame(habits || []), [habits]);
+  const nudges = useMemo(() => buildConsistencyNudges(habits || [], game), [habits, game]);
+  const consistencyOpen = game.today.due - game.today.completed;
+
 
   const toggle = (p: Panel) => setPanel((cur) => (cur === p ? null : p));
 
@@ -93,6 +98,45 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
                 </div>
               </div>
             )}
+            {panel === "consistency" && (
+              <div className="h-full flex flex-col">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
+                  <span className="text-sm font-semibold text-foreground">Consistency game</span>
+                  <span className="font-mono text-xs text-primary">
+                    {game.points.toLocaleString()} pts · ×{game.multiplier.toFixed(2)}
+                  </span>
+                </div>
+                <div className="px-4 py-3 border-b border-border">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+                    <span>Level {game.level} · {game.levelName}</span>
+                    <span className="font-mono">{Math.round(game.progress * 100)}% to reward</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                    <div className="h-full rounded-full bg-gradient-to-r from-primary to-cat-h" style={{ width: `${Math.round(game.progress * 100)}%` }} />
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-2">
+                  {nudges.map((n) => (
+                    <div
+                      key={n.id}
+                      className={`rounded-lg border px-3 py-2.5 ${
+                        n.tone === "warn"
+                          ? "border-amber-500/40 bg-amber-500/5"
+                          : n.tone === "good"
+                          ? "border-emerald-500/30 bg-emerald-500/5"
+                          : "border-border bg-background"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Trophy size={14} className={n.tone === "warn" ? "text-amber-600" : n.tone === "good" ? "text-emerald-600" : "text-primary"} />
+                        <p className="text-sm font-medium text-foreground">{n.title}</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{n.detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {panel === "notifications" && (
               <div className="h-full flex flex-col">
                 <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
@@ -137,6 +181,26 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
           {tabBtn("voice", AudioLines, "Voice")}
           {tabBtn("chat", MessageSquare, "Chat")}
           {tabBtn("tips", Lightbulb, "Tips")}
+
+          <button
+            onClick={() => toggle("consistency")}
+            title="Consistency game"
+            className={`relative flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              panel === "consistency" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+            }`}
+          >
+            <Trophy size={16} />
+            <span className="hidden sm:inline">Game</span>
+            {consistencyOpen > 0 && (
+              <span
+                className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-[10px] font-bold flex items-center justify-center bg-amber-500 text-white ${
+                  new Date().getHours() >= 20 ? "animate-pulse" : ""
+                }`}
+              >
+                {consistencyOpen}
+              </span>
+            )}
+          </button>
 
 
 
