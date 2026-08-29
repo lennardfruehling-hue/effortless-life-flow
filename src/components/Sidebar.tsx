@@ -109,23 +109,23 @@ export default function Sidebar({
             {(["planning", "action", "review"] as const).map((p) => {
               const isOn = phase === p;
               const styles =
-                p === "planning" ? "bg-amber-500/25 border-amber-300/60 text-amber-50" :
-                p === "action"   ? "bg-orange-500/30 border-orange-300/70 text-orange-50" :
-                                   "bg-indigo-500/30 border-indigo-300/60 text-indigo-50";
-              const off = "bg-white/5 border-white/15 text-white/50 hover:text-white/80 hover:border-white/30";
+                p === "planning" ? "bg-amber-400 border-amber-200 text-amber-950" :
+                p === "action"   ? "bg-orange-400 border-orange-200 text-orange-950" :
+                                   "bg-indigo-400 border-indigo-200 text-indigo-950";
+              const off = "bg-white/10 border-white/25 text-white/70";
               return (
-                <button
+                <span
                   key={p}
-                  onClick={() => window.dispatchEvent(new CustomEvent("serpent-set-phase", { detail: isOn ? null : p }))}
-                  title={`Force phase: ${phaseLabel(p)}${isOn ? " (click to clear)" : ""}`}
+                  title={`${phaseLabel(p)}${isOn ? " — current phase (automatic)" : ""}`}
                   className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider border transition ${isOn ? styles : off}`}
                 >
                   {p === "planning" ? "Plan" : p === "action" ? "Act" : "Review"}
-                </button>
+                </span>
               );
             })}
           </div>
         )}
+
       </div>
 
       <div className="flex-1" />
