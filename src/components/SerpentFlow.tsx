@@ -89,13 +89,14 @@ function useTargetRect(selector: string | undefined): Rect | null {
   return rect;
 }
 
-function derivePhase(s: SerpentFlowDayState, active: FlowKind | null, manual: SerpentPhase | null): SerpentPhase {
-  if (manual) return manual;
+function derivePhase(s: SerpentFlowDayState, active: FlowKind | null, _manual: SerpentPhase | null): SerpentPhase {
+  // Phase is automatic: an open flow wins, otherwise the clock decides.
   if (active === "start") return "planning";
-  if (active === "evening" || s.eveningCompleted) return "review";
-  if (active === "midday" || s.startCompleted) return "action";
-  return "idle";
+  if (active === "midday") return "action";
+  if (active === "evening") return "review";
+  return autoPhase(s);
 }
+
 
 interface SerpentFlowProps {
   tasks?: Task[];
