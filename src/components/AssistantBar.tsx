@@ -4,7 +4,7 @@ import { Task, Project, Reminder, LifePlanProject, DailyScheduleSlot } from "@/l
 import AIChat from "./AIChat";
 import VoiceAssistant from "./VoiceAssistant";
 import SerpentFlow from "./SerpentFlow";
-import { useAssignmentNotifications } from "@/hooks/useAssignmentNotifications";
+import { useNotificationCenter } from "@/hooks/useNotificationCenter";
 import { useCloudState } from "@/hooks/useCloudState";
 import { CLOUD_KEYS } from "@/lib/cloudStore";
 import { Habit } from "@/lib/habits";
