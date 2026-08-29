@@ -8,7 +8,7 @@ import ConsistencyPrompt from "@/components/ConsistencyPrompt";
 import ScoreCard from "@/components/ScoreCard";
 import FinanceSummaryCard from "@/components/FinanceSummaryCard";
 import { CategoryBadgeFull } from "@/components/CategoryBadge";
-import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat, Sun, CalendarDays, AlertTriangle } from "lucide-react";
+import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat, Sun, CalendarDays, AlertTriangle, ChevronDown } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { applyRecurrenceReset, todayKey, weekKey, totalPride, prideThisWeek } from "@/lib/pride";
 
