@@ -250,11 +250,13 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
         }}
         activeFlow={active}
         activeSteps={active ? FLOWS[active].steps : null}
+        mandatory={!!required && required === active}
         stepIdx={stepIdx}
         stepSatisfied={stepSatisfied}
         onAdvance={next}
-        onCancel={() => { setActive(null); setStepIdx(0); }}
+        onCancel={() => { if (required && required === active) return; setActive(null); setStepIdx(0); }}
         onJumpToStep={(i) => setStepIdx(i)}
+
       />
 
       {/* Highlight ring + anchored tooltip */}
