@@ -16,6 +16,7 @@ import {
   Target,
   Plus,
   Trash2,
+  Lightbulb,
 } from "lucide-react";
 
 export interface FinanceAccount {
@@ -76,7 +77,7 @@ export const DEFAULT_FINANCE: FinanceState = {
 const eur = (n: number) =>
   `${n < 0 ? "-" : ""}€${Math.abs(n).toLocaleString("en-IE", { maximumFractionDigits: 0 })}`;
 
-type SectionKey = "health" | "spending" | "accounts" | "goals" | "quick";
+type SectionKey = "health" | "tips" | "spending" | "accounts" | "goals" | "quick";
 
 export default function FinanceSummaryCard() {
   const [finance, setFinance] = useCloudState<FinanceState>(CLOUD_KEYS.finance, DEFAULT_FINANCE);
@@ -84,6 +85,7 @@ export default function FinanceSummaryCard() {
   const [editing, setEditing] = useState(false);
   const [sections, setSections] = useState<Record<SectionKey, boolean>>({
     health: true,
+    tips: true,
     spending: false,
     accounts: false,
     goals: false,
@@ -97,7 +99,7 @@ export default function FinanceSummaryCard() {
 
   const toggleSection = (k: SectionKey) => setSections((s) => ({ ...s, [k]: !s[k] }));
 
-  const { netBalance, assets, debts, savings, savingsRate, runway, warnings } = useMemo(() => {
+  const { netBalance, assets, debts, savings, savingsRate, runway, warnings, tips } = useMemo(() => {
     const included = (data.accounts || []).filter((a) => a.included !== false);
     const assets = included.filter((a) => !a.isDebt).reduce((s, a) => s + (a.balance || 0), 0);
     const debts = included.filter((a) => a.isDebt).reduce((s, a) => s + (a.balance || 0), 0);
@@ -131,7 +133,52 @@ export default function FinanceSummaryCard() {
       if (g.target > 0 && g.saved <= 0)
         warnings.push({ id: `goal-${g.id}`, text: `${g.name} has no progress yet`, tone: "warn" });
     }
-    return { netBalance, assets, debts, savings, savingsRate, runway, warnings };
+    // ---- Top financial tips (prioritised advice from the Wealth Command Centre) ----
+    const cats = [...(data.spending || [])].sort((a, b) => (b.amount || 0) - (a.amount || 0));
+    const biggest = cats[0];
+    const housing = cats.find((c) => /housing|rent|mortgage/i.test(c.name));
+    const housingShare = income ? Math.round(((housing?.amount || 0) / income) * 100) : 0;
+    const tips: { id: string; text: string }[] = [];
+    if (debts < 0)
+      tips.push({
+        id: "t-debt",
+        text: `Clear the ${eur(Math.abs(debts))} debt first — set a fixed monthly payment before any discretionary spending.`,
+      });
+    if (runway < 3)
+      tips.push({
+        id: "t-buffer",
+        text: `Build a starter buffer of ${eur(Math.round(expenses))} (one month of expenses) before funding long-term goals.`,
+      });
+    if (housing && housingShare > 30)
+      tips.push({
+        id: "t-housing",
+        text: `Housing takes ${housingShare}% of income — the healthy ceiling is 30%. Renegotiate, share, or relocate to free up ${eur(Math.max(0, (housing.amount || 0) - income * 0.3))}/mo.`,
+      });
+    if (savingsRate < 20)
+      tips.push({
+        id: "t-rate",
+        text: `Automate a transfer on payday to lift the savings rate from ${savingsRate}% toward 20% — pay yourself before spending.`,
+      });
+    if (expenses > income)
+      tips.push({
+        id: "t-burn",
+        text: `You spend ${eur(expenses - income)} more than you earn each month — cut the two largest variable categories or add income to close the gap.`,
+      });
+    if (biggest && biggest !== housing)
+      tips.push({
+        id: "t-biggest",
+        text: `${biggest.name} is your largest controllable cost (${eur(biggest.amount || 0)}) — a 15% trim frees ${eur(Math.round((biggest.amount || 0) * 0.15))}/mo.`,
+      });
+    tips.push({
+      id: "t-track",
+      text: "Log every expense the same day with Quick Expense — tracked spending typically drops 5–10% on its own.",
+    });
+    tips.push({
+      id: "t-goals",
+      text: "Give each savings goal its own monthly amount and date so progress is measurable, not aspirational.",
+    });
+
+    return { netBalance, assets, debts, savings, savingsRate, runway, warnings, tips: tips.slice(0, 6) };
   }, [data]);
 
   const spendTotal = spending.reduce((s, c) => s + (c.amount || 0), 0);
@@ -268,6 +315,30 @@ export default function FinanceSummaryCard() {
               </ul>
             )}
           </Section>
+
+          {/* Top financial tips */}
+          <Section
+            open={sections.tips}
+            onToggle={() => toggleSection("tips")}
+            icon={<Lightbulb size={12} />}
+            title="Top financial tips"
+            badge={`${tips.length}`}
+            badgeTone="text-primary"
+          >
+            <ol className="space-y-1.5">
+              {tips.map((t, i) => (
+                <li
+                  key={t.id}
+                  className="flex items-start gap-2 rounded-md border border-border bg-secondary/40 px-2.5 py-1.5 text-xs text-foreground"
+                >
+                  <span className="font-mono text-[10px] text-primary mt-0.5 shrink-0">{i + 1}.</span>
+                  <span>{t.text}</span>
+                </li>
+              ))}
+            </ol>
+          </Section>
+
+
 
           {/* Spending breakdown */}
           <Section

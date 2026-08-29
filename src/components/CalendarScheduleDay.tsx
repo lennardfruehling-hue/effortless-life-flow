@@ -10,6 +10,8 @@ interface Props {
   tasks: Task[];
   onSaveSlots: (slots: DailyScheduleSlot[]) => void;
   onEditTask?: (task: Task) => void;
+  /** Docked side-by-side with the task list: hide the internal palette, drop tasks straight in. */
+  compact?: boolean;
 }
 
 /**
@@ -63,7 +65,7 @@ function snap(min: number): number {
 
 
 
-export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditTask }: Props) {
+export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditTask, compact = false }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ id: string; mode: "move" | "resize"; offsetMin: number; origStart: number; origEnd: number } | null>(null);
@@ -434,8 +436,9 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditT
         </div>
       </div>
 
-      <div className="grid grid-cols-[180px_1fr] gap-3">
+      <div className={compact ? "grid grid-cols-1 gap-3" : "grid grid-cols-[180px_1fr] gap-3"}>
         {/* Task palette — mirrors Serpent Daily List */}
+        {!compact && (
         <div className="border-r border-border pr-3">
           <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-2">
             Daily list · drag → schedule
@@ -476,6 +479,9 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditT
             ))}
           </div>
         </div>
+        )}
+
+
 
 
         {/* 24h grid (scrollable, opens at current time) */}
