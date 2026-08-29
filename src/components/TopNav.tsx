@@ -101,7 +101,7 @@ export default function TopNav({
           <div className="relative h-full mx-auto max-w-[1400px] px-3 sm:px-4 flex items-center justify-between gap-2 sm:gap-4">
             <div className="flex items-baseline gap-3 min-w-0 flex-shrink">
               <span
-                className="text-serpent-foreground leading-tight whitespace-nowrap text-[1.75rem] sm:text-[2.25rem]"
+                className="text-serpent-foreground leading-tight truncate text-[1.15rem] sm:text-[1.75rem]"
                 style={{ fontFamily: "'Great Vibes', 'Allura', cursive", textShadow: "0 2px 10px rgba(0,0,0,0.6)" }}
               >
                 Serpent List &amp; Organization Center
