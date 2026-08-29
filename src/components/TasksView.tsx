@@ -5,7 +5,7 @@ import TaskForm from "@/components/TaskForm";
 import CalendarScheduleDay from "@/components/CalendarScheduleDay";
 import SerpentDailyList from "@/components/SerpentDailyList";
 import { CategoryBadgeFull } from "@/components/CategoryBadge";
-import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat } from "lucide-react";
+import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat, Sun, CalendarDays } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { applyRecurrenceReset, todayKey, weekKey, totalPride, prideThisWeek } from "@/lib/pride";
 
