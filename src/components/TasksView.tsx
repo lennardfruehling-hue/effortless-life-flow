@@ -277,6 +277,24 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
           <p className="text-xs text-muted-foreground mt-1">{CATEGORY_META[filterCat].description}</p>
         </div>
       )}
+      {/* Overdue tasks — always first */}
+      {overdueTasks.length > 0 && (
+        <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle size={14} className="text-destructive" />
+            <h2 className="text-sm font-semibold text-destructive">Overdue</h2>
+            <span className="font-mono text-[10px] text-destructive/70">{overdueTasks.length}</span>
+          </div>
+          <div className="space-y-2">
+            <AnimatePresence mode="popLayout">
+              {overdueTasks.map((task) => (
+                <TaskCard key={task.id} task={task} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} onDelete={handleDelete} />
+              ))}
+            </AnimatePresence>
+          </div>
+        </div>
+      )}
+
       {/* Serpent prioritised daily list */}
       <SerpentDailyList tasks={tasks} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} />
 
