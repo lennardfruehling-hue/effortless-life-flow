@@ -183,10 +183,18 @@ export default function Index() {
         {view === "consistency" && <ConsistencyView tasks={visibleTasks} />}
         {view === "ai" && <AIChat tasks={visibleTasks} projects={allProjects} onSaveTasks={setVisibleTasks} onSaveProjects={setProjects} />}
       </main>
-      <AssistantBar tasks={visibleTasks} projects={allProjects} onSaveTasks={setVisibleTasks} onSaveProjects={setProjects} />
+      <AssistantBar
+        tasks={visibleTasks}
+        projects={allProjects}
+        onSaveTasks={setVisibleTasks}
+        onSaveProjects={setProjects}
+        reminders={reminders}
+        lifePlanProjects={lifePlanProjects}
+        dailySchedule={dailySchedule}
+      />
       <ReminderWatcher reminders={reminders} onUpdate={setReminders} />
       <WeeklyIntentionWatcher tasks={visibleTasks} />
-      <SerpentFlow tasks={visibleTasks} reminders={reminders} lifePlanProjects={lifePlanProjects} dailySchedule={dailySchedule} />
+
     </div>
   );
 }
