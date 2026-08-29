@@ -122,7 +122,7 @@ export default function StatusBar({ tasks, onOpenSettings }: { tasks: Task[]; on
 
   return (
     <div className="w-full border-b border-border bg-secondary/40">
-      <div className="mx-auto max-w-[1400px] px-3 sm:px-5 py-2 flex items-center gap-2 overflow-x-auto scrollbar-none">
+      <div className="mx-auto max-w-[1400px] px-3 sm:px-5 py-2 flex flex-wrap items-center gap-2 lg:flex-nowrap lg:overflow-x-auto lg:scrollbar-none">
         {/* Date + time */}
         <Cell title="Today">
           <span className="font-semibold">
