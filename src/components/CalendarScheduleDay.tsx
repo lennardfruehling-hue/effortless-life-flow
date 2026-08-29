@@ -65,7 +65,7 @@ function snap(min: number): number {
 
 
 
-export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditTask }: Props) {
+export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditTask, compact = false }: Props) {
   const gridRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ id: string; mode: "move" | "resize"; offsetMin: number; origStart: number; origEnd: number } | null>(null);
