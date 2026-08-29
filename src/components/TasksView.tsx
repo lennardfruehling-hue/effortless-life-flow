@@ -3,6 +3,8 @@ import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project, DailyScheduleSl
 import TaskCard from "@/components/TaskCard";
 import TaskForm from "@/components/TaskForm";
 import CalendarScheduleDay from "@/components/CalendarScheduleDay";
+import GameConsole from "@/components/GameConsole";
+
 import SerpentDailyList from "@/components/SerpentDailyList";
 import ConsistencyPrompt from "@/components/ConsistencyPrompt";
 import ScoreCard from "@/components/ScoreCard";
