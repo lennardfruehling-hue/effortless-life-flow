@@ -67,6 +67,18 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
     return sortTasks(list);
   }, [tasks, filterCat, showCompleted, filterProjectId]);
 
+  // Split the non-recurring list into "Today" and "Upcoming / backlog".
+  const { todayTasks, laterTasks } = useMemo(() => {
+    const today = todayKey();
+    const isToday = (t: Task) =>
+      (t.dueDate && t.dueDate <= today) || t.categories.includes("A1");
+    return {
+      todayTasks: filteredTasks.filter(isToday),
+      laterTasks: filteredTasks.filter((t) => !isToday(t)),
+    };
+  }, [filteredTasks]);
+
+
   const handleSubmit = (task: Task) => {
     const existing = tasks.findIndex((t) => t.id === task.id);
     const updated = existing >= 0
