@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Bot, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass, Lightbulb, Trophy, AlertTriangle } from "lucide-react";
 import { Task, Project, Reminder, LifePlanProject, DailyScheduleSlot } from "@/lib/types";
 import AIChat from "./AIChat";
