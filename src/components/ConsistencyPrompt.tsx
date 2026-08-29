@@ -8,9 +8,12 @@ import {
   isHabitCompleteOn,
   requiredCount,
 } from "@/lib/habits";
-import { Flame, Check, X, AlertTriangle } from "lucide-react";
+import { Flame, Check, X, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
 
 const SKIP_KEY = "serpent-consistency-skips-v1";
+/** Hour of day after which unanswered consistency tasks start flashing. */
+const FLASH_AFTER_HOUR = 21;
+
 
 function loadSkips(): Record<string, string[]> {
   try {
@@ -28,6 +31,8 @@ export default function ConsistencyPrompt() {
   const [habits, setHabits, loaded] = useCloudState<Habit[]>(CLOUD_KEYS.habits, []);
   const today = todayISO();
   const [skips, setSkips] = useState<Record<string, string[]>>(loadSkips);
+  const [open, setOpen] = useState(false);
+
 
   useEffect(() => {
     try { localStorage.setItem(SKIP_KEY, JSON.stringify(skips)); } catch { /* ignore */ }
@@ -60,38 +65,48 @@ export default function ConsistencyPrompt() {
 
   const allAnswered = pending.length === 0;
   const doneCount = due.filter((h) => isHabitCompleteOn(h, today)).length;
+  const flashing = !allAnswered && new Date().getHours() >= FLASH_AFTER_HOUR;
 
   return (
     <div
-      className={`mb-4 rounded-xl border p-3 transition-colors ${
+      className={`mb-4 rounded-xl border transition-colors ${
         allAnswered
           ? "border-emerald-500/30 bg-emerald-500/5"
-          : "border-destructive/50 bg-destructive/10 animate-pulse"
+          : flashing
+          ? "border-destructive/50 bg-destructive/10 animate-pulse"
+          : "border-border bg-card"
       }`}
     >
-      <div className="flex items-center gap-2 mb-2">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-2 px-3 py-2.5 text-left"
+      >
+        {open ? <ChevronDown size={14} className="text-muted-foreground" /> : <ChevronRight size={14} className="text-muted-foreground" />}
         {allAnswered ? (
           <Flame size={14} className="text-emerald-600" />
         ) : (
-          <AlertTriangle size={14} className="text-destructive" />
+          <AlertTriangle size={14} className={flashing ? "text-destructive" : "text-muted-foreground"} />
         )}
         <h2
           className={`text-sm font-semibold ${
-            allAnswered ? "text-emerald-700" : "text-destructive"
+            allAnswered ? "text-emerald-700" : flashing ? "text-destructive" : "text-foreground"
           }`}
         >
           {allAnswered ? "Consistency logged for today" : "Log your consistency tasks"}
         </h2>
-        <span className="font-mono text-[10px] text-muted-foreground">
+        <span className="font-mono text-[10px] text-muted-foreground ml-auto">
           {doneCount}/{due.length}
         </span>
-      </div>
+      </button>
 
+      {open && (
+      <div className="px-3 pb-3">
       {allAnswered ? (
         <p className="text-xs text-muted-foreground">
           All {due.length} consistency task{due.length === 1 ? "" : "s"} answered. Keep the streak alive.
         </p>
       ) : (
+
         <div className="space-y-1.5">
           {pending.map((h) => {
             const done = h.log[today]?.length ?? 0;
@@ -127,6 +142,9 @@ export default function ConsistencyPrompt() {
           })}
         </div>
       )}
+      </div>
+      )}
     </div>
   );
 }
+

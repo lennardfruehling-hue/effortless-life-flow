@@ -1,11 +1,15 @@
-import { useState } from "react";
-import { Bot, Mic, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Bot, Mic, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass, Lightbulb } from "lucide-react";
 import { Task, Project, Reminder, LifePlanProject, DailyScheduleSlot } from "@/lib/types";
 import AIChat from "./AIChat";
 import VoiceAssistant from "./VoiceAssistant";
 import VoiceTaskDialog from "./VoiceTaskDialog";
 import SerpentFlow from "./SerpentFlow";
 import { useAssignmentNotifications } from "@/hooks/useAssignmentNotifications";
+import { useCloudState } from "@/hooks/useCloudState";
+import { CLOUD_KEYS } from "@/lib/cloudStore";
+import { Habit } from "@/lib/habits";
+import { buildOrgTips } from "@/lib/orgTips";
 
 interface Props {
   tasks: Task[];
@@ -17,12 +21,14 @@ interface Props {
   dailySchedule?: DailyScheduleSlot[];
 }
 
-type Panel = "flow" | "voice" | "chat" | "notifications" | null;
+type Panel = "flow" | "voice" | "chat" | "tips" | "notifications" | null;
 
 export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProjects, reminders = [], lifePlanProjects = [], dailySchedule = [] }: Props) {
   const [panel, setPanel] = useState<Panel>(null);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const { notifications, dismiss, dismissAll } = useAssignmentNotifications(tasks);
+  const [habits] = useCloudState<Habit[]>(CLOUD_KEYS.habits, []);
+  const tips = useMemo(() => buildOrgTips(tasks, habits || []), [tasks, habits]);
 
   const handleVoiceSave = (task: Task) => {
     onSaveTasks((prev) => [task, ...prev]);
@@ -64,6 +70,35 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
             )}
             {panel === "chat" && (
               <AIChat tasks={tasks} projects={projects} onSaveTasks={onSaveTasks} onSaveProjects={onSaveProjects} />
+            )}
+            {panel === "tips" && (
+              <div className="h-full flex flex-col">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
+                  <span className="text-sm font-semibold text-foreground">Organization tips</span>
+                  <span className="text-xs text-muted-foreground">Based on how you've been using the system</span>
+                </div>
+                <div className="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-2">
+                  {tips.map((t) => (
+                    <div
+                      key={t.id}
+                      className={`rounded-lg border px-3 py-2.5 ${
+                        t.severity === "warn"
+                          ? "border-amber-500/40 bg-amber-500/5"
+                          : t.severity === "good"
+                          ? "border-emerald-500/30 bg-emerald-500/5"
+                          : "border-border bg-background"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Lightbulb size={14} className={t.severity === "warn" ? "text-amber-600" : t.severity === "good" ? "text-emerald-600" : "text-primary"} />
+                        <p className="text-sm font-medium text-foreground">{t.title}</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{t.detail}</p>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground/70 mt-1.5">{t.principle}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
             {panel === "notifications" && (
               <div className="h-full flex flex-col">
@@ -108,6 +143,7 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
           {tabBtn("flow", Compass, "Flow")}
           {tabBtn("voice", AudioLines, "Voice")}
           {tabBtn("chat", MessageSquare, "Chat")}
+          {tabBtn("tips", Lightbulb, "Tips")}
 
 
           <button
