@@ -290,6 +290,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
         </div>
       )}
       {/* Daily consistency check-in */}
+      <ScoreCard tasks={tasks} />
       <ConsistencyPrompt />
 
       {/* Overdue tasks — always first */}
