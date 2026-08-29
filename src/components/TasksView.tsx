@@ -4,6 +4,7 @@ import TaskCard from "@/components/TaskCard";
 import TaskForm from "@/components/TaskForm";
 import CalendarScheduleDay from "@/components/CalendarScheduleDay";
 import SerpentDailyList from "@/components/SerpentDailyList";
+import FinanceSummaryCard from "@/components/FinanceSummaryCard";
 import { CategoryBadgeFull } from "@/components/CategoryBadge";
 import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat, Sun, CalendarDays } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
@@ -213,6 +214,9 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
           </button>
         </div>
       </div>
+
+      {/* Wealth Command Centre summary */}
+      <FinanceSummaryCard />
 
       {/* Project filter banner */}
       {filterProject && (
