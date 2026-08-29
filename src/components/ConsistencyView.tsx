@@ -54,14 +54,55 @@ export default function ConsistencyView({ tasks }: Props) {
       {/* Goal hero — Ionian map */}
       <div className="relative rounded-xl overflow-hidden border border-border bg-gradient-to-br from-primary/10 via-card to-cat-h/5 p-6 mb-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground font-mono">Goal · 1 year</p>
-            <h3 className="text-xl font-semibold text-foreground mt-1">{IONIAN_GOAL.title}</h3>
-            <p className="text-sm text-muted-foreground mt-1">Every consistent day brings the boat closer.</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs uppercase tracking-widest text-muted-foreground font-mono">
+              Goal · {goal.weeks} weeks
+            </p>
+            {editGoal ? (
+              <div className="space-y-2 mt-1">
+                <input
+                  value={goal.title}
+                  onChange={(e) => setGoal((g) => ({ ...g, title: e.target.value }))}
+                  placeholder="Goal title"
+                  className="w-full rounded-md border border-border bg-background px-2 py-1 text-lg font-semibold outline-none focus:border-primary"
+                />
+                <input
+                  value={goal.subtitle}
+                  onChange={(e) => setGoal((g) => ({ ...g, subtitle: e.target.value }))}
+                  placeholder="Why it matters"
+                  className="w-full rounded-md border border-border bg-background px-2 py-1 text-sm outline-none focus:border-primary"
+                />
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-muted-foreground">Weeks</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={520}
+                    value={goal.weeks}
+                    onChange={(e) => setGoal((g) => ({ ...g, weeks: Number(e.target.value) || 1 }))}
+                    className="w-24 rounded-md border border-border bg-background px-2 py-1 text-sm outline-none focus:border-primary"
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                <h3 className="text-xl font-semibold text-foreground mt-1">{goal.title}</h3>
+                <p className="text-sm text-muted-foreground mt-1">{goal.subtitle}</p>
+              </>
+            )}
           </div>
-          <div className="text-right">
-            <div className="text-3xl font-bold text-primary font-mono">{Math.round(progress * 100)}%</div>
-            <div className="text-[11px] text-muted-foreground">to launch day</div>
+          <div className="text-right flex items-start gap-2">
+            <div>
+              <div className="text-3xl font-bold text-primary font-mono">{Math.round(progress * 100)}%</div>
+              <div className="text-[11px] text-muted-foreground">to launch day</div>
+            </div>
+            <button
+              onClick={() => setEditGoal((v) => !v)}
+              className="p-1.5 rounded hover:bg-muted text-muted-foreground"
+              aria-label={editGoal ? "Save goal" : "Edit goal"}
+            >
+              {editGoal ? <Check size={15} /> : <Pencil size={15} />}
+            </button>
           </div>
         </div>
 
