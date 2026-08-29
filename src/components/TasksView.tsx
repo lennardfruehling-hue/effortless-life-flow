@@ -6,7 +6,7 @@ import CalendarScheduleDay from "@/components/CalendarScheduleDay";
 import SerpentDailyList from "@/components/SerpentDailyList";
 import FinanceSummaryCard from "@/components/FinanceSummaryCard";
 import { CategoryBadgeFull } from "@/components/CategoryBadge";
-import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat, Sun, CalendarDays } from "lucide-react";
+import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat, Sun, CalendarDays, AlertTriangle } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { applyRecurrenceReset, todayKey, weekKey, totalPride, prideThisWeek } from "@/lib/pride";
 
@@ -126,14 +126,16 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
     return sortTasks(list);
   }, [tasks, filterCat, showCompleted, filterProjectId]);
 
-  // Split the non-recurring list into "Today" and "Upcoming / backlog".
-  const { todayTasks, laterTasks } = useMemo(() => {
+  // Split the non-recurring list into "Overdue", "Today" and "Upcoming / backlog".
+  const { overdueTasks, todayTasks, laterTasks } = useMemo(() => {
     const today = todayKey();
+    const isOverdue = (t: Task) => !t.completed && !!t.dueDate && t.dueDate < today;
     const isToday = (t: Task) =>
       (t.dueDate && t.dueDate <= today) || t.categories.includes("A1");
     return {
-      todayTasks: filteredTasks.filter(isToday),
-      laterTasks: filteredTasks.filter((t) => !isToday(t)),
+      overdueTasks: filteredTasks.filter(isOverdue),
+      todayTasks: filteredTasks.filter((t) => !isOverdue(t) && isToday(t)),
+      laterTasks: filteredTasks.filter((t) => !isOverdue(t) && !isToday(t)),
     };
   }, [filteredTasks]);
 
@@ -275,6 +277,24 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
           <p className="text-xs text-muted-foreground mt-1">{CATEGORY_META[filterCat].description}</p>
         </div>
       )}
+      {/* Overdue tasks — always first */}
+      {overdueTasks.length > 0 && (
+        <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle size={14} className="text-destructive" />
+            <h2 className="text-sm font-semibold text-destructive">Overdue</h2>
+            <span className="font-mono text-[10px] text-destructive/70">{overdueTasks.length}</span>
+          </div>
+          <div className="space-y-2">
+            <AnimatePresence mode="popLayout">
+              {overdueTasks.map((task) => (
+                <TaskCard key={task.id} task={task} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} onDelete={handleDelete} />
+              ))}
+            </AnimatePresence>
+          </div>
+        </div>
+      )}
+
       {/* Serpent prioritised daily list */}
       <SerpentDailyList tasks={tasks} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} />
 
