@@ -31,6 +31,8 @@ export default function ConsistencyPrompt() {
   const [habits, setHabits, loaded] = useCloudState<Habit[]>(CLOUD_KEYS.habits, []);
   const today = todayISO();
   const [skips, setSkips] = useState<Record<string, string[]>>(loadSkips);
+  const [open, setOpen] = useState(false);
+
 
   useEffect(() => {
     try { localStorage.setItem(SKIP_KEY, JSON.stringify(skips)); } catch { /* ignore */ }
