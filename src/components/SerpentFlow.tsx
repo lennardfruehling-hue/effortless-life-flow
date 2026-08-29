@@ -233,7 +233,9 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
       <FlowTrioDock
         trio={TRIO}
         flow={state}
+        embedded={embedded}
         tasks={tasks}
+
         reminders={reminders}
         lifePlanProjects={lifePlanProjects}
         dailySchedule={dailySchedule}
