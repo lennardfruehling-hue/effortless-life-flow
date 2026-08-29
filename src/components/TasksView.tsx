@@ -424,7 +424,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
 
         {/* Docked daily calendar — drop tasks here to time-box them */}
         {showSchedule && (
-          <aside className="min-w-0 xl:sticky xl:top-4">
+          <aside className="min-w-0 lg:sticky lg:top-4">
             <CalendarScheduleDay
               compact
               slots={dailySchedule}
