@@ -159,7 +159,30 @@ export default function StatusBar({ tasks, onOpenSettings }: { tasks: Task[]; on
   return (
     <div className="w-full border-b border-border bg-secondary/40">
       <div className="mx-auto max-w-[1400px] px-3 sm:px-5 py-2 flex flex-wrap items-center gap-2 lg:flex-nowrap lg:overflow-x-auto lg:scrollbar-none">
+        {/* Serpent phase — automatic */}
+        <Cell
+          title="Serpent phase"
+          details={
+            <>
+              <div className="text-foreground font-medium">{phaseLabel(phase)}</div>
+              <div>Set automatically from the clock and your flow progress.</div>
+              <div>
+                Start {flow.startCompleted ? "✓" : "—"} · Midday {flow.middayCompleted ? "✓" : "—"} · Evening{" "}
+                {flow.eveningCompleted ? "✓" : "—"}
+              </div>
+              <div>The daily flow is mandatory; each step must be completed.</div>
+            </>
+          }
+          action={{ label: "Open flow", onClick: () => window.dispatchEvent(new CustomEvent("serpent-open-flow")) }}
+        >
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${phaseChip}`}>
+            {phase === "planning" ? "Plan" : phase === "action" ? "Act" : "Review"}
+          </span>
+          <span className="text-muted-foreground">phase</span>
+        </Cell>
+
         {/* Date + time */}
+
         <Cell
           title="Today"
           details={
