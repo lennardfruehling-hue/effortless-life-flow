@@ -140,7 +140,12 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
             {panel === "notifications" && (
               <div className="h-full flex flex-col">
                 <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-                  <span className="text-sm font-semibold text-foreground">Notifications</span>
+                  <span className="text-sm font-semibold text-foreground">
+                    Notifications
+                    {overdueCount > 0 && (
+                      <span className="ml-2 text-xs font-medium text-destructive">{overdueCount} overdue</span>
+                    )}
+                  </span>
                   {notifications.length > 0 && (
                     <button onClick={dismissAll} className="text-xs text-muted-foreground hover:text-foreground">
                       Clear all
@@ -152,13 +157,30 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
                     <p className="text-sm text-muted-foreground text-center py-10">Nothing new. You're all caught up.</p>
                   ) : (
                     notifications.map((n) => (
-                      <div key={n.id} className="flex items-start gap-3 rounded-lg border border-border bg-background px-3 py-2.5">
-                        <span className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${n.kind === "task" ? "bg-primary" : "bg-cat-e"}`} />
+                      <div
+                        key={n.id}
+                        className={`flex items-start gap-3 rounded-lg border px-3 py-2.5 ${
+                          n.severity === "overdue"
+                            ? "border-destructive/40 bg-destructive/5"
+                            : n.severity === "warn"
+                            ? "border-amber-500/40 bg-amber-500/5"
+                            : "border-border bg-background"
+                        }`}
+                      >
+                        {n.severity === "info" ? (
+                          <span className="mt-1 w-2 h-2 rounded-full flex-shrink-0 bg-primary" />
+                        ) : (
+                          <AlertTriangle
+                            size={14}
+                            className={`mt-0.5 flex-shrink-0 ${n.severity === "overdue" ? "text-destructive" : "text-amber-600"}`}
+                          />
+                        )}
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-foreground truncate">{n.label}</p>
                           {n.detail && <p className="text-xs text-muted-foreground truncate">{n.detail}</p>}
+                          <p className="text-[10px] uppercase tracking-wide text-muted-foreground/70 mt-0.5">{n.kind}</p>
                         </div>
-                        <button onClick={() => dismiss(n.id)} className="text-muted-foreground hover:text-foreground p-1">
+                        <button onClick={() => dismiss(n.id)} className="text-muted-foreground hover:text-foreground p-1" title="Dismiss">
                           <X size={14} />
                         </button>
                       </div>
@@ -167,6 +189,7 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
                 </div>
               </div>
             )}
+
           </div>
         </div>
 
