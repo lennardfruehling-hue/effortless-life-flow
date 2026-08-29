@@ -26,6 +26,7 @@ function Section({
   subtitle,
   count,
   empty,
+  showEmpty,
   children,
 }: {
   icon: React.ReactNode;
@@ -33,9 +34,9 @@ function Section({
   subtitle?: string;
   count?: string;
   empty?: string;
+  showEmpty?: boolean;
   children: React.ReactNode;
 }) {
-  const isEmpty = Array.isArray(children) ? children.flat().filter(Boolean).length === 0 : !children;
   return (
     <section>
       <div className="flex items-baseline gap-2 mb-2.5 pb-1.5 border-b border-border">
@@ -47,7 +48,7 @@ function Section({
         {subtitle && <span className="ml-auto text-[11px] text-muted-foreground">{subtitle}</span>}
       </div>
       <div className="space-y-2">
-        {isEmpty && empty ? <p className="text-xs text-muted-foreground py-3">{empty}</p> : children}
+        {showEmpty && empty ? <p className="text-xs text-muted-foreground py-3">{empty}</p> : children}
       </div>
     </section>
   );
@@ -262,6 +263,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
           title="Today"
           count={`${todayTasks.filter((t) => t.completed).length}/${todayTasks.length}`}
           empty="Nothing scheduled for today."
+          showEmpty={todayTasks.length === 0}
         >
           <AnimatePresence mode="popLayout">
             {todayTasks.map((task) => (
