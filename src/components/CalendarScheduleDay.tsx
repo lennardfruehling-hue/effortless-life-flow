@@ -413,17 +413,17 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditT
   };
 
   return (
-    <div className="bg-card border border-border rounded-lg p-4" data-tour="schedule-panel">
+    <div className={`bg-card border border-border rounded-lg ${compact ? "p-2 md:p-4" : "p-4"}`} data-tour="schedule-panel">
       <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-        <h3 className="text-sm font-semibold text-foreground">Daily Calendar (24h)</h3>
-        <div className="flex items-center gap-2">
+        <h3 className="text-xs md:text-sm font-semibold text-foreground">Daily Calendar <span className="hidden md:inline">(24h)</span></h3>
+        <div className="flex items-center gap-1 md:gap-2">
           <button
             data-tour="print-schedule"
             onClick={() => { handlePrintSchedule(); window.dispatchEvent(new CustomEvent("serpent-progress", { detail: "schedule-printed" })); }}
             className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded border border-border hover:border-primary/30 hover:text-primary text-muted-foreground transition-colors"
             title="Open a printable view of today's schedule"
           >
-            <Printer size={12} /> Print schedule
+            <Printer size={12} /> <span className={compact ? "hidden lg:inline" : ""}>Print schedule</span>
           </button>
           <button
             data-tour="email-schedule"
@@ -431,7 +431,7 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditT
             className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded border border-border hover:border-primary/30 hover:text-primary text-muted-foreground transition-colors"
             title="Email today's schedule"
           >
-            <Mail size={12} /> Email schedule
+            <Mail size={12} /> <span className={compact ? "hidden lg:inline" : ""}>Email schedule</span>
           </button>
         </div>
       </div>
@@ -488,7 +488,7 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditT
         <div className="relative">
           <div
             ref={scrollRef}
-            className="relative max-h-[600px] overflow-y-auto scrollbar-thin rounded border border-border bg-secondary/20"
+            className="relative max-h-[600px] overflow-y-auto scrollbar-thin rounded border border-border bg-secondary/20 min-w-0"
           >
           <div
             ref={gridRef}
@@ -528,7 +528,7 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditT
                 <div
                   key={s.id}
                   onMouseDown={(e) => onBlockMouseDown(e, s, "move")}
-                  className={`absolute left-12 right-2 rounded border bg-primary/15 border-primary/40 hover:border-primary px-2 py-1 cursor-move overflow-hidden group ${
+                   className={`absolute left-9 md:left-12 right-1 md:right-2 rounded border bg-primary/15 border-primary/40 hover:border-primary px-1 md:px-2 py-1 cursor-move overflow-hidden group ${
                     overdue ? "ring-1 ring-destructive border-destructive/60" : ""
                   }`}
                   style={{ top, height }}
@@ -543,7 +543,7 @@ export default function CalendarScheduleDay({ slots, tasks, onSaveSlots, onEditT
                       <Trash2 size={11} />
                     </button>
                   </div>
-                  <div className="text-xs text-foreground truncate">
+                  <div className="text-[10px] md:text-xs text-foreground truncate">
                     {task?.title || s.label || "(untitled)"}
                   </div>
                   {cats.length > 0 && height > 50 && (
