@@ -241,8 +241,8 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
         </div>
       )}
 
-      <div className={showSchedule ? "grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_440px] gap-4 items-start" : ""}>
-        <div className={showSchedule ? "min-w-0 order-2 lg:order-1" : "min-w-0"}>
+      <div className={showSchedule ? "grid grid-cols-[minmax(0,1.15fr)_minmax(190px,0.85fr)] md:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_440px] gap-2 md:gap-4 items-start" : ""}>
+        <div className="min-w-0">
 
       {/* Filter bar */}
       <div className="flex items-center gap-2 mb-4 overflow-x-auto pb-2 scrollbar-thin">
@@ -424,7 +424,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
 
         {/* Docked daily calendar — drop tasks here to time-box them */}
         {showSchedule && (
-          <aside className="min-w-0 order-1 lg:order-2 lg:sticky lg:top-4">
+          <aside className="min-w-0 sticky top-4">
             <CalendarScheduleDay
               compact
               slots={dailySchedule}
