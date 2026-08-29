@@ -3,6 +3,8 @@ import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project, DailyScheduleSl
 import TaskCard from "@/components/TaskCard";
 import TaskForm from "@/components/TaskForm";
 import CalendarScheduleDay from "@/components/CalendarScheduleDay";
+import GameConsole from "@/components/GameConsole";
+
 import SerpentDailyList from "@/components/SerpentDailyList";
 import ConsistencyPrompt from "@/components/ConsistencyPrompt";
 import ScoreCard from "@/components/ScoreCard";
@@ -86,8 +88,9 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
       const raw = localStorage.getItem("serpent-tasks-schedule-dock");
       if (raw !== null) return raw === "1";
     } catch { /* ignore */ }
-    return typeof window !== "undefined" && window.innerWidth >= 1024;
+    return true;
   });
+
 
   useEffect(() => {
     try { localStorage.setItem("serpent-tasks-schedule-dock", showSchedule ? "1" : "0"); } catch { /* ignore */ }
@@ -438,7 +441,8 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
 
         {/* Docked daily calendar — drop tasks here to time-box them */}
         {showSchedule && (
-          <aside className="min-w-0 sticky top-4">
+          <aside className="min-w-0 sticky top-4 space-y-2">
+            <GameConsole />
             <CalendarScheduleDay
               compact
               slots={dailySchedule}
@@ -448,6 +452,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
             />
           </aside>
         )}
+
       </div>
 
 
