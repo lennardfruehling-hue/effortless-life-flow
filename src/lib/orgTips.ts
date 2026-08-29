@@ -1,5 +1,7 @@
 import { Task } from "@/lib/types";
 import { Habit, todayISO, isHabitDue, isHabitCompleteOn, daysBetween } from "@/lib/habits";
+import { upcomingDeadlines, weeklyScore } from "@/lib/scoring";
+
 
 export interface OrgTip {
   id: string;
