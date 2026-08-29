@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import { Task } from "@/lib/types";
 import { loadNotificationSettings, onNotificationSettingsChange, NotificationSettings } from "@/lib/notificationSettings";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { weekKey } from "@/lib/pride";
 
 /**
@@ -58,11 +57,8 @@ export default function WeeklyIntentionWatcher({ tasks }: { tasks: Task[] }) {
       const pending = weekly.filter((t) => sent[t.id] !== wk);
       if (pending.length === 0) return;
 
-      // In-app warning
-      toast.warning(
-        `⚠ ${pending.length} weekly intention${pending.length === 1 ? "" : "s"} not done yet`,
-        { description: pending.slice(0, 3).map((t) => `• ${t.title}`).join("\n"), duration: 10000 }
-      );
+      // In-app: no transient toast — the item is stacked in the Notifications
+      // center (useNotificationCenter) and clears itself when resolved.
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification("⚠ Weekly intentions pending", {
           body: pending.map((t) => t.title).join(", "),
