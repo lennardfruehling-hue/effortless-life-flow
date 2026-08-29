@@ -548,10 +548,11 @@ function FlowTrioDock({
       ? `${notifCount} new`
       : `Flow ${doneCount}/3`;
     const pillIcon = alarmActive
-      ? <Bell size={14} className="text-red-200" />
+      ? <Bell size={14} className="text-red-600" />
       : hasNotifs
-      ? <UserPlus size={14} className="text-indigo-200" />
+      ? <UserPlus size={14} className="text-blue-600" />
       : <span>🐍</span>;
+
     return (
       <button
         onClick={() => setCollapsed(false)}
