@@ -86,8 +86,9 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
       const raw = localStorage.getItem("serpent-tasks-schedule-dock");
       if (raw !== null) return raw === "1";
     } catch { /* ignore */ }
-    return typeof window !== "undefined" && window.innerWidth >= 1024;
+    return true;
   });
+
 
   useEffect(() => {
     try { localStorage.setItem("serpent-tasks-schedule-dock", showSchedule ? "1" : "0"); } catch { /* ignore */ }
