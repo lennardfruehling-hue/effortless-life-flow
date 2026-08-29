@@ -24,6 +24,45 @@ export function buildOrgTips(tasks: Task[], habits: Habit[]): OrgTip[] {
   const open = (tasks || []).filter((t) => !t.completed);
   const done = (tasks || []).filter((t) => t.completed);
 
+  // 0a. Dates are commitments — upcoming deadlines
+  const upcoming = upcomingDeadlines(tasks, 3);
+  if (upcoming.length > 0) {
+    const next = upcoming[0];
+    const inDays = daysBetween(today, next.dueDate!);
+    tips.push({
+      id: "deadline-soon",
+      title:
+        inDays <= 0
+          ? `"${next.title}" is due today`
+          : `${upcoming.length} date${upcoming.length > 1 ? "s" : ""} due within 3 days`,
+      detail: `Next up: "${next.title}" on ${next.dueDate}. A date on the list is a commitment — block the time now, don't renegotiate it.`,
+      principle: "Intention is what happens no matter what",
+      severity: inDays <= 1 ? "warn" : "info",
+    });
+  }
+
+  // 0b. Broken commitments cost pride points
+  const week = weeklyScore(tasks);
+  if (week.penalty > 0) {
+    tips.push({
+      id: "penalty",
+      title: `−${week.penalty} pride points lost this week`,
+      detail: `${week.failed} item${week.failed > 1 ? "s" : ""} on your list went unfinished past their date. Once it's on the list it's non-negotiable: clear them today to stop the bleed and stay on track for the reward.`,
+      principle: "Once it's on the list it's non-negotiable",
+      severity: "warn",
+    });
+  } else if (week.target > 0 && week.progress >= 1) {
+    tips.push({
+      id: "target-met",
+      title: "Weekly target met",
+      detail: `${week.net}/${week.target} points with nothing broken. This week counts towards the reward.`,
+      principle: "Intention is what happens no matter what",
+      severity: "good",
+    });
+  }
+
+
+
   // 1. Too many A1s open at once
   const a1 = open.filter((t) => cats(t).includes("A1"));
   if (a1.length > 3) {
