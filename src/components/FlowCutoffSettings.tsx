@@ -1,15 +1,39 @@
 import { useState } from "react";
-import { X, Clock } from "lucide-react";
+import { X, Clock, MapPin } from "lucide-react";
+import { loadLocation, saveLocation, geocode, DashboardLocation } from "@/lib/dashboardSettings";
 import { FlowCutoffs, loadCutoffs, saveCutoffs, DEFAULT_CUTOFFS, loadPhaseToggleVisible, savePhaseToggleVisible } from "@/lib/flowSettings";
 
 export default function FlowCutoffSettings({ onClose }: { onClose: () => void }) {
   const [cutoffs, setCutoffs] = useState<FlowCutoffs>(() => loadCutoffs());
   const [showPhaseToggle, setShowPhaseToggle] = useState<boolean>(() => loadPhaseToggleVisible());
+  const [location, setLocation] = useState<DashboardLocation>(() => loadLocation());
+  const [locQuery, setLocQuery] = useState<string>(() => loadLocation().name);
+  const [locStatus, setLocStatus] = useState<string>("");
+
+  const applyLocation = async () => {
+    const q = locQuery.trim();
+    if (!q || q === location.name) return true;
+    setLocStatus("Searching…");
+    try {
+      const hit = await geocode(q);
+      if (!hit) { setLocStatus("Place not found"); return false; }
+      setLocation(hit);
+      setLocQuery(hit.name);
+      setLocStatus(`Set to ${hit.name}`);
+      return true;
+    } catch {
+      setLocStatus("Lookup failed");
+      return false;
+    }
+  };
 
   const update = (k: keyof FlowCutoffs, v: string) =>
     setCutoffs((prev) => ({ ...prev, [k]: v }));
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    const ok = await applyLocation();
+    if (!ok) return;
+    saveLocation(locQuery.trim() === location.name ? location : { ...location, name: locQuery.trim() || location.name });
     saveCutoffs(cutoffs);
     savePhaseToggleVisible(showPhaseToggle);
     onClose();
@@ -51,6 +75,27 @@ export default function FlowCutoffSettings({ onClose }: { onClose: () => void })
             <p className="text-[10px] text-muted-foreground mt-1">{row.hint}</p>
           </div>
         ))}
+
+        <div className="pt-2">
+          <label className="text-sm text-foreground mb-1 flex items-center gap-1.5">
+            <MapPin size={14} /> Dashboard location (weather)
+          </label>
+          <div className="flex gap-2">
+            <input
+              value={locQuery}
+              onChange={(e) => setLocQuery(e.target.value)}
+              placeholder="City, e.g. Dublin"
+              className="flex-1 bg-secondary border border-border rounded px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+            <button
+              onClick={applyLocation}
+              className="px-3 py-2 text-xs rounded border border-border text-muted-foreground hover:text-foreground"
+            >
+              Look up
+            </button>
+          </div>
+          <p className="text-[10px] text-muted-foreground mt-1">{locStatus || `Currently ${location.name}`}</p>
+        </div>
 
         <label className="flex items-start gap-3 pt-2 cursor-pointer select-none">
           <input
