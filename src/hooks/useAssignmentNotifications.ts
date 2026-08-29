@@ -67,7 +67,8 @@ export function useAssignmentNotifications(tasks: Task[]) {
     load();
 
     const channel = supabase
-      .channel("assign-notes")
+      .channel(`assign-notes-${Math.random().toString(36).slice(2)}`)
+
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "research_notes" },
