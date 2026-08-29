@@ -284,16 +284,17 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="fixed z-50 max-w-[240px] bg-sidebar/95 border border-amber-300/40 rounded-md shadow-xl px-3 py-2 pointer-events-none"
+                className="fixed z-50 max-w-[240px] bg-card border border-border rounded-md shadow-xl px-3 py-2 pointer-events-none"
                 style={{ top: popover.top, left: popover.left }}
               >
-                <div className="text-[10px] uppercase tracking-wider text-amber-200 font-mono mb-0.5">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-0.5">
                   Step {stepIdx + 1} · {FLOWS[active].label}
                 </div>
-                <div className="text-xs font-semibold text-white">{currentStep.title}</div>
+                <div className="text-xs font-semibold text-foreground">{currentStep.title}</div>
                 {!stepSatisfied && currentStep.hint && (
-                  <div className="text-[10px] text-amber-200 mt-1 italic">⏳ {currentStep.hint}</div>
+                  <div className="text-[10px] text-amber-700 mt-1 italic">⏳ {currentStep.hint}</div>
                 )}
+
               </motion.div>
             )}
           </>
