@@ -363,6 +363,7 @@ function FlowTrioDock({
   onReset,
   activeFlow,
   activeSteps,
+  mandatory = false,
   stepIdx,
   stepSatisfied,
   onAdvance,
@@ -380,12 +381,14 @@ function FlowTrioDock({
   onReset: () => void;
   activeFlow: FlowKind | null;
   activeSteps: Step[] | null;
+  mandatory?: boolean;
   stepIdx: number;
   stepSatisfied: boolean;
   onAdvance: () => void;
   onCancel: () => void;
   onJumpToStep: (i: number) => void;
 }) {
+
   const KEY = "serpent-trio-collapsed";
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return !embedded && localStorage.getItem(KEY) === "1"; } catch { return false; }
