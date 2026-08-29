@@ -215,6 +215,7 @@ function HabitRow({
   onEdit,
   onDelete,
   onTogglePush,
+  onRename,
   muted,
 }: {
   habit: Habit;
@@ -223,6 +224,7 @@ function HabitRow({
   onEdit: () => void;
   onDelete: () => void;
   onTogglePush: () => void;
+  onRename: (name: string) => void;
   muted?: boolean;
 }) {
   const streak = habitStreak(habit);
