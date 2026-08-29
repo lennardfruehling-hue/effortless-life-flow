@@ -153,7 +153,7 @@ export default function SerpentDailyList({ tasks, onToggle, onEdit }: Props) {
         <ol className="px-3 pb-2 pt-0.5 space-y-0.5 text-[12px] font-mono leading-tight">
           {all.length === 0 && (
             <li className="text-muted-foreground italic text-[11px] py-1">
-              Nothing prioritised — add daily recurring tasks or tasks with A1 / B1 / B2 categories.
+              Nothing scheduled for today — add daily recurring tasks, or tasks due today / marked A1.
             </li>
           )}
           {all.map((t, i) => (
