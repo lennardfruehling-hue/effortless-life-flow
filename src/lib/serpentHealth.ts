@@ -1,6 +1,7 @@
 import { Task } from "./types";
 import { Habit, todayISO, isHabitDue, isHabitCompleteOn } from "./habits";
 import { overdueTasks, weeklyScore } from "./scoring";
+import { getResetEpoch } from "./resetEpoch";
 
 /**
  * Serpent Health — one number (0–100) for how well the system is actually being
@@ -33,7 +34,8 @@ function daysAgoISO(n: number) {
 
 export function computeSerpentHealth(tasks: Task[], habits: Habit[]): SerpentHealth {
   const today = todayISO();
-  const from = daysAgoISO(30);
+  const epoch = getResetEpoch();
+  const from = daysAgoISO(30) > epoch ? daysAgoISO(30) : epoch;
   const list = tasks || [];
 
   // Completion: dated / recurring commitments in the window
@@ -57,6 +59,7 @@ export function computeSerpentHealth(tasks: Task[], habits: Habit[]): SerpentHea
   let hit = 0;
   for (let i = 0; i < 14; i++) {
     const d = daysAgoISO(i);
+    if (d < epoch) continue;
     for (const h of habits || []) {
       if (!isHabitDue(h, d)) continue;
       due++;
@@ -65,7 +68,7 @@ export function computeSerpentHealth(tasks: Task[], habits: Habit[]): SerpentHea
   }
   const consistency = due > 0 ? hit / due : 1;
 
-  const overdue = overdueTasks(list).length;
+  const overdue = overdueTasks(list).filter((t) => !t.dueDate || t.dueDate >= epoch).length;
   const week = weeklyScore(list);
 
   const raw =
