@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Bot, Mic, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X } from "lucide-react";
-import { Task, Project } from "@/lib/types";
+import { Bot, Mic, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass } from "lucide-react";
+import { Task, Project, Reminder, LifePlanProject, DailyScheduleSlot } from "@/lib/types";
 import AIChat from "./AIChat";
 import VoiceAssistant from "./VoiceAssistant";
 import VoiceTaskDialog from "./VoiceTaskDialog";
+import SerpentFlow from "./SerpentFlow";
 import { useAssignmentNotifications } from "@/hooks/useAssignmentNotifications";
 
 interface Props {
@@ -11,11 +12,14 @@ interface Props {
   projects: Project[];
   onSaveTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   onSaveProjects: React.Dispatch<React.SetStateAction<Project[]>>;
+  reminders?: Reminder[];
+  lifePlanProjects?: LifePlanProject[];
+  dailySchedule?: DailyScheduleSlot[];
 }
 
-type Panel = "voice" | "chat" | "notifications" | null;
+type Panel = "flow" | "voice" | "chat" | "notifications" | null;
 
-export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProjects }: Props) {
+export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProjects, reminders = [], lifePlanProjects = [], dailySchedule = [] }: Props) {
   const [panel, setPanel] = useState<Panel>(null);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const { notifications, dismiss, dismissAll } = useAssignmentNotifications(tasks);
@@ -26,6 +30,7 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
   };
 
   const toggle = (p: Panel) => setPanel((cur) => (cur === p ? null : p));
+
 
   const tabBtn = (id: Exclude<Panel, null>, Icon: typeof Bot, label: string) => (
     <button
@@ -42,48 +47,57 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
   return (
     <>
       <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-background/95 backdrop-blur-md shadow-[0_-6px_24px_-12px_hsl(220_40%_30%/0.25)]">
-        {panel && (
-          <div className="mx-auto max-w-[1400px] px-3 pt-2">
-            <div className="h-[min(52vh,460px)] rounded-t-xl border border-b-0 border-border bg-card overflow-hidden">
-              {panel === "voice" && (
-                <VoiceAssistant tasks={tasks} projects={projects} onSaveTasks={onSaveTasks} onSaveProjects={onSaveProjects} />
-              )}
-              {panel === "chat" && (
-                <AIChat tasks={tasks} projects={projects} onSaveTasks={onSaveTasks} onSaveProjects={onSaveProjects} />
-              )}
-              {panel === "notifications" && (
-                <div className="h-full flex flex-col">
-                  <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
-                    <span className="text-sm font-semibold text-foreground">Notifications</span>
-                    {notifications.length > 0 && (
-                      <button onClick={dismissAll} className="text-xs text-muted-foreground hover:text-foreground">
-                        Clear all
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-2">
-                    {notifications.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-10">Nothing new. You're all caught up.</p>
-                    ) : (
-                      notifications.map((n) => (
-                        <div key={n.id} className="flex items-start gap-3 rounded-lg border border-border bg-background px-3 py-2.5">
-                          <span className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${n.kind === "task" ? "bg-primary" : "bg-cat-e"}`} />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-foreground truncate">{n.label}</p>
-                            {n.detail && <p className="text-xs text-muted-foreground truncate">{n.detail}</p>}
-                          </div>
-                          <button onClick={() => dismiss(n.id)} className="text-muted-foreground hover:text-foreground p-1">
-                            <X size={14} />
-                          </button>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              )}
+        <div className={panel ? "mx-auto max-w-[1400px] px-3 pt-2" : "hidden"}>
+          <div className="h-[min(52vh,460px)] rounded-t-xl border border-b-0 border-border bg-card overflow-hidden">
+            {/* Always mounted: the Serpent flow drives phase state and step highlights */}
+            <div className={panel === "flow" ? "h-full" : "hidden"}>
+              <SerpentFlow
+                tasks={tasks}
+                reminders={reminders}
+                lifePlanProjects={lifePlanProjects}
+                dailySchedule={dailySchedule}
+                embedded
+              />
             </div>
+            {panel === "voice" && (
+              <VoiceAssistant tasks={tasks} projects={projects} onSaveTasks={onSaveTasks} onSaveProjects={onSaveProjects} />
+            )}
+            {panel === "chat" && (
+              <AIChat tasks={tasks} projects={projects} onSaveTasks={onSaveTasks} onSaveProjects={onSaveProjects} />
+            )}
+            {panel === "notifications" && (
+              <div className="h-full flex flex-col">
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
+                  <span className="text-sm font-semibold text-foreground">Notifications</span>
+                  {notifications.length > 0 && (
+                    <button onClick={dismissAll} className="text-xs text-muted-foreground hover:text-foreground">
+                      Clear all
+                    </button>
+                  )}
+                </div>
+                <div className="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-2">
+                  {notifications.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-10">Nothing new. You're all caught up.</p>
+                  ) : (
+                    notifications.map((n) => (
+                      <div key={n.id} className="flex items-start gap-3 rounded-lg border border-border bg-background px-3 py-2.5">
+                        <span className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${n.kind === "task" ? "bg-primary" : "bg-cat-e"}`} />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium text-foreground truncate">{n.label}</p>
+                          {n.detail && <p className="text-xs text-muted-foreground truncate">{n.detail}</p>}
+                        </div>
+                        <button onClick={() => dismiss(n.id)} className="text-muted-foreground hover:text-foreground p-1">
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
+
 
         <div className="mx-auto max-w-[1400px] px-3 h-14 flex items-center gap-2">
           <div className="flex items-center gap-2 text-sm font-semibold text-foreground pr-1">
@@ -91,8 +105,10 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
             <span className="hidden md:inline">Assistant</span>
           </div>
 
+          {tabBtn("flow", Compass, "Flow")}
           {tabBtn("voice", AudioLines, "Voice")}
           {tabBtn("chat", MessageSquare, "Chat")}
+
 
           <button
             onClick={() => setVoiceOpen(true)}

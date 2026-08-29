@@ -5,7 +5,7 @@ import TaskForm from "@/components/TaskForm";
 import CalendarScheduleDay from "@/components/CalendarScheduleDay";
 import SerpentDailyList from "@/components/SerpentDailyList";
 import { CategoryBadgeFull } from "@/components/CategoryBadge";
-import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat } from "lucide-react";
+import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat, Sun, CalendarDays } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { applyRecurrenceReset, todayKey, weekKey, totalPride, prideThisWeek } from "@/lib/pride";
 
@@ -19,7 +19,43 @@ interface TasksViewProps {
   onClearProjectFilter?: () => void;
 }
 
+/** Collapsible-free section wrapper giving the task list a clear structure. */
+function Section({
+  icon,
+  title,
+  subtitle,
+  count,
+  empty,
+  showEmpty,
+  children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+  count?: string;
+  empty?: string;
+  showEmpty?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <div className="flex items-baseline gap-2 mb-2.5 pb-1.5 border-b border-border">
+        <span className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
+          <span className="text-muted-foreground">{icon}</span>
+          {title}
+        </span>
+        {count && <span className="text-xs font-mono text-muted-foreground">{count}</span>}
+        {subtitle && <span className="ml-auto text-[11px] text-muted-foreground">{subtitle}</span>}
+      </div>
+      <div className="space-y-2">
+        {showEmpty && empty ? <p className="text-xs text-muted-foreground py-3">{empty}</p> : children}
+      </div>
+    </section>
+  );
+}
+
 function sortTasks(tasks: Task[]): Task[] {
+
   return [...tasks].sort((a, b) => {
     if (a.completed !== b.completed) return a.completed ? 1 : -1;
     const aHasA1 = a.categories.includes("A1");
@@ -66,6 +102,18 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
     if (!showCompleted) list = list.filter((t) => !t.completed);
     return sortTasks(list);
   }, [tasks, filterCat, showCompleted, filterProjectId]);
+
+  // Split the non-recurring list into "Today" and "Upcoming / backlog".
+  const { todayTasks, laterTasks } = useMemo(() => {
+    const today = todayKey();
+    const isToday = (t: Task) =>
+      (t.dueDate && t.dueDate <= today) || t.categories.includes("A1");
+    return {
+      todayTasks: filteredTasks.filter(isToday),
+      laterTasks: filteredTasks.filter((t) => !isToday(t)),
+    };
+  }, [filteredTasks]);
+
 
   const handleSubmit = (task: Task) => {
     const existing = tasks.findIndex((t) => t.id === task.id);
@@ -208,53 +256,65 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
       {/* Serpent prioritised daily list */}
       <SerpentDailyList tasks={tasks} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} />
 
+      {/* Structured sections: Today → Daily → Weekly → Upcoming */}
+      <div className="mt-4 space-y-7">
+        <Section
+          icon={<Sun size={13} />}
+          title="Today"
+          count={`${todayTasks.filter((t) => t.completed).length}/${todayTasks.length}`}
+          empty="Nothing scheduled for today."
+          showEmpty={todayTasks.length === 0}
+        >
+          <AnimatePresence mode="popLayout">
+            {todayTasks.map((task) => (
+              <TaskCard key={task.id} task={task} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} onDelete={handleDelete} />
+            ))}
+          </AnimatePresence>
+        </Section>
 
-      {/* Daily / Weekly recurring groups */}
-      {(dailyTasks.length > 0 || weeklyTasks.length > 0) && (
-        <div className="mb-6 space-y-4">
-          {dailyTasks.length > 0 && (
-            <section>
-              <h3 className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground mb-2 font-mono">
-                <Repeat size={12} /> Daily ({dailyTasks.filter((t) => t.completed).length}/{dailyTasks.length})
-              </h3>
-              <div className="space-y-2">
-                {dailyTasks.map((task) => (
-                  <TaskCard key={task.id} task={task} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} onDelete={handleDelete} />
-                ))}
-              </div>
-            </section>
-          )}
-          {weeklyTasks.length > 0 && (
-            <section>
-              <h3 className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground mb-2 font-mono">
-                <Repeat size={12} /> Weekly ({weeklyTasks.filter((t) => t.completed).length}/{weeklyTasks.length})
-              </h3>
-              <div className="space-y-2">
-                {weeklyTasks.map((task) => (
-                  <TaskCard key={task.id} task={task} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} onDelete={handleDelete} />
-                ))}
-              </div>
-            </section>
-          )}
-        </div>
-      )}
+        {dailyTasks.length > 0 && (
+          <Section
+            icon={<Repeat size={13} />}
+            title="Daily"
+            subtitle="Recurring every day"
+            count={`${dailyTasks.filter((t) => t.completed).length}/${dailyTasks.length}`}
+          >
+            {dailyTasks.map((task) => (
+              <TaskCard key={task.id} task={task} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} onDelete={handleDelete} />
+            ))}
+          </Section>
+        )}
 
-      {/* Task list */}
-      <div className="space-y-2">
-        <AnimatePresence mode="popLayout">
-          {filteredTasks.map((task) => (
-            <TaskCard
-              key={task.id}
-              task={task}
-              onToggle={handleToggle}
-              onEdit={(t) => { setEditTask(t); setShowForm(true); }}
-              onDelete={handleDelete}
-            />
-          ))}
-        </AnimatePresence>
+        {weeklyTasks.length > 0 && (
+          <Section
+            icon={<Repeat size={13} />}
+            title="Weekly"
+            subtitle="Recurring every week"
+            count={`${weeklyTasks.filter((t) => t.completed).length}/${weeklyTasks.length}`}
+          >
+            {weeklyTasks.map((task) => (
+              <TaskCard key={task.id} task={task} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} onDelete={handleDelete} />
+            ))}
+          </Section>
+        )}
+
+        {laterTasks.length > 0 && (
+          <Section
+            icon={<CalendarDays size={13} />}
+            title="Upcoming"
+            subtitle="Everything else"
+            count={`${laterTasks.length}`}
+          >
+            <AnimatePresence mode="popLayout">
+              {laterTasks.map((task) => (
+                <TaskCard key={task.id} task={task} onToggle={handleToggle} onEdit={(t) => { setEditTask(t); setShowForm(true); }} onDelete={handleDelete} />
+              ))}
+            </AnimatePresence>
+          </Section>
+        )}
       </div>
 
-      {filteredTasks.length === 0 && (
+      {filteredTasks.length === 0 && dailyTasks.length === 0 && weeklyTasks.length === 0 && (
         <div className="text-center py-16">
           <p className="text-muted-foreground text-sm">
             {filterCat ? `No tasks in ${filterCat}` : filterProjectId ? "No tasks linked to this project" : "No tasks yet"}
@@ -264,6 +324,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
           </p>
         </div>
       )}
+
 
       {(showForm || editTask) && (
         <TaskForm

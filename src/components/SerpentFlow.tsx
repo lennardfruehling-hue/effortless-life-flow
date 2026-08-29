@@ -102,9 +102,12 @@ interface SerpentFlowProps {
   reminders?: Reminder[];
   lifePlanProjects?: LifePlanProject[];
   dailySchedule?: DailyScheduleSlot[];
+  /** Render the command center inline (inside the assistant bar) instead of as a floating dock. */
+  embedded?: boolean;
 }
 
-export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjects = [], dailySchedule = [] }: SerpentFlowProps = {}) {
+export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjects = [], dailySchedule = [], embedded = false }: SerpentFlowProps = {}) {
+
   const [state, setState] = useState<SerpentFlowDayState>(loadFlowState);
   const [active, setActive] = useState<FlowKind | null>(null);
   const [stepIdx, setStepIdx] = useState(0);
@@ -230,7 +233,9 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
       <FlowTrioDock
         trio={TRIO}
         flow={state}
+        embedded={embedded}
         tasks={tasks}
+
         reminders={reminders}
         lifePlanProjects={lifePlanProjects}
         dailySchedule={dailySchedule}
@@ -346,6 +351,7 @@ function playAlertChime(ctxRef: { current: AudioContext | null }) {
 function FlowTrioDock({
   trio,
   flow,
+  embedded = false,
   tasks,
   reminders,
   lifePlanProjects,
@@ -362,6 +368,7 @@ function FlowTrioDock({
 }: {
   trio: TrioItem[];
   flow: SerpentFlowDayState;
+  embedded?: boolean;
   tasks: Task[];
   reminders: Reminder[];
   lifePlanProjects: LifePlanProject[];
@@ -378,11 +385,13 @@ function FlowTrioDock({
 }) {
   const KEY = "serpent-trio-collapsed";
   const [collapsed, setCollapsed] = useState<boolean>(() => {
-    try { return localStorage.getItem(KEY) === "1"; } catch { return false; }
+    try { return !embedded && localStorage.getItem(KEY) === "1"; } catch { return false; }
   });
   useEffect(() => {
+    if (embedded) return;
     try { localStorage.setItem(KEY, collapsed ? "1" : "0"); } catch {}
-  }, [collapsed]);
+  }, [collapsed, embedded]);
+
 
   const [showPanel, setShowPanel] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -524,7 +533,7 @@ function FlowTrioDock({
     ? "bg-indigo-950/70 border-indigo-400/40 text-indigo-50"
     : "bg-sidebar/85 border-amber-300/30 text-white";
 
-  if (collapsed) {
+  if (collapsed && !embedded) {
     const doneCount = trio.filter(t => t.done).length;
     const pillLabel = alarmActive
       ? `${alertCount} alert${alertCount === 1 ? "" : "s"}`
@@ -550,7 +559,10 @@ function FlowTrioDock({
   }
 
   return (
-    <div className={`fixed bottom-16 left-1/2 -translate-x-1/2 z-40 backdrop-blur border rounded-2xl shadow-xl ${dockTone} ${hasOverdue ? "ring-2 ring-red-400/50" : ""}`}>
+    <div className={embedded
+      ? `h-full overflow-y-auto scrollbar-thin ${dockTone} border-0 rounded-none`
+      : `fixed bottom-16 left-1/2 -translate-x-1/2 z-40 backdrop-blur border rounded-2xl shadow-xl ${dockTone} ${hasOverdue ? "ring-2 ring-red-400/50" : ""}`}>
+
       {/* Top row: alarm summary + bell */}
       {alarmActive && (
         <button
@@ -739,13 +751,16 @@ function FlowTrioDock({
           ↻
         </button>
         {/* Collapse */}
-        <button
-          onClick={() => setCollapsed(true)}
-          title="Collapse alarm center"
-          className="self-center w-7 h-7 rounded-full bg-white/5 text-white/70 border border-white/15 hover:text-white hover:border-white/40 transition flex items-center justify-center"
-        >
-          <ChevronDown size={14} />
-        </button>
+        {!embedded && (
+          <button
+            onClick={() => setCollapsed(true)}
+            title="Collapse alarm center"
+            className="self-center w-7 h-7 rounded-full bg-white/5 text-white/70 border border-white/15 hover:text-white hover:border-white/40 transition flex items-center justify-center"
+          >
+            <ChevronDown size={14} />
+          </button>
+        )}
+
       </div>
     </div>
   );
