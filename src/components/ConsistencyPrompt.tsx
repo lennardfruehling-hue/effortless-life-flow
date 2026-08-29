@@ -8,9 +8,12 @@ import {
   isHabitCompleteOn,
   requiredCount,
 } from "@/lib/habits";
-import { Flame, Check, X, AlertTriangle } from "lucide-react";
+import { Flame, Check, X, AlertTriangle, ChevronDown, ChevronRight } from "lucide-react";
 
 const SKIP_KEY = "serpent-consistency-skips-v1";
+/** Hour of day after which unanswered consistency tasks start flashing. */
+const FLASH_AFTER_HOUR = 21;
+
 
 function loadSkips(): Record<string, string[]> {
   try {
