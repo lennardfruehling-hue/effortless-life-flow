@@ -6,7 +6,6 @@ import CalendarScheduleDay from "@/components/CalendarScheduleDay";
 import GameConsole from "@/components/GameConsole";
 
 import SerpentDailyList from "@/components/SerpentDailyList";
-import ConsistencyPrompt from "@/components/ConsistencyPrompt";
 import ScoreCard from "@/components/ScoreCard";
 import FinanceSummaryCard from "@/components/FinanceSummaryCard";
 import { CategoryBadgeFull } from "@/components/CategoryBadge";
