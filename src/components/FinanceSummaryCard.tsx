@@ -89,10 +89,7 @@ export default function FinanceSummaryCard() {
     spending: false,
     accounts: false,
     goals: false,
-    quick: false,
   });
-  const [qaAmount, setQaAmount] = useState("");
-  const [qaName, setQaName] = useState("General");
 
   const data = finance ?? DEFAULT_FINANCE;
   const spending = data.spending ?? [];
@@ -170,10 +167,6 @@ export default function FinanceSummaryCard() {
         text: `${biggest.name} is your largest controllable cost (${eur(biggest.amount || 0)}) — a 15% trim frees ${eur(Math.round((biggest.amount || 0) * 0.15))}/mo.`,
       });
     tips.push({
-      id: "t-track",
-      text: "Log every expense the same day with Quick Expense — tracked spending typically drops 5–10% on its own.",
-    });
-    tips.push({
       id: "t-goals",
       text: "Give each savings goal its own monthly amount and date so progress is measurable, not aspirational.",
     });
@@ -189,18 +182,6 @@ export default function FinanceSummaryCard() {
     patch({
       accounts: data.accounts.map((a) => (a.id === id ? { ...a, included: a.included === false } : a)),
     });
-
-  const addQuickExpense = () => {
-    const amt = Number(qaAmount);
-    if (!amt || !qaName.trim()) return;
-    const key = qaName.trim().toLowerCase();
-    const existing = spending.find((c) => c.name.trim().toLowerCase() === key);
-    const next = existing
-      ? spending.map((c) => (c.id === existing.id ? { ...c, amount: c.amount + amt } : c))
-      : [...spending, { id: crypto.randomUUID(), name: qaName.trim(), amount: amt }];
-    patch({ spending: next, monthlyExpenses: (data.monthlyExpenses || 0) + amt });
-    setQaAmount("");
-  };
 
   return (
     <section className="mb-5 rounded-xl border border-border bg-card overflow-hidden">
@@ -372,38 +353,6 @@ export default function FinanceSummaryCard() {
             </div>
           </Section>
 
-          {/* Quick expense */}
-          <Section
-            open={sections.quick}
-            onToggle={() => toggleSection("quick")}
-            icon={<Plus size={12} />}
-            title="Quick expense"
-          >
-            <div className="flex items-center gap-2">
-              <div className="flex items-center rounded-md border border-border bg-background px-2">
-                <span className="text-xs text-muted-foreground">€</span>
-                <input
-                  type="number"
-                  value={qaAmount}
-                  onChange={(e) => setQaAmount(e.target.value)}
-                  placeholder="0"
-                  className="w-20 bg-transparent px-1 py-1.5 text-sm text-foreground outline-none"
-                />
-              </div>
-              <input
-                value={qaName}
-                onChange={(e) => setQaName(e.target.value)}
-                placeholder="Category"
-                className="flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground"
-              />
-              <button
-                onClick={addQuickExpense}
-                className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
-              >
-                Add
-              </button>
-            </div>
-          </Section>
 
           {/* Accounts */}
           <Section
