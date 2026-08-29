@@ -97,9 +97,9 @@ export default function Sidebar({
       <div className="px-4 pt-3 pb-3 flex flex-col items-center text-center">
         <h1
           className="hidden md:block text-white leading-none"
-          style={{ fontFamily: "'Great Vibes', 'Allura', cursive", fontSize: "2.5rem", textShadow: "0 2px 10px rgba(0,0,0,0.7)" }}
+          style={{ fontFamily: "'Great Vibes', 'Allura', cursive", fontSize: "1.9rem", textShadow: "0 2px 10px rgba(0,0,0,0.7)" }}
         >
-          Serpent List
+          Serpent List &amp; Organization Center
         </h1>
         <p className="hidden md:block text-[11px] text-white/80 mt-2 font-mono tracking-wide">
           {taskCount} open tasks
