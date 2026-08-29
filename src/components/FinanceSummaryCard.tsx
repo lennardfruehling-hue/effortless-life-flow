@@ -1,7 +1,22 @@
 import { useMemo, useState } from "react";
 import { useCloudState } from "@/hooks/useCloudState";
 import { CLOUD_KEYS } from "@/lib/cloudStore";
-import { Wallet, TrendingUp, TrendingDown, PiggyBank, ChevronDown, ChevronUp, Pencil, Check } from "lucide-react";
+import {
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  PiggyBank,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Check,
+  AlertTriangle,
+  Timer,
+  PieChart,
+  Target,
+  Plus,
+  Trash2,
+} from "lucide-react";
 
 export interface FinanceAccount {
   id: string;
@@ -18,11 +33,18 @@ export interface FinanceGoal {
   target: number;
 }
 
+export interface SpendingCategory {
+  id: string;
+  name: string;
+  amount: number;
+}
+
 export interface FinanceState {
   monthlyIncome: number;
   monthlyExpenses: number;
   accounts: FinanceAccount[];
   goals: FinanceGoal[];
+  spending?: SpendingCategory[];
 }
 
 /** Seeded from the Wealth Command Centre snapshot. */
@@ -39,31 +61,80 @@ export const DEFAULT_FINANCE: FinanceState = {
     { id: "emergency", name: "Emergency Fund", saved: 0, target: 10000 },
     { id: "peru", name: "Peru Trip (Feb 2027)", saved: 0, target: 1300 },
   ],
+  spending: [
+    { id: "housing", name: "Housing", amount: 2050 },
+    { id: "debts", name: "Debts", amount: 431 },
+    { id: "savings", name: "Savings", amount: 260 },
+    { id: "other", name: "Other", amount: 250 },
+    { id: "food", name: "Food", amount: 220 },
+    { id: "personal", name: "Personal", amount: 170 },
+    { id: "transport", name: "Transport", amount: 86 },
+    { id: "utilities", name: "Utilities", amount: 76 },
+  ],
 };
 
 const eur = (n: number) =>
   `${n < 0 ? "-" : ""}€${Math.abs(n).toLocaleString("en-IE", { maximumFractionDigits: 0 })}`;
 
+type SectionKey = "health" | "spending" | "accounts" | "goals" | "quick";
+
 export default function FinanceSummaryCard() {
   const [finance, setFinance] = useCloudState<FinanceState>(CLOUD_KEYS.finance, DEFAULT_FINANCE);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [sections, setSections] = useState<Record<SectionKey, boolean>>({
+    health: true,
+    spending: false,
+    accounts: false,
+    goals: false,
+    quick: false,
+  });
+  const [qaAmount, setQaAmount] = useState("");
+  const [qaName, setQaName] = useState("General");
 
   const data = finance ?? DEFAULT_FINANCE;
+  const spending = data.spending ?? [];
 
-  const { netBalance, assets, debts, savings, savingsRate } = useMemo(() => {
+  const toggleSection = (k: SectionKey) => setSections((s) => ({ ...s, [k]: !s[k] }));
+
+  const { netBalance, assets, debts, savings, savingsRate, runway, warnings } = useMemo(() => {
     const included = (data.accounts || []).filter((a) => a.included !== false);
     const assets = included.filter((a) => !a.isDebt).reduce((s, a) => s + (a.balance || 0), 0);
     const debts = included.filter((a) => a.isDebt).reduce((s, a) => s + (a.balance || 0), 0);
-    const savings = (data.monthlyIncome || 0) - (data.monthlyExpenses || 0);
-    return {
-      assets,
-      debts,
-      netBalance: assets + debts,
-      savings,
-      savingsRate: data.monthlyIncome ? Math.round((savings / data.monthlyIncome) * 100) : 0,
-    };
+    const income = data.monthlyIncome || 0;
+    const expenses = data.monthlyExpenses || 0;
+    const savings = income - expenses;
+    const netBalance = assets + debts;
+    const savingsRate = income ? Math.round((savings / income) * 100) : 0;
+    const runway = expenses > 0 ? Math.max(0, assets) / expenses : 0;
+
+    const warnings: { id: string; text: string; tone: "danger" | "warn" }[] = [];
+    if (netBalance < 0)
+      warnings.push({ id: "net", text: `Net balance is negative (${eur(netBalance)})`, tone: "danger" });
+    if (expenses > income)
+      warnings.push({
+        id: "burn",
+        text: `Expenses exceed income by ${eur(expenses - income)} per month`,
+        tone: "danger",
+      });
+    if (runway < 3)
+      warnings.push({
+        id: "runway",
+        text: `Runway of ${runway.toFixed(1)} months — under 3 months of expenses covered`,
+        tone: "danger",
+      });
+    if (savingsRate < 20 && savingsRate >= 0)
+      warnings.push({ id: "rate", text: `Savings rate ${savingsRate}% — below the 20% target`, tone: "warn" });
+    if (debts < 0)
+      warnings.push({ id: "debt", text: `Outstanding debts of ${eur(Math.abs(debts))}`, tone: "warn" });
+    for (const g of data.goals || []) {
+      if (g.target > 0 && g.saved <= 0)
+        warnings.push({ id: `goal-${g.id}`, text: `${g.name} has no progress yet`, tone: "warn" });
+    }
+    return { netBalance, assets, debts, savings, savingsRate, runway, warnings };
   }, [data]);
+
+  const spendTotal = spending.reduce((s, c) => s + (c.amount || 0), 0);
 
   const patch = (p: Partial<FinanceState>) => setFinance({ ...data, ...p });
 
@@ -72,11 +143,28 @@ export default function FinanceSummaryCard() {
       accounts: data.accounts.map((a) => (a.id === id ? { ...a, included: a.included === false } : a)),
     });
 
+  const addQuickExpense = () => {
+    const amt = Number(qaAmount);
+    if (!amt || !qaName.trim()) return;
+    const key = qaName.trim().toLowerCase();
+    const existing = spending.find((c) => c.name.trim().toLowerCase() === key);
+    const next = existing
+      ? spending.map((c) => (c.id === existing.id ? { ...c, amount: c.amount + amt } : c))
+      : [...spending, { id: crypto.randomUUID(), name: qaName.trim(), amount: amt }];
+    patch({ spending: next, monthlyExpenses: (data.monthlyExpenses || 0) + amt });
+    setQaAmount("");
+  };
+
   return (
     <section className="mb-5 rounded-xl border border-border bg-card overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
         <Wallet size={15} className="text-primary" />
-        <h3 className="text-sm font-semibold text-foreground">Wealth Command Centre</h3>
+        <div className="min-w-0">
+          <h3 className="text-sm font-semibold text-foreground leading-none">Wealth Command Centre</h3>
+          <p className="text-[10px] text-muted-foreground mt-1">
+            {new Date().toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          </p>
+        </div>
         <span className={`ml-auto text-sm font-semibold ${netBalance < 0 ? "text-destructive" : "text-foreground"}`}>
           {eur(netBalance)}
         </span>
@@ -90,9 +178,15 @@ export default function FinanceSummaryCard() {
       </div>
 
       {/* KPI strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-border">
-        <Kpi icon={<TrendingUp size={12} />} label="Income" value={eur(data.monthlyIncome)} tone="text-emerald-600" />
-        <Kpi icon={<TrendingDown size={12} />} label="Expenses" value={eur(data.monthlyExpenses)} tone="text-destructive" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-y lg:divide-y-0 divide-border">
+        <Kpi
+          icon={<Wallet size={12} />}
+          label="Net today"
+          value={eur(netBalance)}
+          tone={netBalance < 0 ? "text-destructive" : "text-foreground"}
+        />
+        <Kpi icon={<TrendingUp size={12} />} label="Income (mo)" value={eur(data.monthlyIncome)} tone="text-emerald-600" />
+        <Kpi icon={<TrendingDown size={12} />} label="Expenses (mo)" value={eur(data.monthlyExpenses)} tone="text-destructive" />
         <Kpi
           icon={<PiggyBank size={12} />}
           label="Savings"
@@ -100,14 +194,21 @@ export default function FinanceSummaryCard() {
           hint={`${savingsRate}% rate`}
           tone={savings < 0 ? "text-destructive" : "text-foreground"}
         />
+        <Kpi
+          icon={<Timer size={12} />}
+          label="Runway"
+          value={`${runway.toFixed(1)} mo`}
+          hint="expenses covered"
+          tone={runway < 3 ? "text-destructive" : "text-foreground"}
+        />
         <Kpi icon={<Wallet size={12} />} label="Assets" value={eur(assets)} hint={`${eur(debts)} debts`} />
       </div>
 
       {open && (
-        <div className="p-4 space-y-4 border-t border-border">
+        <div className="p-4 space-y-3 border-t border-border">
           {/* Monthly figures */}
           <div className="flex items-center gap-2">
-            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Monthly</span>
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Monthly figures</span>
             <button
               onClick={() => setEditing(!editing)}
               className="ml-auto flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
@@ -138,11 +239,111 @@ export default function FinanceSummaryCard() {
             </div>
           )}
 
+          {/* Financial health / warnings */}
+          <Section
+            open={sections.health}
+            onToggle={() => toggleSection("health")}
+            icon={<AlertTriangle size={12} />}
+            title="Financial health"
+            badge={warnings.length ? `${warnings.length}` : "OK"}
+            badgeTone={warnings.length ? "text-destructive" : "text-emerald-600"}
+          >
+            {warnings.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No warnings — finances look stable.</p>
+            ) : (
+              <ul className="space-y-1.5">
+                {warnings.map((w) => (
+                  <li
+                    key={w.id}
+                    className={`flex items-start gap-2 rounded-md border px-2.5 py-1.5 text-xs ${
+                      w.tone === "danger"
+                        ? "border-destructive/30 bg-destructive/5 text-destructive"
+                        : "border-border text-muted-foreground"
+                    }`}
+                  >
+                    <AlertTriangle size={12} className="mt-0.5 shrink-0" />
+                    <span>{w.text}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
+
+          {/* Spending breakdown */}
+          <Section
+            open={sections.spending}
+            onToggle={() => toggleSection("spending")}
+            icon={<PieChart size={12} />}
+            title="Monthly spending breakdown"
+            badge={eur(spendTotal)}
+          >
+            <div className="space-y-2">
+              {spending
+                .slice()
+                .sort((a, b) => b.amount - a.amount)
+                .map((c) => {
+                  const pct = spendTotal > 0 ? Math.round((c.amount / spendTotal) * 100) : 0;
+                  return (
+                    <div key={c.id}>
+                      <div className="flex items-baseline justify-between text-xs">
+                        <span className="text-foreground">{c.name}</span>
+                        <span className="text-muted-foreground font-mono">
+                          {eur(c.amount)} · {pct}%
+                        </span>
+                      </div>
+                      <div className="mt-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                        <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              {spending.length === 0 && <p className="text-xs text-muted-foreground">No categories yet.</p>}
+            </div>
+          </Section>
+
+          {/* Quick expense */}
+          <Section
+            open={sections.quick}
+            onToggle={() => toggleSection("quick")}
+            icon={<Plus size={12} />}
+            title="Quick expense"
+          >
+            <div className="flex items-center gap-2">
+              <div className="flex items-center rounded-md border border-border bg-background px-2">
+                <span className="text-xs text-muted-foreground">€</span>
+                <input
+                  type="number"
+                  value={qaAmount}
+                  onChange={(e) => setQaAmount(e.target.value)}
+                  placeholder="0"
+                  className="w-20 bg-transparent px-1 py-1.5 text-sm text-foreground outline-none"
+                />
+              </div>
+              <input
+                value={qaName}
+                onChange={(e) => setQaName(e.target.value)}
+                placeholder="Category"
+                className="flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground"
+              />
+              <button
+                onClick={addQuickExpense}
+                className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+              >
+                Add
+              </button>
+            </div>
+          </Section>
+
           {/* Accounts */}
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5">
-              Accounts <span className="normal-case tracking-normal">· tap to include in balance</span>
-            </p>
+          <Section
+            open={sections.accounts}
+            onToggle={() => toggleSection("accounts")}
+            icon={<Wallet size={12} />}
+            title="Accounts"
+            badge={eur(netBalance)}
+            badgeTone={netBalance < 0 ? "text-destructive" : undefined}
+          >
+            <p className="text-[11px] text-muted-foreground mb-1.5">tap to include / exclude from balance</p>
             <div className="space-y-1">
               {data.accounts.map((a) => (
                 <div key={a.id} className="flex items-center gap-2">
@@ -176,11 +377,16 @@ export default function FinanceSummaryCard() {
                 </div>
               ))}
             </div>
-          </div>
+          </Section>
 
           {/* Goals */}
-          <div>
-            <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1.5">Savings goals</p>
+          <Section
+            open={sections.goals}
+            onToggle={() => toggleSection("goals")}
+            icon={<Target size={12} />}
+            title="Savings goals"
+            badge={`${data.goals.length}`}
+          >
             <div className="space-y-2">
               {data.goals.map((g) => {
                 const pct = g.target > 0 ? Math.min(100, Math.round((g.saved / g.target) * 100)) : 0;
@@ -195,14 +401,75 @@ export default function FinanceSummaryCard() {
                     <div className="mt-1 h-1.5 rounded-full bg-secondary overflow-hidden">
                       <div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} />
                     </div>
+                    {editing && (
+                      <div className="mt-1 flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={g.saved}
+                          onChange={(e) =>
+                            patch({
+                              goals: data.goals.map((x) =>
+                                x.id === g.id ? { ...x, saved: Number(e.target.value) } : x
+                              ),
+                            })
+                          }
+                          className="w-24 rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
+                        />
+                        <button
+                          onClick={() => patch({ goals: data.goals.filter((x) => x.id !== g.id) })}
+                          className="text-muted-foreground hover:text-destructive"
+                          aria-label={`Remove ${g.name}`}
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
             </div>
-          </div>
+          </Section>
         </div>
       )}
     </section>
+  );
+}
+
+function Section({
+  open,
+  onToggle,
+  icon,
+  title,
+  badge,
+  badgeTone = "text-muted-foreground",
+  children,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  icon: React.ReactNode;
+  title: string;
+  badge?: string;
+  badgeTone?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border border-border">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center gap-2 px-3 py-2 text-left"
+        aria-expanded={open}
+      >
+        <span className="text-muted-foreground">{icon}</span>
+        <span className="text-xs font-medium text-foreground">{title}</span>
+        {badge && <span className={`ml-auto text-xs font-mono ${badgeTone}`}>{badge}</span>}
+        {open ? (
+          <ChevronUp size={14} className="text-muted-foreground" />
+        ) : (
+          <ChevronDown size={14} className="text-muted-foreground" />
+        )}
+      </button>
+      {open && <div className="px-3 pb-3 pt-1 border-t border-border">{children}</div>}
+    </div>
   );
 }
 
