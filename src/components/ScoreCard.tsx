@@ -34,6 +34,11 @@ export default function ScoreCard({ tasks }: Props) {
   const soon = useMemo(() => upcomingDeadlines(tasks, 3), [tasks]);
   const late = useMemo(() => overdueTasks(tasks), [tasks]);
 
+  useEffect(() => {
+    recordWeek(week);
+  }, [week.net, week.target]);
+
+
   return (
     <div className="mb-4 rounded-xl border border-border bg-card p-3">
       <div className="flex items-center gap-3 flex-wrap">
