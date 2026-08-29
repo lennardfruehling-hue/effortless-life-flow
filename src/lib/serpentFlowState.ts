@@ -54,3 +54,29 @@ export function phaseLabel(p: SerpentPhase): string {
     default: return "Idle";
   }
 }
+
+/**
+ * Automatic phase for the day, derived from the clock and what has been
+ * completed. The flow is mandatory, so the phase is never "idle":
+ *  - morning / start not done  → Plan
+ *  - midday until evening      → Act
+ *  - from 17:00 or after the evening review → Review
+ */
+export function autoPhase(s: SerpentFlowDayState, now: Date = new Date()): SerpentPhase {
+  const h = now.getHours() + now.getMinutes() / 60;
+  if (s.eveningCompleted) return "review";
+  if (h >= 17) return "review";
+  if (!s.startCompleted) return "planning";
+  if (h < 12) return "action";
+  return "action";
+}
+
+/** Which flow step is mandatory right now (null when all are done for today). */
+export function mandatoryFlow(s: SerpentFlowDayState, now: Date = new Date()): "start" | "midday" | "evening" | null {
+  const h = now.getHours() + now.getMinutes() / 60;
+  if (!s.startCompleted) return "start";
+  if (!s.middayCompleted && h >= 12) return "midday";
+  if (!s.eveningCompleted && h >= 17) return "evening";
+  return null;
+}
+

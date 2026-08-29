@@ -17,6 +17,14 @@ import {
   loadLocation,
   onLocationChange,
 } from "@/lib/dashboardSettings";
+import {
+  SerpentFlowDayState,
+  loadFlowState,
+  onFlowStateChange,
+  autoPhase,
+  phaseLabel,
+} from "@/lib/serpentFlowState";
+
 
 const LIFEPLAN_KEY = "serpent-lifeplan-v2";
 
@@ -106,6 +114,21 @@ export default function StatusBar({ tasks, onOpenSettings }: { tasks: Task[]; on
   const [loc, setLoc] = useState<DashboardLocation>(() => loadLocation());
   const [weather, setWeather] = useState<Weather | null>(null);
   const [lifePlan, setLifePlan] = useState(loadLifePlanPriorities);
+  const [flow, setFlow] = useState<SerpentFlowDayState>(loadFlowState);
+  useEffect(() => onFlowStateChange(setFlow), []);
+  // Recomputed as the clock ticks (now updates every 30s) — never manual.
+  const phase = useMemo(() => {
+    void now;
+    return autoPhase(flow);
+  }, [flow, now]);
+  const phaseChip =
+    phase === "planning"
+      ? "bg-amber-100 text-amber-800 border border-amber-300"
+      : phase === "action"
+      ? "bg-orange-100 text-orange-800 border border-orange-300"
+      : "bg-indigo-100 text-indigo-800 border border-indigo-300";
+
+
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 30_000);
@@ -159,7 +182,30 @@ export default function StatusBar({ tasks, onOpenSettings }: { tasks: Task[]; on
   return (
     <div className="w-full border-b border-border bg-secondary/40">
       <div className="mx-auto max-w-[1400px] px-3 sm:px-5 py-2 flex flex-wrap items-center gap-2 lg:flex-nowrap lg:overflow-x-auto lg:scrollbar-none">
+        {/* Serpent phase — automatic */}
+        <Cell
+          title="Serpent phase"
+          details={
+            <>
+              <div className="text-foreground font-medium">{phaseLabel(phase)}</div>
+              <div>Set automatically from the clock and your flow progress.</div>
+              <div>
+                Start {flow.startCompleted ? "✓" : "—"} · Midday {flow.middayCompleted ? "✓" : "—"} · Evening{" "}
+                {flow.eveningCompleted ? "✓" : "—"}
+              </div>
+              <div>The daily flow is mandatory; each step must be completed.</div>
+            </>
+          }
+          action={{ label: "Open flow", onClick: () => window.dispatchEvent(new CustomEvent("serpent-open-flow")) }}
+        >
+          <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${phaseChip}`}>
+            {phase === "planning" ? "Plan" : phase === "action" ? "Act" : "Review"}
+          </span>
+          <span className="text-muted-foreground">phase</span>
+        </Cell>
+
         {/* Date + time */}
+
         <Cell
           title="Today"
           details={

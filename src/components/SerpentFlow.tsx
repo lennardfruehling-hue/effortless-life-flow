@@ -7,7 +7,10 @@ import {
   saveFlowState,
   SerpentFlowDayState,
   SerpentPhase,
+  autoPhase,
+  mandatoryFlow,
 } from "@/lib/serpentFlowState";
+
 import { Task, Reminder, LifePlanProject, DailyScheduleSlot } from "@/lib/types";
 import { loadCutoffs, onCutoffsChange, FlowCutoffs } from "@/lib/flowSettings";
 import risingSun from "@/assets/serpent-rising-sun.png";
@@ -89,13 +92,14 @@ function useTargetRect(selector: string | undefined): Rect | null {
   return rect;
 }
 
-function derivePhase(s: SerpentFlowDayState, active: FlowKind | null, manual: SerpentPhase | null): SerpentPhase {
-  if (manual) return manual;
+function derivePhase(s: SerpentFlowDayState, active: FlowKind | null, _manual: SerpentPhase | null): SerpentPhase {
+  // Phase is automatic: an open flow wins, otherwise the clock decides.
   if (active === "start") return "planning";
-  if (active === "evening" || s.eveningCompleted) return "review";
-  if (active === "midday" || s.startCompleted) return "action";
-  return "idle";
+  if (active === "midday") return "action";
+  if (active === "evening") return "review";
+  return autoPhase(s);
 }
+
 
 interface SerpentFlowProps {
   tasks?: Task[];
@@ -116,21 +120,25 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
   // Tracks whether the active step's requirement is satisfied.
   const [stepSatisfied, setStepSatisfied] = useState(false);
 
+  // Phase is derived automatically and re-evaluated every minute.
+  const [clockTick, setClockTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setClockTick((t) => t + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
   // Persist + broadcast phase whenever inputs change.
   useEffect(() => {
     const next = { ...state, phase: derivePhase(state, active, manualPhase) };
+    if (next.phase !== state.phase) setState(next);
     saveFlowState(next);
-  }, [state, active, manualPhase]);
+  }, [state, active, manualPhase, clockTick]);
 
-  // Listen for manual phase override from the sidebar (user clicks the phase chip).
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as SerpentPhase | null;
-      setManualPhase(detail || null);
-    };
-    window.addEventListener("serpent-set-phase", handler);
-    return () => window.removeEventListener("serpent-set-phase", handler);
-  }, []);
+  // Which flow the user is required to complete right now.
+  const required = useMemo(() => {
+    void clockTick;
+    return mandatoryFlow(state);
+  }, [state, clockTick]);
 
   const startFlow = (kind: FlowKind) => {
     setTrioOpen(false);
@@ -155,21 +163,16 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
     }
   };
 
-  // Auto-prompt sequence: open trio chooser at noon if midday not done, at 17h if evening not done.
+  // Mandatory: the required flow opens itself and stays open until completed.
   useEffect(() => {
-    const tick = () => {
-      const h = new Date().getHours();
-      if (active) return;
-      if (!state.middayCompleted && state.startCompleted && h >= 12 && h < 17) {
-        setTrioOpen(true);
-      } else if (!state.eveningCompleted && h >= 17) {
-        setTrioOpen(true);
-      }
-    };
-    tick();
-    const id = window.setInterval(tick, 60_000);
-    return () => clearInterval(id);
-  }, [state, active]);
+    if (active || !required) return;
+    setTrioOpen(false);
+    setActive(required);
+    setStepIdx(0);
+    window.dispatchEvent(new CustomEvent("serpent-open-flow"));
+  }, [required, active]);
+
+
 
   const currentStep = active ? FLOWS[active].steps[stepIdx] : undefined;
   const targetRect = useTargetRect(currentStep?.target);
@@ -249,11 +252,13 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
         }}
         activeFlow={active}
         activeSteps={active ? FLOWS[active].steps : null}
+        mandatory={!!required && required === active}
         stepIdx={stepIdx}
         stepSatisfied={stepSatisfied}
         onAdvance={next}
-        onCancel={() => { setActive(null); setStepIdx(0); }}
+        onCancel={() => { if (required && required === active) return; setActive(null); setStepIdx(0); }}
         onJumpToStep={(i) => setStepIdx(i)}
+
       />
 
       {/* Highlight ring + anchored tooltip */}
@@ -281,16 +286,17 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
-                className="fixed z-50 max-w-[240px] bg-sidebar/95 border border-amber-300/40 rounded-md shadow-xl px-3 py-2 pointer-events-none"
+                className="fixed z-50 max-w-[240px] bg-card border border-border rounded-md shadow-xl px-3 py-2 pointer-events-none"
                 style={{ top: popover.top, left: popover.left }}
               >
-                <div className="text-[10px] uppercase tracking-wider text-amber-200 font-mono mb-0.5">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-mono mb-0.5">
                   Step {stepIdx + 1} · {FLOWS[active].label}
                 </div>
-                <div className="text-xs font-semibold text-white">{currentStep.title}</div>
+                <div className="text-xs font-semibold text-foreground">{currentStep.title}</div>
                 {!stepSatisfied && currentStep.hint && (
-                  <div className="text-[10px] text-amber-200 mt-1 italic">⏳ {currentStep.hint}</div>
+                  <div className="text-[10px] text-amber-700 mt-1 italic">⏳ {currentStep.hint}</div>
                 )}
+
               </motion.div>
             )}
           </>
@@ -360,6 +366,7 @@ function FlowTrioDock({
   onReset,
   activeFlow,
   activeSteps,
+  mandatory = false,
   stepIdx,
   stepSatisfied,
   onAdvance,
@@ -377,12 +384,14 @@ function FlowTrioDock({
   onReset: () => void;
   activeFlow: FlowKind | null;
   activeSteps: Step[] | null;
+  mandatory?: boolean;
   stepIdx: number;
   stepSatisfied: boolean;
   onAdvance: () => void;
   onCancel: () => void;
   onJumpToStep: (i: number) => void;
 }) {
+
   const KEY = "serpent-trio-collapsed";
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     try { return !embedded && localStorage.getItem(KEY) === "1"; } catch { return false; }
@@ -526,12 +535,13 @@ function FlowTrioDock({
   const alertCount = alerts.length;
   const alarmActive = alertCount > 0;
   const hasNotifs = notifCount > 0;
-  // Faded red palette when alarming, default sidebar otherwise
+  // Light, legible palette: tinted surface + dark text in every state.
   const dockTone = alarmActive
-    ? "bg-red-950/70 border-red-400/40 text-red-50"
+    ? "bg-red-50 border-red-300 text-red-900"
     : hasNotifs
-    ? "bg-indigo-950/70 border-indigo-400/40 text-indigo-50"
-    : "bg-sidebar/85 border-amber-300/30 text-white";
+    ? "bg-blue-50 border-blue-300 text-blue-900"
+    : "bg-card border-border text-foreground";
+
 
   if (collapsed && !embedded) {
     const doneCount = trio.filter(t => t.done).length;
@@ -541,10 +551,11 @@ function FlowTrioDock({
       ? `${notifCount} new`
       : `Flow ${doneCount}/3`;
     const pillIcon = alarmActive
-      ? <Bell size={14} className="text-red-200" />
+      ? <Bell size={14} className="text-red-600" />
       : hasNotifs
-      ? <UserPlus size={14} className="text-indigo-200" />
+      ? <UserPlus size={14} className="text-blue-600" />
       : <span>🐍</span>;
+
     return (
       <button
         onClick={() => setCollapsed(false)}
@@ -567,11 +578,11 @@ function FlowTrioDock({
       {(alarmActive || hasNotifs) && (
         <button
           onClick={() => window.dispatchEvent(new CustomEvent("serpent-open-notifications"))}
-          className={`w-full flex items-center justify-between gap-2 px-4 py-1.5 border-b border-white/10 text-xs font-medium ${hasOverdue ? "text-red-100" : "text-amber-100"}`}
+          className={`w-full flex items-center justify-between gap-2 px-4 py-1.5 border-b border-border text-xs font-semibold ${hasOverdue ? "text-red-700" : "text-amber-700"}`}
           title="Open notifications"
         >
           <span className="flex items-center gap-1.5">
-            <Bell size={13} className={hasOverdue ? "animate-pulse text-red-200" : "text-amber-200"} />
+            <Bell size={13} className={hasOverdue ? "animate-pulse text-red-600" : "text-amber-600"} />
             {alertCount + notifCount} {alertCount + notifCount === 1 ? "notification" : "notifications"}
             {hasOverdue ? " — overdue" : alarmActive ? " — warning" : ""}
           </span>
@@ -582,18 +593,25 @@ function FlowTrioDock({
 
       {/* Active flow checklist — step-by-step inside the command center */}
       {activeFlow && activeSteps && (
-        <div className="px-3 py-2 border-b border-white/10 min-w-[340px] max-w-[420px]">
+        <div className="px-3 py-2 border-b border-border min-w-[300px] max-w-[440px]">
           <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[10px] uppercase tracking-wider font-mono text-white/70">
+            <span className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground flex items-center gap-1.5">
               {activeFlow === "start" ? "Start Serpent" : activeFlow === "midday" ? "Midday Check" : "Evening Review"} · {stepIdx + 1}/{activeSteps.length}
+              {mandatory && (
+                <span className="px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-300 text-[9px] font-bold tracking-wide">
+                  Required
+                </span>
+              )}
             </span>
-            <button
-              onClick={onCancel}
-              className="text-[10px] text-white/50 hover:text-white"
-              title="Close checklist"
-            >
-              <X size={12} />
-            </button>
+            {!mandatory && (
+              <button
+                onClick={onCancel}
+                className="text-muted-foreground hover:text-foreground"
+                title="Close checklist"
+              >
+                <X size={12} />
+              </button>
+            )}
           </div>
           <ol className="space-y-0.5">
             {activeSteps.map((s, i) => {
@@ -603,36 +621,40 @@ function FlowTrioDock({
                 <li
                   key={i}
                   className={`flex items-start gap-2 px-1.5 py-1 rounded text-[11px] ${
-                    current ? "bg-amber-500/15 text-white" : done ? "text-white/50 line-through" : "text-white/60"
+                    current
+                      ? "bg-primary/10 text-foreground"
+                      : done
+                      ? "text-muted-foreground line-through"
+                      : "text-muted-foreground"
                   }`}
                 >
                   <button
                     onClick={() => { if (i < stepIdx) onJumpToStep(i); }}
                     className={`mt-0.5 w-3.5 h-3.5 rounded-sm border flex-shrink-0 flex items-center justify-center text-[9px] ${
-                      done ? "bg-emerald-500 border-emerald-300 text-white" :
-                      current ? "border-amber-300" : "border-white/30"
+                      done ? "bg-emerald-600 border-emerald-600 text-white" :
+                      current ? "border-primary text-primary" : "border-border"
                     }`}
                     title={done ? "Go back to this step" : ""}
                   >
                     {done ? "✓" : current ? "•" : ""}
                   </button>
                   <span className="flex-1 leading-tight">
-                    <span className="font-medium">{i + 1}. {s.title}</span>
+                    <span className="font-semibold">{i + 1}. {s.title}</span>
                     {current && (
-                      <span className="block text-[10px] text-white/70 mt-0.5">{s.body}</span>
+                      <span className="block text-[10px] text-muted-foreground mt-0.5">{s.body}</span>
                     )}
                     {current && !stepSatisfied && s.hint && (
-                      <span className="block text-[10px] text-amber-200 mt-0.5 italic">⏳ {s.hint}</span>
+                      <span className="block text-[10px] text-amber-700 mt-0.5 italic">⏳ {s.hint}</span>
                     )}
                   </span>
                   {current && (
                     <button
                       onClick={onAdvance}
                       disabled={!stepSatisfied}
-                      className={`flex-shrink-0 self-center text-[10px] px-2 py-0.5 rounded font-medium transition ${
+                      className={`flex-shrink-0 self-center text-[10px] px-2 py-0.5 rounded font-semibold transition ${
                         stepSatisfied
-                          ? "bg-amber-400 text-black hover:opacity-90"
-                          : "bg-white/10 text-white/40 cursor-not-allowed"
+                          ? "bg-primary text-primary-foreground hover:opacity-90"
+                          : "bg-muted text-muted-foreground cursor-not-allowed"
                       }`}
                       title={stepSatisfied ? "Mark step complete" : "Complete the action above to unlock"}
                     >
@@ -655,25 +677,25 @@ function FlowTrioDock({
             title={label + (done ? " — completed" : "")}
             className="group relative flex flex-col items-center gap-1 w-16"
           >
-            <div className={`relative w-12 h-12 rounded-full overflow-hidden border-2 transition-all ${done ? "border-emerald-400" : alarmActive ? "border-red-300/50 group-hover:border-red-200" : "border-amber-300/50 group-hover:border-amber-300"} group-hover:scale-110`}>
-              <img src={img} alt={label} className="w-full h-full object-contain bg-sidebar" />
+            <div className={`relative w-12 h-12 rounded-full overflow-hidden border-2 transition-all ${done ? "border-emerald-500" : alarmActive ? "border-red-400 group-hover:border-red-500" : "border-border group-hover:border-primary"} group-hover:scale-110`}>
+              <img src={img} alt={label} className="w-full h-full object-contain bg-secondary" />
             </div>
             {done && (
               <span
-                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 border border-emerald-200 flex items-center justify-center text-[10px] text-white font-bold shadow"
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-600 border border-white flex items-center justify-center text-[10px] text-white font-bold shadow"
                 aria-label="completed"
               >
                 ✓
               </span>
             )}
-            <span className="text-[9px] text-white/90 text-center leading-tight font-medium whitespace-nowrap">{label}</span>
+            <span className="text-[9px] text-foreground text-center leading-tight font-semibold whitespace-nowrap">{label}</span>
           </button>
         ))}
-        {/* Reset — black for visibility */}
+        {/* Reset */}
         <button
           onClick={onReset}
           title="Reset today's Serpent status"
-          className="ml-2 self-center w-8 h-8 rounded-full bg-black text-white border border-white/30 hover:bg-neutral-900 hover:border-white/60 transition flex items-center justify-center text-sm shadow"
+          className="ml-2 self-center w-8 h-8 rounded-full bg-secondary text-foreground border border-border hover:border-primary hover:text-primary transition flex items-center justify-center text-sm"
         >
           ↻
         </button>
@@ -682,13 +704,14 @@ function FlowTrioDock({
           <button
             onClick={() => setCollapsed(true)}
             title="Collapse alarm center"
-            className="self-center w-7 h-7 rounded-full bg-white/5 text-white/70 border border-white/15 hover:text-white hover:border-white/40 transition flex items-center justify-center"
+            className="self-center w-7 h-7 rounded-full bg-secondary text-muted-foreground border border-border hover:text-foreground hover:border-primary transition flex items-center justify-center"
           >
             <ChevronDown size={14} />
           </button>
         )}
 
       </div>
+
     </div>
   );
 }
