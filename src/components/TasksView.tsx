@@ -68,12 +68,34 @@ function sortTasks(tasks: Task[]): Task[] {
   });
 }
 
+type SectionKey = "today" | "daily" | "weekly" | "upcoming";
+const SECTION_PREF_KEY = "serpent-task-sections-v1";
+
 export default function TasksView({ tasks, projects, onSave, dailySchedule, onSaveDailySchedule, filterProjectId, onClearProjectFilter }: TasksViewProps) {
   const [showForm, setShowForm] = useState(false);
   const [editTask, setEditTask] = useState<Task | undefined>();
   const [filterCat, setFilterCat] = useState<Category | null>(null);
   const [showCompleted, setShowCompleted] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
+  const [activeSections, setActiveSections] = useState<SectionKey[]>(() => {
+    try {
+      const raw = localStorage.getItem(SECTION_PREF_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) return parsed as SectionKey[];
+      }
+    } catch { /* ignore */ }
+    return ["today"];
+  });
+
+  useEffect(() => {
+    try { localStorage.setItem(SECTION_PREF_KEY, JSON.stringify(activeSections)); } catch { /* ignore */ }
+  }, [activeSections]);
+
+  const toggleSection = (key: SectionKey) =>
+    setActiveSections((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
+  const isOn = (key: SectionKey) => activeSections.includes(key);
+
 
   // Reset recurring tasks when their period rolls over
   useEffect(() => {
