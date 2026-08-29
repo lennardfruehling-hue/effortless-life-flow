@@ -169,7 +169,9 @@ export default function SerpentFlow({ tasks = [], reminders = [], lifePlanProjec
     setTrioOpen(false);
     setActive(required);
     setStepIdx(0);
+    window.dispatchEvent(new CustomEvent("serpent-open-flow"));
   }, [required, active]);
+
 
 
   const currentStep = active ? FLOWS[active].steps[stepIdx] : undefined;
