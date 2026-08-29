@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Figtree:wght@300;400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,60 +6,66 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 220 90% 40%;
+    /* Cloud White palette */
+    --background: 210 20% 98%;
+    --foreground: 222 32% 18%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 60% 30%;
+    --card-foreground: 222 32% 18%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 60% 30%;
+    --popover-foreground: 222 32% 18%;
 
-    --primary: 220 70% 50%;
+    --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 20% 94%;
-    --secondary-foreground: 220 50% 30%;
+    --secondary: 214 28% 94%;
+    --secondary-foreground: 222 28% 26%;
 
-    --muted: 220 15% 92%;
-    --muted-foreground: 220 15% 50%;
+    --muted: 214 24% 95%;
+    --muted-foreground: 215 16% 55%;
 
-    --accent: 220 70% 50%;
+    --accent: 217 91% 60%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 0 74% 55%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 220 70% 50%;
+    --border: 214 26% 91%;
+    --input: 214 26% 91%;
+    --ring: 217 91% 60%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --font-body: 'Space Grotesk', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
+    --font-heading: 'Outfit', system-ui, sans-serif;
+    --font-body: 'Figtree', system-ui, sans-serif;
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
-    /* Category colors */
-    --cat-a: 220 70% 50%;
-    --cat-b: 0 70% 50%;
-    --cat-c: 180 60% 40%;
-    --cat-d: 35 80% 50%;
-    --cat-e: 280 50% 50%;
-    --cat-f: 320 60% 50%;
-    --cat-g: 145 60% 40%;
-    --cat-h: 170 60% 40%;
-    --cat-i: 220 30% 45%;
-    --cat-j: 30 60% 45%;
-    --cat-k: 340 75% 50%;
+    /* Serpent brand accents */
+    --serpent: 158 64% 38%;
+    --serpent-foreground: 0 0% 100%;
+
+    /* Category colors — saturated, high visibility */
+    --cat-a: 217 91% 58%;
+    --cat-b: 0 84% 58%;
+    --cat-c: 187 85% 40%;
+    --cat-d: 35 95% 52%;
+    --cat-e: 271 76% 58%;
+    --cat-f: 328 82% 56%;
+    --cat-g: 145 70% 40%;
+    --cat-h: 172 72% 38%;
+    --cat-i: 222 22% 48%;
+    --cat-j: 25 82% 50%;
+    --cat-k: 344 84% 55%;
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 220 60% 30%;
-    --sidebar-primary: 220 80% 45%;
+    --sidebar-foreground: 222 28% 26%;
+    --sidebar-primary: 217 91% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 60% 96%;
-    --sidebar-accent-foreground: 220 80% 35%;
-    --sidebar-border: 220 20% 92%;
-    --sidebar-ring: 220 80% 50%;
+    --sidebar-accent: 214 32% 96%;
+    --sidebar-accent-foreground: 217 91% 42%;
+    --sidebar-border: 214 26% 92%;
+    --sidebar-ring: 217 91% 60%;
   }
 }
 
@@ -70,6 +76,11 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, h4, h5 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.015em;
   }
 }
 
