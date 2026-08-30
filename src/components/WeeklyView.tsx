@@ -66,7 +66,7 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
     const map: Record<string, Task[]> = {};
     dayKeys.forEach((k) => (map[k] = []));
     for (const t of tasks) {
-      if (t.recurrence) continue;
+      if (t.recurrence && t.recurrence !== "weekly") continue;
       if (!t.dueDate) continue;
       const key = t.dueDate.slice(0, 10);
       if (map[key]) map[key].push(t);
@@ -88,9 +88,10 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
   );
 
   const weeklyRecurring = useMemo(
-    () => tasks.filter((t) => t.recurrence === "weekly"),
+    () => tasks.filter((t) => t.recurrence === "weekly" && !t.dueDate),
     [tasks]
   );
+
 
   const structureByDay = useMemo(() => {
     const map: Record<number, WeeklyStructureBlock[]> = {};
