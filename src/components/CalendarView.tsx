@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Upload, Download, Plus, Trash2, X, CalendarD
 import { v4 as uuid } from "uuid";
 import GoogleCalendarConnect from "./GoogleCalendarConnect";
 import WeeklyStructureView from "./WeeklyStructureView";
+import WeeklyView from "./WeeklyView";
 import { useAuth } from "@/hooks/useAuth";
 import { useHouseholdMembers } from "@/hooks/useHouseholdMembers";
 
@@ -15,6 +16,7 @@ interface CalendarViewProps {
   onSaveWeeklyStructure?: (b: WeeklyStructureBlock[]) => void;
   dailySchedule?: DailyScheduleSlot[];
   onSaveDailySchedule?: (s: DailyScheduleSlot[]) => void;
+  onSaveTasks?: (t: Task[]) => void;
 }
 
 function parseICS(text: string): CalendarEvent[] {
@@ -84,8 +86,8 @@ function getFirstDayOfWeek(year: number, month: number) {
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
-export default function CalendarView({ events, onSave, tasks = [], weeklyStructure = [], onSaveWeeklyStructure, dailySchedule = [], onSaveDailySchedule }: CalendarViewProps) {
-  const [tab, setTab] = useState<"month" | "week">("month");
+export default function CalendarView({ events, onSave, tasks = [], weeklyStructure = [], onSaveWeeklyStructure, dailySchedule = [], onSaveDailySchedule, onSaveTasks }: CalendarViewProps) {
+  const [tab, setTab] = useState<"month" | "week" | "weekly">("month");
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth());
@@ -298,7 +300,19 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
         >
           <CalendarDays size={12} /> Weekly Structure
         </button>
+        <button
+          onClick={() => setTab("weekly")}
+          className={`flex items-center gap-1.5 text-xs px-3 py-2 border-b-2 -mb-px transition-colors ${
+            tab === "weekly" ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <CalendarDays size={12} /> Weekly View
+        </button>
       </div>
+
+      {tab === "weekly" && (
+        <WeeklyView tasks={tasks} onSave={(t) => onSaveTasks?.(t)} structure={weeklyStructure} />
+      )}
 
       {tab === "week" && onSaveWeeklyStructure && onSaveDailySchedule && (
         <WeeklyStructureView

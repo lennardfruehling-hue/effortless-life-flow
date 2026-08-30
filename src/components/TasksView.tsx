@@ -3,13 +3,17 @@ import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project, DailyScheduleSl
 import TaskCard from "@/components/TaskCard";
 import TaskForm from "@/components/TaskForm";
 import CalendarScheduleDay from "@/components/CalendarScheduleDay";
+import WeeklyView from "@/components/WeeklyView";
 import GameConsole from "@/components/GameConsole";
+import { useCloudState } from "@/hooks/useCloudState";
+import { CLOUD_KEYS } from "@/lib/cloudStore";
+import type { WeeklyStructureBlock } from "@/lib/types";
 
 import SerpentDailyList from "@/components/SerpentDailyList";
 import ScoreCard from "@/components/ScoreCard";
 import FinanceSummaryCard from "@/components/FinanceSummaryCard";
 import { CategoryBadgeFull } from "@/components/CategoryBadge";
-import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat, Sun, CalendarDays, AlertTriangle, ChevronDown } from "lucide-react";
+import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat, Sun, CalendarDays, AlertTriangle, ChevronDown, CalendarRange } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { applyRecurrenceReset, todayKey, weekKey, totalPride, prideThisWeek } from "@/lib/pride";
 
@@ -90,6 +94,15 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
     return true;
   });
 
+
+  const [showWeekly, setShowWeekly] = useState(() => {
+    try { return localStorage.getItem("serpent-tasks-weekly-view") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("serpent-tasks-weekly-view", showWeekly ? "1" : "0"); } catch { /* ignore */ }
+  }, [showWeekly]);
+
+  const [weeklyStructure] = useCloudState<WeeklyStructureBlock[]>(CLOUD_KEYS.weeklyStructure, []);
 
   useEffect(() => {
     try { localStorage.setItem("serpent-tasks-schedule-dock", showSchedule ? "1" : "0"); } catch { /* ignore */ }
@@ -225,6 +238,15 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
             <Clock size={14} /> <span className="hidden sm:inline">Schedule</span>
           </button>
           <button
+            onClick={() => setShowWeekly(!showWeekly)}
+            className={`flex items-center gap-1.5 px-2.5 md:px-3 py-2 rounded-md text-sm border transition-colors whitespace-nowrap ${
+              showWeekly ? "bg-primary/10 text-primary border-primary/30" : "text-muted-foreground border-border hover:border-primary/20"
+            }`}
+            title="Weekly View"
+          >
+            <CalendarRange size={14} /> <span className="hidden sm:inline">Weekly View</span>
+          </button>
+          <button
             data-tour="add-task"
             onClick={() => { setEditTask(undefined); setShowForm(true); }}
             className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 md:px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap"
@@ -244,8 +266,20 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
           <button onClick={onClearProjectFilter} className="text-primary hover:opacity-80"><X size={16} /></button>
         </div>
       )}
+      {showWeekly && (
+        <div className="mb-4">
+          <WeeklyView
+            tasks={tasks}
+            onSave={onSave}
+            structure={weeklyStructure}
+            onEditTask={(t) => { setEditTask(t); setShowForm(true); }}
+            compact
+          />
+        </div>
+      )}
 
       <div className={showSchedule ? "grid grid-cols-[minmax(0,1.15fr)_minmax(190px,0.85fr)] md:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_440px] gap-2 md:gap-4 items-start" : ""}>
+
         <div className="min-w-0">
 
       {/* Filter bar */}

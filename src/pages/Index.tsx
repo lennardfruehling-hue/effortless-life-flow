@@ -179,6 +179,7 @@ export default function Index() {
             events={calendarEvents}
             onSave={setCalendarEvents}
             tasks={visibleTasks}
+            onSaveTasks={setVisibleTasks as any}
             weeklyStructure={weeklyStructure}
             onSaveWeeklyStructure={setWeeklyStructure}
             dailySchedule={dailySchedule}
