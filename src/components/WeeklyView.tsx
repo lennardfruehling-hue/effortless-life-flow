@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { Task, WeeklyStructureBlock } from "@/lib/types";
 import { CategoryBadge } from "./CategoryBadge";
-import { ChevronLeft, ChevronRight, CalendarRange, Inbox, Repeat, CheckCircle2, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarRange, Inbox, Repeat, CheckCircle2, Check, Trash2, Plus, X } from "lucide-react";
 import { setDragTaskId, touchDragProps, TOUCH_DROP_EVENT, TouchDropDetail } from "@/lib/dragTask";
 
 interface Props {
   tasks: Task[];
   onSave: (tasks: Task[]) => void;
   structure?: WeeklyStructureBlock[];
+  /** When provided, structure blocks become editable/movable straight from this view. */
+  onSaveStructure?: (blocks: WeeklyStructureBlock[]) => void;
   onEditTask?: (task: Task) => void;
   /** Rendered inside the tasks page (tighter spacing) vs. the full calendar page. */
   compact?: boolean;
 }
+
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -33,7 +36,7 @@ function prettyRange(days: Date[]) {
   return `${fmt(days[0])} – ${fmt(days[6])}`;
 }
 
-export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, compact = false }: Props) {
+export default function WeeklyView({ tasks, onSave, structure = [], onSaveStructure, onEditTask, compact = false }: Props) {
   const [offset, setOffset] = useState<0 | 1>(() => {
     try {
       return localStorage.getItem("serpent-weekly-view-offset") === "1" ? 1 : 0;
@@ -46,6 +49,8 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
   }, [offset]);
 
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [editBlockId, setEditBlockId] = useState<string | null>(null);
+
 
   const days = useMemo(() => {
     const start = startOfWeek(new Date(), offset);
@@ -175,7 +180,41 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
   const setTaskTime = (taskId: string, time: string) => {
     onSave(tasks.map((t) => (t.id === taskId ? { ...t, dueTime: time || undefined } : t)));
   };
+  // --- Structure blocks ----------------------------------------------------
+  const canEditStructure = Boolean(onSaveStructure);
 
+  const updateBlock = (id: string, patch: Partial<WeeklyStructureBlock>) => {
+    onSaveStructure?.(structure.map((b) => (b.id === id ? { ...b, ...patch } : b)));
+  };
+  const deleteBlock = (id: string) => {
+    onSaveStructure?.(structure.filter((b) => b.id !== id));
+    setEditBlockId(null);
+  };
+  const addBlock = (date: string) => {
+    if (!onSaveStructure) return;
+    const dow = new Date(`${date}T00:00:00`).getDay();
+    const block: WeeklyStructureBlock = {
+      id: crypto.randomUUID(),
+      dayOfWeek: dow,
+      startTime: "09:00",
+      endTime: "10:00",
+      label: "New block",
+      source: "manual",
+      recurring: true,
+    };
+    onSaveStructure([...structure, block]);
+    setEditBlockId(block.id);
+  };
+  /** Moving a block here wins over whatever the calendar view had for it. */
+  const moveBlock = (id: string, date: string) => {
+    const block = structure.find((b) => b.id === id);
+    if (!block || !onSaveStructure) return;
+    const dow = new Date(`${date}T00:00:00`).getDay();
+    updateBlock(id, {
+      dayOfWeek: dow,
+      ...(block.recurring === false ? { pinnedDate: date } : {}),
+    });
+  };
 
   // Touch fallback: figure out which drop zone the finger was released over.
   useEffect(() => {
@@ -204,11 +243,17 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
     onDrop: (e: React.DragEvent) => {
       e.preventDefault();
       setDropTarget(null);
+      const blockId = e.dataTransfer.getData("text/serpent-block");
+      if (blockId) {
+        if (value !== "unscheduled") moveBlock(blockId, value);
+        return;
+      }
       const id = e.dataTransfer.getData("text/serpent-task") || e.dataTransfer.getData("text/plain");
       if (id) scheduleTask(id, value === "unscheduled" ? null : value);
       setDragTaskId(null);
     },
   });
+
 
   const toggleComplete = (id: string) => {
     onSave(tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)));
@@ -351,26 +396,109 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
                   {DAY_LABELS[i]}
                 </span>
                 <span className="font-mono text-[10px] text-muted-foreground">{d.getDate()}</span>
-                {dayTasks.length > 0 && (
-                  <span className="ml-auto font-mono text-[10px] text-muted-foreground">{dayTasks.length}</span>
-                )}
+                <span className="ml-auto flex items-center gap-1">
+                  {dayTasks.length > 0 && (
+                    <span className="font-mono text-[10px] text-muted-foreground">{dayTasks.length}</span>
+                  )}
+                  {canEditStructure && (
+                    <button
+                      onClick={() => addBlock(key)}
+                      title="Add a structure block to this day"
+                      className="text-muted-foreground transition-colors hover:text-primary"
+                    >
+                      <Plus size={11} />
+                    </button>
+                  )}
+                </span>
               </div>
 
               {/* Weekly structure blocks */}
               {blocks.length > 0 && (
                 <div className="mb-1.5 space-y-0.5">
                   {blocks.map((b) => (
-                    <div
-                      key={`${b.id}-${key}`}
-                      className="truncate rounded-sm bg-secondary px-1 py-0.5 text-[10px] text-muted-foreground"
-                      title={`${b.startTime}–${b.endTime} ${b.label ?? ""}`}
-                    >
-                      <span className="font-mono">{b.startTime}</span>{" "}
-                      {b.label || tasks.find((t) => t.id === b.taskId)?.title || "Structure"}
+                    <div key={`${b.id}-${key}`}>
+                      <div
+                        draggable={canEditStructure}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData("text/serpent-block", b.id);
+                          e.dataTransfer.effectAllowed = "move";
+                        }}
+                        onClick={() => canEditStructure && setEditBlockId(editBlockId === b.id ? null : b.id)}
+                        className={`truncate rounded-sm bg-secondary px-1 py-0.5 text-[10px] text-muted-foreground ${
+                          canEditStructure ? "cursor-grab active:cursor-grabbing hover:bg-secondary/70" : ""
+                        }`}
+                        title={
+                          canEditStructure
+                            ? `${b.startTime}–${b.endTime} ${b.label ?? ""} · drag to another day, click to edit`
+                            : `${b.startTime}–${b.endTime} ${b.label ?? ""}`
+                        }
+                      >
+                        <span className="font-mono">{b.startTime}</span>{" "}
+                        {b.label || tasks.find((t) => t.id === b.taskId)?.title || "Structure"}
+                      </div>
+
+                      {canEditStructure && editBlockId === b.id && (
+                        <div className="mt-1 space-y-1 rounded-md border border-border bg-card p-1.5">
+                          <div className="flex items-center gap-1">
+                            <input
+                              value={b.label ?? ""}
+                              onChange={(e) => updateBlock(b.id, { label: e.target.value })}
+                              placeholder="Label"
+                              className="min-w-0 flex-1 rounded border border-border bg-background px-1 py-0.5 text-[10px] text-foreground"
+                            />
+                            <button
+                              onClick={() => setEditBlockId(null)}
+                              aria-label="Close block editor"
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              <X size={11} />
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="time"
+                              value={b.startTime}
+                              step={900}
+                              onChange={(e) => updateBlock(b.id, { startTime: e.target.value })}
+                              className="min-w-0 flex-1 rounded border border-border bg-background px-0.5 font-mono text-[10px] text-foreground"
+                            />
+                            <input
+                              type="time"
+                              value={b.endTime}
+                              step={900}
+                              onChange={(e) => updateBlock(b.id, { endTime: e.target.value })}
+                              className="min-w-0 flex-1 rounded border border-border bg-background px-0.5 font-mono text-[10px] text-foreground"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between gap-1">
+                            <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                              <input
+                                type="checkbox"
+                                checked={b.recurring !== false}
+                                onChange={(e) =>
+                                  updateBlock(b.id, {
+                                    recurring: e.target.checked,
+                                    pinnedDate: e.target.checked ? undefined : key,
+                                  })
+                                }
+                                className="h-3 w-3"
+                              />
+                              Every week
+                            </label>
+                            <button
+                              onClick={() => deleteBlock(b.id)}
+                              className="flex items-center gap-0.5 text-[10px] text-destructive hover:opacity-80"
+                            >
+                              <Trash2 size={10} /> Delete
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
+
 
               <div className="flex-1 space-y-1">
                 {dayTasks.map((t) => (
