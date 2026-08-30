@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Task, WeeklyStructureBlock } from "@/lib/types";
 import { CategoryBadge } from "./CategoryBadge";
-import { ChevronLeft, ChevronRight, CalendarRange, Inbox, Repeat, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarRange, Inbox, Repeat, CheckCircle2, Check } from "lucide-react";
 import { setDragTaskId, touchDragProps, TOUCH_DROP_EVENT, TouchDropDetail } from "@/lib/dragTask";
 
 interface Props {
