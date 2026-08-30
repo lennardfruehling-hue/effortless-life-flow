@@ -164,6 +164,10 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
     },
   });
 
+  const toggleComplete = (id: string) => {
+    onSave(tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)));
+  };
+
   const TaskChip = ({ t, showTime }: { t: Task; showTime?: boolean }) => (
     <div
       draggable
@@ -175,7 +179,6 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
       }}
       onDragEnd={() => setDragTaskId(null)}
       {...touchDragProps(t.id)}
-      onClick={() => onEditTask?.(t)}
       className={`group cursor-grab active:cursor-grabbing rounded-md border px-1.5 py-1 text-[11px] leading-tight transition-colors ${
         t.completed
           ? "border-border bg-muted/40 text-muted-foreground line-through"
@@ -184,17 +187,29 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
       title="Drag to another day to change its due date"
     >
       <div className="flex items-start gap-1">
-        {t.completed && <CheckCircle2 size={11} className="mt-[1px] shrink-0 text-muted-foreground" />}
-        <span className="line-clamp-2 flex-1">{t.title}</span>
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleComplete(t.id); }}
+          aria-label={t.completed ? "Mark as not done" : "Mark as done"}
+          className={`mt-[1px] flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
+            t.completed ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40 hover:border-primary"
+          }`}
+        >
+          {t.completed && <Check size={9} />}
+        </button>
+        <span className="line-clamp-2 flex-1 cursor-pointer" onClick={() => onEditTask?.(t)}>{t.title}</span>
       </div>
       <div className="mt-0.5 flex flex-wrap items-center gap-1">
         {showTime && t.dueTime && <span className="font-mono text-[10px] text-muted-foreground">{t.dueTime}</span>}
+        {t.recurrence === "weekly" && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-primary"><Repeat size={9} /> wk</span>
+        )}
         {t.categories.slice(0, 2).map((c) => (
           <CategoryBadge key={c} category={c} />
         ))}
       </div>
     </div>
   );
+
 
   return (
     <div className={`rounded-lg border border-border bg-card ${compact ? "p-3" : "p-4"}`}>
