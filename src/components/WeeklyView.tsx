@@ -180,7 +180,41 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
   const setTaskTime = (taskId: string, time: string) => {
     onSave(tasks.map((t) => (t.id === taskId ? { ...t, dueTime: time || undefined } : t)));
   };
+  // --- Structure blocks ----------------------------------------------------
+  const canEditStructure = Boolean(onSaveStructure);
 
+  const updateBlock = (id: string, patch: Partial<WeeklyStructureBlock>) => {
+    onSaveStructure?.(structure.map((b) => (b.id === id ? { ...b, ...patch } : b)));
+  };
+  const deleteBlock = (id: string) => {
+    onSaveStructure?.(structure.filter((b) => b.id !== id));
+    setEditBlockId(null);
+  };
+  const addBlock = (date: string) => {
+    if (!onSaveStructure) return;
+    const dow = new Date(`${date}T00:00:00`).getDay();
+    const block: WeeklyStructureBlock = {
+      id: crypto.randomUUID(),
+      dayOfWeek: dow,
+      startTime: "09:00",
+      endTime: "10:00",
+      label: "New block",
+      source: "manual",
+      recurring: true,
+    };
+    onSaveStructure([...structure, block]);
+    setEditBlockId(block.id);
+  };
+  /** Moving a block here wins over whatever the calendar view had for it. */
+  const moveBlock = (id: string, date: string) => {
+    const block = structure.find((b) => b.id === id);
+    if (!block || !onSaveStructure) return;
+    const dow = new Date(`${date}T00:00:00`).getDay();
+    updateBlock(id, {
+      dayOfWeek: dow,
+      ...(block.recurring === false ? { pinnedDate: date } : {}),
+    });
+  };
 
   // Touch fallback: figure out which drop zone the finger was released over.
   useEffect(() => {
@@ -209,11 +243,17 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
     onDrop: (e: React.DragEvent) => {
       e.preventDefault();
       setDropTarget(null);
+      const blockId = e.dataTransfer.getData("text/serpent-block");
+      if (blockId) {
+        if (value !== "unscheduled") moveBlock(blockId, value);
+        return;
+      }
       const id = e.dataTransfer.getData("text/serpent-task") || e.dataTransfer.getData("text/plain");
       if (id) scheduleTask(id, value === "unscheduled" ? null : value);
       setDragTaskId(null);
     },
   });
+
 
   const toggleComplete = (id: string) => {
     onSave(tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)));
