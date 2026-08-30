@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Task, WeeklyStructureBlock } from "@/lib/types";
 import { CategoryBadge } from "./CategoryBadge";
-import { ChevronLeft, ChevronRight, CalendarRange, Inbox, Repeat, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarRange, Inbox, Repeat, CheckCircle2, Check } from "lucide-react";
 import { setDragTaskId, touchDragProps, TOUCH_DROP_EVENT, TouchDropDetail } from "@/lib/dragTask";
 
 interface Props {
@@ -66,7 +66,7 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
     const map: Record<string, Task[]> = {};
     dayKeys.forEach((k) => (map[k] = []));
     for (const t of tasks) {
-      if (t.recurrence) continue;
+      if (t.recurrence && t.recurrence !== "weekly") continue;
       if (!t.dueDate) continue;
       const key = t.dueDate.slice(0, 10);
       if (map[key]) map[key].push(t);
@@ -88,9 +88,10 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
   );
 
   const weeklyRecurring = useMemo(
-    () => tasks.filter((t) => t.recurrence === "weekly"),
+    () => tasks.filter((t) => t.recurrence === "weekly" && !t.dueDate),
     [tasks]
   );
+
 
   const structureByDay = useMemo(() => {
     const map: Record<number, WeeklyStructureBlock[]> = {};
@@ -163,6 +164,10 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
     },
   });
 
+  const toggleComplete = (id: string) => {
+    onSave(tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)));
+  };
+
   const TaskChip = ({ t, showTime }: { t: Task; showTime?: boolean }) => (
     <div
       draggable
@@ -174,7 +179,6 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
       }}
       onDragEnd={() => setDragTaskId(null)}
       {...touchDragProps(t.id)}
-      onClick={() => onEditTask?.(t)}
       className={`group cursor-grab active:cursor-grabbing rounded-md border px-1.5 py-1 text-[11px] leading-tight transition-colors ${
         t.completed
           ? "border-border bg-muted/40 text-muted-foreground line-through"
@@ -183,17 +187,29 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
       title="Drag to another day to change its due date"
     >
       <div className="flex items-start gap-1">
-        {t.completed && <CheckCircle2 size={11} className="mt-[1px] shrink-0 text-muted-foreground" />}
-        <span className="line-clamp-2 flex-1">{t.title}</span>
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleComplete(t.id); }}
+          aria-label={t.completed ? "Mark as not done" : "Mark as done"}
+          className={`mt-[1px] flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
+            t.completed ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40 hover:border-primary"
+          }`}
+        >
+          {t.completed && <Check size={9} />}
+        </button>
+        <span className="line-clamp-2 flex-1 cursor-pointer" onClick={() => onEditTask?.(t)}>{t.title}</span>
       </div>
       <div className="mt-0.5 flex flex-wrap items-center gap-1">
         {showTime && t.dueTime && <span className="font-mono text-[10px] text-muted-foreground">{t.dueTime}</span>}
+        {t.recurrence === "weekly" && (
+          <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-primary"><Repeat size={9} /> wk</span>
+        )}
         {t.categories.slice(0, 2).map((c) => (
           <CategoryBadge key={c} category={c} />
         ))}
       </div>
     </div>
   );
+
 
   return (
     <div className={`rounded-lg border border-border bg-card ${compact ? "p-3" : "p-4"}`}>
@@ -314,20 +330,18 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
         <div className="mt-3 rounded-md border border-border bg-secondary/30 p-2">
           <div className="mb-1.5 flex items-center gap-1.5">
             <Repeat size={12} className="text-muted-foreground" />
-            <span className="text-xs font-medium text-foreground">Every week</span>
+            <span className="text-xs font-medium text-foreground">Every week · no day yet</span>
             <span className="font-mono text-[11px] text-muted-foreground">{weeklyRecurring.length}</span>
+            <span className="ml-auto text-[11px] text-muted-foreground">Drag onto a day to schedule it</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {weeklyRecurring.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => onEditTask?.(t)}
-                className="rounded-md border border-border bg-card px-1.5 py-1 text-[11px] text-foreground hover:border-primary/40"
-              >
-                {t.title}
-              </button>
+              <div key={t.id} className="w-40 max-w-full">
+                <TaskChip t={t} />
+              </div>
             ))}
           </div>
+
         </div>
       )}
 
