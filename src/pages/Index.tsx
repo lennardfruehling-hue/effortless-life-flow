@@ -159,6 +159,8 @@ export default function Index() {
             onSave={setVisibleTasks as any}
             dailySchedule={dailySchedule}
             onSaveDailySchedule={setDailySchedule}
+            weeklyStructure={weeklyStructure}
+            onSaveWeeklyStructure={setWeeklyStructure}
             filterProjectId={taskFilterProject}
             onClearProjectFilter={() => setTaskFilterProject(undefined)}
           />

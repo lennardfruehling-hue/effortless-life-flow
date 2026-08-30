@@ -1,13 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
-import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project, DailyScheduleSlot } from "@/lib/types";
+import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project, DailyScheduleSlot, WeeklyStructureBlock } from "@/lib/types";
 import TaskCard from "@/components/TaskCard";
 import TaskForm from "@/components/TaskForm";
 import CalendarScheduleDay from "@/components/CalendarScheduleDay";
 import WeeklyView from "@/components/WeeklyView";
 import GameConsole from "@/components/GameConsole";
-import { useCloudState } from "@/hooks/useCloudState";
-import { CLOUD_KEYS } from "@/lib/cloudStore";
-import type { WeeklyStructureBlock } from "@/lib/types";
 
 import SerpentDailyList from "@/components/SerpentDailyList";
 import ScoreCard from "@/components/ScoreCard";
@@ -23,6 +20,8 @@ interface TasksViewProps {
   onSave: (tasks: Task[]) => void;
   dailySchedule: DailyScheduleSlot[];
   onSaveDailySchedule: (slots: DailyScheduleSlot[]) => void;
+  weeklyStructure: WeeklyStructureBlock[];
+  onSaveWeeklyStructure: (blocks: WeeklyStructureBlock[]) => void;
   filterProjectId?: string;
   onClearProjectFilter?: () => void;
 }
@@ -79,7 +78,7 @@ function sortTasks(tasks: Task[]): Task[] {
 type SectionKey = "today" | "daily" | "weekly" | "upcoming";
 const SECTION_PREF_KEY = "serpent-task-sections-v1";
 
-export default function TasksView({ tasks, projects, onSave, dailySchedule, onSaveDailySchedule, filterProjectId, onClearProjectFilter }: TasksViewProps) {
+export default function TasksView({ tasks, projects, onSave, dailySchedule, onSaveDailySchedule, weeklyStructure, onSaveWeeklyStructure, filterProjectId, onClearProjectFilter }: TasksViewProps) {
   const [showForm, setShowForm] = useState(false);
   const [showOverdue, setShowOverdue] = useState(() => localStorage.getItem("serpent-overdue-open") !== "false");
 
@@ -101,8 +100,6 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
   useEffect(() => {
     try { localStorage.setItem("serpent-tasks-weekly-view", showWeekly ? "1" : "0"); } catch { /* ignore */ }
   }, [showWeekly]);
-
-  const [weeklyStructure, setWeeklyStructure] = useCloudState<WeeklyStructureBlock[]>(CLOUD_KEYS.weeklyStructure, []);
 
   useEffect(() => {
     try { localStorage.setItem("serpent-tasks-schedule-dock", showSchedule ? "1" : "0"); } catch { /* ignore */ }
@@ -272,7 +269,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
             tasks={tasks}
             onSave={onSave}
             structure={weeklyStructure}
-            onSaveStructure={setWeeklyStructure}
+            onSaveStructure={onSaveWeeklyStructure}
             onEditTask={(t) => { setEditTask(t); setShowForm(true); }}
             compact
           />
