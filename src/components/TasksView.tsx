@@ -238,6 +238,15 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
             <Clock size={14} /> <span className="hidden sm:inline">Schedule</span>
           </button>
           <button
+            onClick={() => setShowWeekly(!showWeekly)}
+            className={`flex items-center gap-1.5 px-2.5 md:px-3 py-2 rounded-md text-sm border transition-colors whitespace-nowrap ${
+              showWeekly ? "bg-primary/10 text-primary border-primary/30" : "text-muted-foreground border-border hover:border-primary/20"
+            }`}
+            title="Weekly View"
+          >
+            <CalendarRange size={14} /> <span className="hidden sm:inline">Weekly View</span>
+          </button>
+          <button
             data-tour="add-task"
             onClick={() => { setEditTask(undefined); setShowForm(true); }}
             className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 md:px-4 py-2 rounded-md text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap"
