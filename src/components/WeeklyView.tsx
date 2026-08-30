@@ -396,26 +396,109 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
                   {DAY_LABELS[i]}
                 </span>
                 <span className="font-mono text-[10px] text-muted-foreground">{d.getDate()}</span>
-                {dayTasks.length > 0 && (
-                  <span className="ml-auto font-mono text-[10px] text-muted-foreground">{dayTasks.length}</span>
-                )}
+                <span className="ml-auto flex items-center gap-1">
+                  {dayTasks.length > 0 && (
+                    <span className="font-mono text-[10px] text-muted-foreground">{dayTasks.length}</span>
+                  )}
+                  {canEditStructure && (
+                    <button
+                      onClick={() => addBlock(key)}
+                      title="Add a structure block to this day"
+                      className="text-muted-foreground transition-colors hover:text-primary"
+                    >
+                      <Plus size={11} />
+                    </button>
+                  )}
+                </span>
               </div>
 
               {/* Weekly structure blocks */}
               {blocks.length > 0 && (
                 <div className="mb-1.5 space-y-0.5">
                   {blocks.map((b) => (
-                    <div
-                      key={`${b.id}-${key}`}
-                      className="truncate rounded-sm bg-secondary px-1 py-0.5 text-[10px] text-muted-foreground"
-                      title={`${b.startTime}–${b.endTime} ${b.label ?? ""}`}
-                    >
-                      <span className="font-mono">{b.startTime}</span>{" "}
-                      {b.label || tasks.find((t) => t.id === b.taskId)?.title || "Structure"}
+                    <div key={`${b.id}-${key}`}>
+                      <div
+                        draggable={canEditStructure}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData("text/serpent-block", b.id);
+                          e.dataTransfer.effectAllowed = "move";
+                        }}
+                        onClick={() => canEditStructure && setEditBlockId(editBlockId === b.id ? null : b.id)}
+                        className={`truncate rounded-sm bg-secondary px-1 py-0.5 text-[10px] text-muted-foreground ${
+                          canEditStructure ? "cursor-grab active:cursor-grabbing hover:bg-secondary/70" : ""
+                        }`}
+                        title={
+                          canEditStructure
+                            ? `${b.startTime}–${b.endTime} ${b.label ?? ""} · drag to another day, click to edit`
+                            : `${b.startTime}–${b.endTime} ${b.label ?? ""}`
+                        }
+                      >
+                        <span className="font-mono">{b.startTime}</span>{" "}
+                        {b.label || tasks.find((t) => t.id === b.taskId)?.title || "Structure"}
+                      </div>
+
+                      {canEditStructure && editBlockId === b.id && (
+                        <div className="mt-1 space-y-1 rounded-md border border-border bg-card p-1.5">
+                          <div className="flex items-center gap-1">
+                            <input
+                              value={b.label ?? ""}
+                              onChange={(e) => updateBlock(b.id, { label: e.target.value })}
+                              placeholder="Label"
+                              className="min-w-0 flex-1 rounded border border-border bg-background px-1 py-0.5 text-[10px] text-foreground"
+                            />
+                            <button
+                              onClick={() => setEditBlockId(null)}
+                              aria-label="Close block editor"
+                              className="text-muted-foreground hover:text-foreground"
+                            >
+                              <X size={11} />
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <input
+                              type="time"
+                              value={b.startTime}
+                              step={900}
+                              onChange={(e) => updateBlock(b.id, { startTime: e.target.value })}
+                              className="min-w-0 flex-1 rounded border border-border bg-background px-0.5 font-mono text-[10px] text-foreground"
+                            />
+                            <input
+                              type="time"
+                              value={b.endTime}
+                              step={900}
+                              onChange={(e) => updateBlock(b.id, { endTime: e.target.value })}
+                              className="min-w-0 flex-1 rounded border border-border bg-background px-0.5 font-mono text-[10px] text-foreground"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between gap-1">
+                            <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                              <input
+                                type="checkbox"
+                                checked={b.recurring !== false}
+                                onChange={(e) =>
+                                  updateBlock(b.id, {
+                                    recurring: e.target.checked,
+                                    pinnedDate: e.target.checked ? undefined : key,
+                                  })
+                                }
+                                className="h-3 w-3"
+                              />
+                              Every week
+                            </label>
+                            <button
+                              onClick={() => deleteBlock(b.id)}
+                              className="flex items-center gap-0.5 text-[10px] text-destructive hover:opacity-80"
+                            >
+                              <Trash2 size={10} /> Delete
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
+
 
               <div className="flex-1 space-y-1">
                 {dayTasks.map((t) => (
