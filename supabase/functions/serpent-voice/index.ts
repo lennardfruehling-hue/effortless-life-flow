@@ -129,33 +129,53 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-3.6-flash",
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: `${SYSTEM}\n\nAPP STATE (json):\n${state}` },
-          ...messages,
-        ],
-      }),
-    });
+    const convo: any[] = [
+      { role: "system", content: `${SYSTEM}\n\nAPP STATE (json):\n${state}` },
+      ...messages,
+    ];
 
-    if (!res.ok) {
-      const text = await res.text();
-      console.error("voice gateway error", res.status, text);
-      const status = res.status === 429 || res.status === 402 ? res.status : 500;
-      return new Response(JSON.stringify({ error: `AI error ${res.status}` }), {
-        status,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
+    let data: any = null;
+    for (let step = 0; step < 4; step++) {
+      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3.6-flash",
+          response_format: { type: "json_object" },
+          tools: TOOLS,
+          messages: convo,
+        }),
       });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("voice gateway error", res.status, text);
+        const status = res.status === 429 || res.status === 402 ? res.status : 500;
+        return new Response(JSON.stringify({ error: `AI error ${res.status}` }), {
+          status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      data = await res.json();
+      const msg = data?.choices?.[0]?.message;
+      const calls = msg?.tool_calls;
+      if (!Array.isArray(calls) || calls.length === 0) break;
+
+      convo.push(msg);
+      for (const call of calls) {
+        let args: any = {};
+        try { args = JSON.parse(call?.function?.arguments || "{}"); } catch {}
+        let result = "Unknown tool.";
+        if (call?.function?.name === "web_search") result = await webSearch(String(args.query ?? ""));
+        else if (call?.function?.name === "open_url") result = await openUrl(String(args.url ?? ""));
+        convo.push({ role: "tool", tool_call_id: call.id, content: result });
+      }
     }
 
-    const data = await res.json();
     const raw = data?.choices?.[0]?.message?.content ?? "{}";
     let parsed: any = {};
     try {
@@ -164,6 +184,7 @@ serve(async (req) => {
       const m = String(raw).match(/\{[\s\S]*\}/);
       parsed = m ? JSON.parse(m[0]) : { speak: String(raw), actions: [] };
     }
+
     return new Response(
       JSON.stringify({ speak: parsed.speak ?? "", actions: Array.isArray(parsed.actions) ? parsed.actions : [] }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
