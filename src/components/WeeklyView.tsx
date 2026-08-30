@@ -245,7 +245,21 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
         <span className="line-clamp-2 flex-1 cursor-pointer" onClick={() => onEditTask?.(t)}>{t.title}</span>
       </div>
       <div className="mt-0.5 flex flex-wrap items-center gap-1">
-        {showTime && t.dueTime && <span className="font-mono text-[10px] text-muted-foreground">{t.dueTime}</span>}
+        {showTime && t.dueTime && (
+          <input
+            type="time"
+            value={t.dueTime}
+            step={900}
+            onClick={(e) => e.stopPropagation()}
+            onChange={(e) => setTaskTime(t.id, e.target.value)}
+            title={`Time-bound · ${t.duration || 30} min`}
+            className="rounded border border-border bg-background px-0.5 font-mono text-[10px] text-muted-foreground"
+          />
+        )}
+        {showTime && t.dueTime && (
+          <span className="font-mono text-[10px] text-muted-foreground/70">{t.duration || 30}m</span>
+        )}
+
         {t.recurrence === "weekly" && (
           <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-primary"><Repeat size={9} /> wk</span>
         )}
