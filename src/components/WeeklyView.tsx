@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Task, WeeklyStructureBlock } from "@/lib/types";
 import { CategoryBadge } from "./CategoryBadge";
-import { ChevronLeft, ChevronRight, CalendarRange, Inbox, Repeat, CheckCircle2, Check, Trash2, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarRange, Inbox, Repeat, Check, Trash2, Plus, X } from "lucide-react";
 import { setDragTaskId, touchDragProps, TOUCH_DROP_EVENT, TouchDropDetail } from "@/lib/dragTask";
 
 interface Props {
@@ -17,6 +17,10 @@ interface Props {
 
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const DAY_START = 8 * 60; // 08:00
+const DAY_END = 22 * 60; // 22:00
+const SNAP = 15;
 
 function pad(n: number) {
   return String(n).padStart(2, "0");
@@ -35,6 +39,23 @@ function prettyRange(days: Date[]) {
   const fmt = (d: Date) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   return `${fmt(days[0])} – ${fmt(days[6])}`;
 }
+const toMin = (hhmm: string) => {
+  const [h, m] = hhmm.split(":").map(Number);
+  return h * 60 + m;
+};
+const toHHMM = (min: number) => `${pad(Math.floor(min / 60) % 24)}:${pad(min % 60)}`;
+
+type DragState = {
+  kind: "task" | "block";
+  id: string;
+  startMin: number;
+  durMin: number;
+  originDay: string;
+  pointerY: number;
+  deltaMin: number;
+  overDay: string;
+  moved: boolean;
+};
 
 export default function WeeklyView({ tasks, onSave, structure = [], onSaveStructure, onEditTask, compact = false }: Props) {
   const [offset, setOffset] = useState<0 | 1>(() => {
@@ -50,7 +71,12 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
 
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [editBlockId, setEditBlockId] = useState<string | null>(null);
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+  dragRef.current = drag;
 
+  const PX_PER_MIN = compact ? 0.6 : 0.75;
+  const gridHeight = (DAY_END - DAY_START) * PX_PER_MIN;
 
   const days = useMemo(() => {
     const start = startOfWeek(new Date(), offset);
@@ -97,7 +123,6 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
     [tasks]
   );
 
-
   const structureByDay = useMemo(() => {
     const map: Record<number, WeeklyStructureBlock[]> = {};
     for (let i = 0; i < 7; i++) map[i] = [];
@@ -118,15 +143,6 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
   const scheduledCount = dayKeys.reduce((n, k) => n + byDay[k].filter((t) => !t.completed).length, 0);
 
   // --- Scheduling ----------------------------------------------------------
-  const toMin = (hhmm: string) => {
-    const [h, m] = hhmm.split(":").map(Number);
-    return h * 60 + m;
-  };
-  const toHHMM = (min: number) => `${pad(Math.floor(min / 60) % 24)}:${pad(min % 60)}`;
-
-  const DAY_START = 8 * 60; // 08:00
-  const DAY_END = 22 * 60; // 22:00
-
   /** First 15-min-aligned slot on `date` that fits `duration` without clashing. */
   const findFreeSlot = (date: string, duration: number, ignoreTaskId: string) => {
     const busy: Array<[number, number]> = [];
@@ -145,18 +161,18 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
     const nowFloor = (() => {
       const n = new Date();
       if (date !== todayStr) return DAY_START;
-      const m = Math.ceil((n.getHours() * 60 + n.getMinutes() + 5) / 15) * 15;
+      const m = Math.ceil((n.getHours() * 60 + n.getMinutes() + 5) / SNAP) * SNAP;
       return Math.max(DAY_START, m);
     })();
 
-    for (let start = nowFloor; start + duration <= DAY_END; start += 15) {
+    for (let start = nowFloor; start + duration <= DAY_END; start += SNAP) {
       const end = start + duration;
       if (!busy.some(([bs, be]) => start < be && end > bs)) return toHHMM(start);
     }
     return toHHMM(Math.min(nowFloor, DAY_END - duration));
   };
 
-  const scheduleTask = (taskId: string, date: string | null) => {
+  const scheduleTask = (taskId: string, date: string | null, explicitTime?: string) => {
     onSave(
       tasks.map((t) => {
         if (t.id !== taskId) return t;
@@ -165,7 +181,7 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
           ...t,
           dueDate: date ?? undefined,
           // Dropping onto a day makes the task time-bound: it gets a concrete slot.
-          dueTime: date ? findFreeSlot(date, duration, t.id) : undefined,
+          dueTime: date ? explicitTime ?? findFreeSlot(date, duration, t.id) : undefined,
           duration: date ? duration : t.duration,
           // Keeping a dated task tagged "this week" keeps it visible in weekly planning.
           categories:
@@ -180,6 +196,7 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
   const setTaskTime = (taskId: string, time: string) => {
     onSave(tasks.map((t) => (t.id === taskId ? { ...t, dueTime: time || undefined } : t)));
   };
+
   // --- Structure blocks ----------------------------------------------------
   const canEditStructure = Boolean(onSaveStructure);
 
@@ -206,17 +223,84 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
     setEditBlockId(block.id);
   };
   /** Moving a block here wins over whatever the calendar view had for it. */
-  const moveBlock = (id: string, date: string) => {
+  const moveBlock = (id: string, date: string, startMin?: number) => {
     const block = structure.find((b) => b.id === id);
     if (!block || !onSaveStructure) return;
     const dow = new Date(`${date}T00:00:00`).getDay();
+    const dur = Math.max(15, toMin(block.endTime) - toMin(block.startTime));
     updateBlock(id, {
       dayOfWeek: dow,
+      ...(startMin !== undefined ? { startTime: toHHMM(startMin), endTime: toHHMM(startMin + dur) } : {}),
       ...(block.recurring === false ? { pinnedDate: date } : {}),
     });
   };
 
-  // Touch fallback: figure out which drop zone the finger was released over.
+  // --- Pointer dragging inside the time grid --------------------------------
+  const clampStart = (min: number, dur: number) =>
+    Math.max(DAY_START, Math.min(DAY_END - dur, Math.round(min / SNAP) * SNAP));
+
+  const dayFromPoint = (x: number, y: number) => {
+    const el = document.elementFromPoint(x, y) as HTMLElement | null;
+    const zone = el?.closest("[data-week-drop]") as HTMLElement | null;
+    const value = zone?.dataset.weekDrop;
+    return value && value !== "unscheduled" ? value : null;
+  };
+
+  const beginPointerDrag = (
+    e: React.PointerEvent,
+    kind: "task" | "block",
+    id: string,
+    startMin: number,
+    durMin: number,
+    originDay: string
+  ) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.stopPropagation();
+    setDrag({ kind, id, startMin, durMin, originDay, pointerY: e.clientY, deltaMin: 0, overDay: originDay, moved: false });
+  };
+
+  useEffect(() => {
+    if (!drag) return;
+    const onMove = (e: PointerEvent) => {
+      const cur = dragRef.current;
+      if (!cur) return;
+      const rawDelta = (e.clientY - cur.pointerY) / PX_PER_MIN;
+      const deltaMin = Math.round(rawDelta / SNAP) * SNAP;
+      const overDay = dayFromPoint(e.clientX, e.clientY) ?? cur.overDay;
+      const moved = cur.moved || Math.abs(e.clientY - cur.pointerY) > 4 || overDay !== cur.originDay;
+      if (deltaMin !== cur.deltaMin || overDay !== cur.overDay || moved !== cur.moved) {
+        setDrag({ ...cur, deltaMin, overDay, moved });
+      }
+      e.preventDefault();
+    };
+    const onUp = () => {
+      const cur = dragRef.current;
+      setDrag(null);
+      if (!cur) return;
+      if (!cur.moved) {
+        if (cur.kind === "block" && canEditStructure) setEditBlockId((v) => (v === cur.id ? null : cur.id));
+        return;
+      }
+      const newStart = clampStart(cur.startMin + cur.deltaMin, cur.durMin);
+      if (cur.kind === "task") {
+        if (cur.overDay !== cur.originDay) scheduleTask(cur.id, cur.overDay, toHHMM(newStart));
+        else setTaskTime(cur.id, toHHMM(newStart));
+      } else if (canEditStructure) {
+        moveBlock(cur.id, cur.overDay, newStart);
+      }
+    };
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drag?.id, tasks, structure]);
+
+  // Touch fallback for the trays: figure out which drop zone the finger was released over.
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<TouchDropDetail>).detail;
@@ -232,6 +316,16 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks]);
 
+  /** Time under the cursor when dropping into a day's grid, if the pointer is over it. */
+  const timeFromDropEvent = (e: React.DragEvent, dur: number) => {
+    const grid = (e.currentTarget as HTMLElement).querySelector("[data-week-grid]") as HTMLElement | null;
+    if (!grid) return undefined;
+    const rect = grid.getBoundingClientRect();
+    if (e.clientY < rect.top || e.clientY > rect.bottom) return undefined;
+    const min = DAY_START + (e.clientY - rect.top) / PX_PER_MIN;
+    return toHHMM(clampStart(min, dur));
+  };
+
   const dropProps = (value: string) => ({
     "data-week-drop": value,
     onDragOver: (e: React.DragEvent) => {
@@ -245,21 +339,32 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
       setDropTarget(null);
       const blockId = e.dataTransfer.getData("text/serpent-block");
       if (blockId) {
-        if (value !== "unscheduled") moveBlock(blockId, value);
+        if (value !== "unscheduled") {
+          const b = structure.find((x) => x.id === blockId);
+          const dur = b ? Math.max(15, toMin(b.endTime) - toMin(b.startTime)) : 60;
+          const t = timeFromDropEvent(e, dur);
+          moveBlock(blockId, value, t ? toMin(t) : undefined);
+        }
         return;
       }
       const id = e.dataTransfer.getData("text/serpent-task") || e.dataTransfer.getData("text/plain");
-      if (id) scheduleTask(id, value === "unscheduled" ? null : value);
+      if (id) {
+        if (value === "unscheduled") scheduleTask(id, null);
+        else {
+          const task = tasks.find((t) => t.id === id);
+          scheduleTask(id, value, timeFromDropEvent(e, task?.duration || 30));
+        }
+      }
       setDragTaskId(null);
     },
   });
-
 
   const toggleComplete = (id: string) => {
     onSave(tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t)));
   };
 
-  const TaskChip = ({ t, showTime }: { t: Task; showTime?: boolean }) => (
+  /** Small chip used in the trays and for undated tasks of a day. */
+  const TaskChip = ({ t }: { t: Task }) => (
     <div
       draggable
       onDragStart={(e) => {
@@ -275,7 +380,7 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
           ? "border-border bg-muted/40 text-muted-foreground line-through"
           : "border-border bg-card hover:border-primary/40 text-foreground"
       }`}
-      title="Drag to another day to change its due date"
+      title="Drag onto a day (and a time) to schedule it"
     >
       <div className="flex items-start gap-1">
         <button
@@ -290,21 +395,6 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
         <span className="line-clamp-2 flex-1 cursor-pointer" onClick={() => onEditTask?.(t)}>{t.title}</span>
       </div>
       <div className="mt-0.5 flex flex-wrap items-center gap-1">
-        {showTime && t.dueTime && (
-          <input
-            type="time"
-            value={t.dueTime}
-            step={900}
-            onClick={(e) => e.stopPropagation()}
-            onChange={(e) => setTaskTime(t.id, e.target.value)}
-            title={`Time-bound · ${t.duration || 30} min`}
-            className="rounded border border-border bg-background px-0.5 font-mono text-[10px] text-muted-foreground"
-          />
-        )}
-        {showTime && t.dueTime && (
-          <span className="font-mono text-[10px] text-muted-foreground/70">{t.duration || 30}m</span>
-        )}
-
         {t.recurrence === "weekly" && (
           <span className="inline-flex items-center gap-0.5 font-mono text-[10px] text-primary"><Repeat size={9} /> wk</span>
         )}
@@ -315,6 +405,7 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
     </div>
   );
 
+  const hours = Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }, (_, i) => DAY_START / 60 + i);
 
   return (
     <div className={`rounded-lg border border-border bg-card ${compact ? "p-3" : "p-4"}`}>
@@ -355,7 +446,7 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
           <Inbox size={13} className="text-muted-foreground" />
           <span className="text-xs font-medium text-foreground">This week · no day yet</span>
           <span className="font-mono text-[11px] text-muted-foreground">{unscheduled.length}</span>
-          <span className="ml-auto text-[11px] text-muted-foreground">Drag onto a day to set its due date</span>
+          <span className="ml-auto text-[11px] text-muted-foreground">Drag onto a day and a time slot</span>
         </div>
         {unscheduled.length === 0 ? (
           <p className="py-1 text-[11px] text-muted-foreground">
@@ -373,144 +464,221 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
       </div>
 
       {/* Week grid */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
-        {days.map((d, i) => {
-          const key = dayKeys[i];
-          const isToday = key === todayStr;
-          const dayTasks = byDay[key];
-          const blocks = structureByDay[i];
-          return (
-            <div
-              key={key}
-              {...dropProps(key)}
-              className={`flex min-h-[140px] flex-col rounded-md border p-1.5 transition-colors ${
-                dropTarget === key
-                  ? "border-primary bg-primary/5"
-                  : isToday
-                  ? "border-primary/40 bg-primary/[0.04]"
-                  : "border-border bg-background"
-              }`}
-            >
-              <div className="mb-1.5 flex items-baseline gap-1">
-                <span className={`text-xs font-semibold ${isToday ? "text-primary" : "text-foreground"}`}>
-                  {DAY_LABELS[i]}
-                </span>
-                <span className="font-mono text-[10px] text-muted-foreground">{d.getDate()}</span>
-                <span className="ml-auto flex items-center gap-1">
-                  {dayTasks.length > 0 && (
-                    <span className="font-mono text-[10px] text-muted-foreground">{dayTasks.length}</span>
-                  )}
-                  {canEditStructure && (
-                    <button
-                      onClick={() => addBlock(key)}
-                      title="Add a structure block to this day"
-                      className="text-muted-foreground transition-colors hover:text-primary"
-                    >
-                      <Plus size={11} />
-                    </button>
-                  )}
-                </span>
-              </div>
+      <div className="flex gap-1 overflow-x-auto">
+        {/* Hour gutter */}
+        <div className="hidden shrink-0 sm:block" style={{ width: 34 }}>
+          <div className="mb-1.5 h-[18px]" />
+          <div className="relative" style={{ height: gridHeight }}>
+            {hours.map((h) => (
+              <span
+                key={h}
+                className="absolute right-1 -translate-y-1/2 font-mono text-[9px] text-muted-foreground/70"
+                style={{ top: (h * 60 - DAY_START) * PX_PER_MIN }}
+              >
+                {pad(h)}:00
+              </span>
+            ))}
+          </div>
+        </div>
 
-              {/* Weekly structure blocks */}
-              {blocks.length > 0 && (
-                <div className="mb-1.5 space-y-0.5">
-                  {blocks.map((b) => (
-                    <div key={`${b.id}-${key}`}>
-                      <div
-                        draggable={canEditStructure}
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData("text/serpent-block", b.id);
-                          e.dataTransfer.effectAllowed = "move";
-                        }}
-                        onClick={() => canEditStructure && setEditBlockId(editBlockId === b.id ? null : b.id)}
-                        className={`truncate rounded-sm bg-secondary px-1 py-0.5 text-[10px] text-muted-foreground ${
-                          canEditStructure ? "cursor-grab active:cursor-grabbing hover:bg-secondary/70" : ""
-                        }`}
-                        title={
-                          canEditStructure
-                            ? `${b.startTime}–${b.endTime} ${b.label ?? ""} · drag to another day, click to edit`
-                            : `${b.startTime}–${b.endTime} ${b.label ?? ""}`
-                        }
+        <div className="grid min-w-[640px] flex-1 grid-cols-7 gap-1">
+          {days.map((d, i) => {
+            const key = dayKeys[i];
+            const isToday = key === todayStr;
+            const dayTasks = byDay[key];
+            const timed = dayTasks.filter((t) => t.dueTime);
+            const undated = dayTasks.filter((t) => !t.dueTime);
+            const blocks = structureByDay[i];
+            const isDragOver = drag?.moved && drag.overDay === key;
+            return (
+              <div
+                key={key}
+                {...dropProps(key)}
+                className={`flex flex-col rounded-md border p-1 transition-colors ${
+                  dropTarget === key || isDragOver
+                    ? "border-primary bg-primary/5"
+                    : isToday
+                    ? "border-primary/40 bg-primary/[0.04]"
+                    : "border-border bg-background"
+                }`}
+              >
+                <div className="mb-1.5 flex h-[18px] items-baseline gap-1">
+                  <span className={`text-xs font-semibold ${isToday ? "text-primary" : "text-foreground"}`}>
+                    {DAY_LABELS[i]}
+                  </span>
+                  <span className="font-mono text-[10px] text-muted-foreground">{d.getDate()}</span>
+                  <span className="ml-auto flex items-center gap-1">
+                    {dayTasks.length > 0 && (
+                      <span className="font-mono text-[10px] text-muted-foreground">{dayTasks.length}</span>
+                    )}
+                    {canEditStructure && (
+                      <button
+                        onClick={() => addBlock(key)}
+                        title="Add a structure block to this day"
+                        className="text-muted-foreground transition-colors hover:text-primary"
                       >
-                        <span className="font-mono">{b.startTime}</span>{" "}
-                        {b.label || tasks.find((t) => t.id === b.taskId)?.title || "Structure"}
-                      </div>
-
-                      {canEditStructure && editBlockId === b.id && (
-                        <div className="mt-1 space-y-1 rounded-md border border-border bg-card p-1.5">
-                          <div className="flex items-center gap-1">
-                            <input
-                              value={b.label ?? ""}
-                              onChange={(e) => updateBlock(b.id, { label: e.target.value })}
-                              placeholder="Label"
-                              className="min-w-0 flex-1 rounded border border-border bg-background px-1 py-0.5 text-[10px] text-foreground"
-                            />
-                            <button
-                              onClick={() => setEditBlockId(null)}
-                              aria-label="Close block editor"
-                              className="text-muted-foreground hover:text-foreground"
-                            >
-                              <X size={11} />
-                            </button>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <input
-                              type="time"
-                              value={b.startTime}
-                              step={900}
-                              onChange={(e) => updateBlock(b.id, { startTime: e.target.value })}
-                              className="min-w-0 flex-1 rounded border border-border bg-background px-0.5 font-mono text-[10px] text-foreground"
-                            />
-                            <input
-                              type="time"
-                              value={b.endTime}
-                              step={900}
-                              onChange={(e) => updateBlock(b.id, { endTime: e.target.value })}
-                              className="min-w-0 flex-1 rounded border border-border bg-background px-0.5 font-mono text-[10px] text-foreground"
-                            />
-                          </div>
-                          <div className="flex items-center justify-between gap-1">
-                            <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                              <input
-                                type="checkbox"
-                                checked={b.recurring !== false}
-                                onChange={(e) =>
-                                  updateBlock(b.id, {
-                                    recurring: e.target.checked,
-                                    pinnedDate: e.target.checked ? undefined : key,
-                                  })
-                                }
-                                className="h-3 w-3"
-                              />
-                              Every week
-                            </label>
-                            <button
-                              onClick={() => deleteBlock(b.id)}
-                              className="flex items-center gap-0.5 text-[10px] text-destructive hover:opacity-80"
-                            >
-                              <Trash2 size={10} /> Delete
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                        <Plus size={11} />
+                      </button>
+                    )}
+                  </span>
                 </div>
-              )}
 
+                {/* Time grid */}
+                <div data-week-grid className="relative select-none" style={{ height: gridHeight }}>
+                  {hours.map((h) => (
+                    <div
+                      key={h}
+                      className="pointer-events-none absolute inset-x-0 border-t border-border/50"
+                      style={{ top: (h * 60 - DAY_START) * PX_PER_MIN }}
+                    />
+                  ))}
 
-              <div className="flex-1 space-y-1">
-                {dayTasks.map((t) => (
-                  <TaskChip key={t.id} t={t} showTime />
-                ))}
-                {dayTasks.length === 0 && (
-                  <p className="pt-1 text-[10px] text-muted-foreground/70">Drop here</p>
+                  {/* Structure blocks */}
+                  {blocks.map((b) => {
+                    const dur = Math.max(15, toMin(b.endTime) - toMin(b.startTime));
+                    const dragging = drag?.kind === "block" && drag.id === b.id;
+                    const start = dragging ? clampStart(drag!.startMin + drag!.deltaMin, dur) : toMin(b.startTime);
+                    const hide = dragging && drag!.overDay !== key && drag!.moved;
+                    if (hide) return null;
+                    if (dragging && drag!.overDay !== drag!.originDay && drag!.overDay !== key) return null;
+                    return (
+                      <div key={`${b.id}-${key}`}>
+                        <div
+                          onPointerDown={(e) =>
+                            canEditStructure && beginPointerDrag(e, "block", b.id, toMin(b.startTime), dur, key)
+                          }
+                          className={`absolute left-0 right-0 overflow-hidden rounded-sm border border-border/60 bg-secondary px-1 py-0.5 text-[10px] text-muted-foreground ${
+                            canEditStructure ? "cursor-grab touch-none active:cursor-grabbing hover:bg-secondary/80" : ""
+                          } ${dragging && drag!.moved ? "z-20 opacity-80 ring-1 ring-primary" : ""}`}
+                          style={{ top: (start - DAY_START) * PX_PER_MIN, height: Math.max(14, dur * PX_PER_MIN - 2) }}
+                          title={
+                            canEditStructure
+                              ? `${toHHMM(start)}–${toHHMM(start + dur)} ${b.label ?? ""} · drag to move in time or to another day, click to edit`
+                              : `${b.startTime}–${b.endTime} ${b.label ?? ""}`
+                          }
+                        >
+                          <span className="font-mono">{toHHMM(start)}</span>{" "}
+                          {b.label || tasks.find((t) => t.id === b.taskId)?.title || "Structure"}
+                        </div>
+
+                        {canEditStructure && editBlockId === b.id && (
+                          <div
+                            className="absolute left-0 z-30 w-[150px] space-y-1 rounded-md border border-border bg-card p-1.5 shadow-md"
+                            style={{ top: (start - DAY_START) * PX_PER_MIN + 18 }}
+                          >
+                            <div className="flex items-center gap-1">
+                              <input
+                                value={b.label ?? ""}
+                                onChange={(e) => updateBlock(b.id, { label: e.target.value })}
+                                placeholder="Label"
+                                className="min-w-0 flex-1 rounded border border-border bg-background px-1 py-0.5 text-[10px] text-foreground"
+                              />
+                              <button
+                                onClick={() => setEditBlockId(null)}
+                                aria-label="Close block editor"
+                                className="text-muted-foreground hover:text-foreground"
+                              >
+                                <X size={11} />
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="time"
+                                value={b.startTime}
+                                step={900}
+                                onChange={(e) => updateBlock(b.id, { startTime: e.target.value })}
+                                className="min-w-0 flex-1 rounded border border-border bg-background px-0.5 font-mono text-[10px] text-foreground"
+                              />
+                              <input
+                                type="time"
+                                value={b.endTime}
+                                step={900}
+                                onChange={(e) => updateBlock(b.id, { endTime: e.target.value })}
+                                className="min-w-0 flex-1 rounded border border-border bg-background px-0.5 font-mono text-[10px] text-foreground"
+                              />
+                            </div>
+                            <div className="flex items-center justify-between gap-1">
+                              <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                                <input
+                                  type="checkbox"
+                                  checked={b.recurring !== false}
+                                  onChange={(e) =>
+                                    updateBlock(b.id, {
+                                      recurring: e.target.checked,
+                                      pinnedDate: e.target.checked ? undefined : key,
+                                    })
+                                  }
+                                  className="h-3 w-3"
+                                />
+                                Every week
+                              </label>
+                              <button
+                                onClick={() => deleteBlock(b.id)}
+                                className="flex items-center gap-0.5 text-[10px] text-destructive hover:opacity-80"
+                              >
+                                <Trash2 size={10} /> Delete
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {/* Timed tasks — moving these changes their time/date only, never the structure */}
+                  {timed.map((t) => {
+                    const dur = t.duration || 30;
+                    const dragging = drag?.kind === "task" && drag.id === t.id;
+                    if (dragging && drag!.moved && drag!.overDay !== key) return null;
+                    const start = dragging ? clampStart(drag!.startMin + drag!.deltaMin, dur) : toMin(t.dueTime!);
+                    return (
+                      <div
+                        key={t.id}
+                        onPointerDown={(e) => {
+                          const target = e.target as HTMLElement;
+                          if (target.closest("button, input")) return;
+                          beginPointerDrag(e, "task", t.id, toMin(t.dueTime!), dur, key);
+                        }}
+                        onDoubleClick={() => onEditTask?.(t)}
+                        className={`absolute left-[3px] right-0 cursor-grab touch-none overflow-hidden rounded-md border px-1 py-0.5 text-[10px] leading-tight active:cursor-grabbing ${
+                          t.completed
+                            ? "border-border bg-muted/60 text-muted-foreground line-through"
+                            : "border-primary/40 bg-primary/10 text-foreground"
+                        } ${dragging && drag!.moved ? "z-20 opacity-80 ring-1 ring-primary" : "z-10"}`}
+                        style={{ top: (start - DAY_START) * PX_PER_MIN, height: Math.max(16, dur * PX_PER_MIN - 2) }}
+                        title={`${toHHMM(start)} · ${dur} min · drag to move in time or to another day, double-click to edit`}
+                      >
+                        <div className="flex items-start gap-1">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleComplete(t.id); }}
+                            aria-label={t.completed ? "Mark as not done" : "Mark as done"}
+                            className={`mt-[1px] flex h-3 w-3 shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
+                              t.completed ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40 hover:border-primary"
+                            }`}
+                          >
+                            {t.completed && <Check size={8} />}
+                          </button>
+                          <span className="font-mono text-[9px] text-muted-foreground">{toHHMM(start)}</span>
+                        </div>
+                        <span className="line-clamp-2 block">{t.title}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Dated but not yet time-bound */}
+                {undated.length > 0 && (
+                  <div className="mt-1 space-y-1 border-t border-dashed border-border pt-1">
+                    <p className="text-[9px] uppercase tracking-wide text-muted-foreground/70">No time</p>
+                    {undated.map((t) => (
+                      <TaskChip key={t.id} t={t} />
+                    ))}
+                  </div>
                 )}
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Weekly recurring band */}
@@ -529,12 +697,12 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
               </div>
             ))}
           </div>
-
         </div>
       )}
 
       <p className="mt-2 text-[11px] text-muted-foreground">
-        {scheduledCount} task{scheduledCount === 1 ? "" : "s"} placed this week · dropping a task on a day sets its due date.
+        {scheduledCount} task{scheduledCount === 1 ? "" : "s"} placed this week · drag a task to move its time or day ·
+        dragging a structure block edits the weekly structure.
       </p>
     </div>
   );
