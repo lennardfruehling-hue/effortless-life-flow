@@ -311,7 +311,12 @@ export default function CalendarView({ events, onSave, tasks = [], weeklyStructu
       </div>
 
       {tab === "weekly" && (
-        <WeeklyView tasks={tasks} onSave={(t) => onSaveTasks?.(t)} structure={weeklyStructure} />
+        <WeeklyView
+          tasks={tasks}
+          onSave={(t) => onSaveTasks?.(t)}
+          structure={weeklyStructure}
+          onSaveStructure={onSaveWeeklyStructure}
+        />
       )}
 
       {tab === "week" && onSaveWeeklyStructure && onSaveDailySchedule && (
