@@ -272,6 +272,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
             tasks={tasks}
             onSave={onSave}
             structure={weeklyStructure}
+            onSaveStructure={setWeeklyStructure}
             onEditTask={(t) => { setEditTask(t); setShowForm(true); }}
             compact
           />
