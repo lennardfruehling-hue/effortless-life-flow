@@ -266,8 +266,20 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
           <button onClick={onClearProjectFilter} className="text-primary hover:opacity-80"><X size={16} /></button>
         </div>
       )}
+      {showWeekly && (
+        <div className="mb-4">
+          <WeeklyView
+            tasks={tasks}
+            onSave={onSave}
+            structure={weeklyStructure}
+            onEditTask={(t) => { setEditTask(t); setShowForm(true); }}
+            compact
+          />
+        </div>
+      )}
 
       <div className={showSchedule ? "grid grid-cols-[minmax(0,1.15fr)_minmax(190px,0.85fr)] md:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_440px] gap-2 md:gap-4 items-start" : ""}>
+
         <div className="min-w-0">
 
       {/* Filter bar */}
