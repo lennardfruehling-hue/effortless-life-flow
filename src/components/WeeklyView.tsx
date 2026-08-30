@@ -36,7 +36,7 @@ function prettyRange(days: Date[]) {
   return `${fmt(days[0])} – ${fmt(days[6])}`;
 }
 
-export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, compact = false }: Props) {
+export default function WeeklyView({ tasks, onSave, structure = [], onSaveStructure, onEditTask, compact = false }: Props) {
   const [offset, setOffset] = useState<0 | 1>(() => {
     try {
       return localStorage.getItem("serpent-weekly-view-offset") === "1" ? 1 : 0;
