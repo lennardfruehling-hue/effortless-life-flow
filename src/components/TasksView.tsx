@@ -95,6 +95,15 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
   });
 
 
+  const [showWeekly, setShowWeekly] = useState(() => {
+    try { return localStorage.getItem("serpent-tasks-weekly-view") === "1"; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem("serpent-tasks-weekly-view", showWeekly ? "1" : "0"); } catch { /* ignore */ }
+  }, [showWeekly]);
+
+  const [weeklyStructure] = useCloudState<WeeklyStructureBlock[]>(CLOUD_KEYS.weeklyStructure, []);
+
   useEffect(() => {
     try { localStorage.setItem("serpent-tasks-schedule-dock", showSchedule ? "1" : "0"); } catch { /* ignore */ }
   }, [showSchedule]);
