@@ -49,6 +49,8 @@ export default function WeeklyView({ tasks, onSave, structure = [], onSaveStruct
   }, [offset]);
 
   const [dropTarget, setDropTarget] = useState<string | null>(null);
+  const [editBlockId, setEditBlockId] = useState<string | null>(null);
+
 
   const days = useMemo(() => {
     const start = startOfWeek(new Date(), offset);
