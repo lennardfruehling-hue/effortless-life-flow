@@ -3,7 +3,11 @@ import { Task, Category, ALL_CATEGORIES, CATEGORY_META, Project, DailyScheduleSl
 import TaskCard from "@/components/TaskCard";
 import TaskForm from "@/components/TaskForm";
 import CalendarScheduleDay from "@/components/CalendarScheduleDay";
+import WeeklyView from "@/components/WeeklyView";
 import GameConsole from "@/components/GameConsole";
+import { useCloudState } from "@/hooks/useCloudState";
+import { CLOUD_KEYS } from "@/lib/cloudStore";
+import type { WeeklyStructureBlock } from "@/lib/types";
 
 import SerpentDailyList from "@/components/SerpentDailyList";
 import ScoreCard from "@/components/ScoreCard";
