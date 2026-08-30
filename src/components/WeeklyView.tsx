@@ -113,23 +113,69 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
   const scheduledCount = dayKeys.reduce((n, k) => n + byDay[k].filter((t) => !t.completed).length, 0);
 
   // --- Scheduling ----------------------------------------------------------
+  const toMin = (hhmm: string) => {
+    const [h, m] = hhmm.split(":").map(Number);
+    return h * 60 + m;
+  };
+  const toHHMM = (min: number) => `${pad(Math.floor(min / 60) % 24)}:${pad(min % 60)}`;
+
+  const DAY_START = 8 * 60; // 08:00
+  const DAY_END = 22 * 60; // 22:00
+
+  /** First 15-min-aligned slot on `date` that fits `duration` without clashing. */
+  const findFreeSlot = (date: string, duration: number, ignoreTaskId: string) => {
+    const busy: Array<[number, number]> = [];
+    for (const t of tasks) {
+      if (t.id === ignoreTaskId || t.completed) continue;
+      if (!t.dueTime || t.dueDate?.slice(0, 10) !== date) continue;
+      const s = toMin(t.dueTime);
+      busy.push([s, s + (t.duration || 30)]);
+    }
+    const idx = dayKeys.indexOf(date);
+    if (idx >= 0) {
+      for (const b of structureByDay[idx]) busy.push([toMin(b.startTime), toMin(b.endTime)]);
+    }
+    busy.sort((a, b) => a[0] - b[0]);
+
+    const nowFloor = (() => {
+      const n = new Date();
+      if (date !== todayStr) return DAY_START;
+      const m = Math.ceil((n.getHours() * 60 + n.getMinutes() + 5) / 15) * 15;
+      return Math.max(DAY_START, m);
+    })();
+
+    for (let start = nowFloor; start + duration <= DAY_END; start += 15) {
+      const end = start + duration;
+      if (!busy.some(([bs, be]) => start < be && end > bs)) return toHHMM(start);
+    }
+    return toHHMM(Math.min(nowFloor, DAY_END - duration));
+  };
+
   const scheduleTask = (taskId: string, date: string | null) => {
     onSave(
-      tasks.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              dueDate: date ?? undefined,
-              // Keeping a dated task tagged "this week" keeps it visible in weekly planning.
-              categories:
-                date && date >= weekStart && date <= weekEnd && !t.categories.includes("A2") && !t.categories.includes("A1")
-                  ? [...t.categories, "A2" as const]
-                  : t.categories,
-            }
-          : t
-      )
+      tasks.map((t) => {
+        if (t.id !== taskId) return t;
+        const duration = t.duration || 30;
+        return {
+          ...t,
+          dueDate: date ?? undefined,
+          // Dropping onto a day makes the task time-bound: it gets a concrete slot.
+          dueTime: date ? findFreeSlot(date, duration, t.id) : undefined,
+          duration: date ? duration : t.duration,
+          // Keeping a dated task tagged "this week" keeps it visible in weekly planning.
+          categories:
+            date && date >= weekStart && date <= weekEnd && !t.categories.includes("A2") && !t.categories.includes("A1")
+              ? [...t.categories, "A2" as const]
+              : t.categories,
+        };
+      })
     );
   };
+
+  const setTaskTime = (taskId: string, time: string) => {
+    onSave(tasks.map((t) => (t.id === taskId ? { ...t, dueTime: time || undefined } : t)));
+  };
+
 
   // Touch fallback: figure out which drop zone the finger was released over.
   useEffect(() => {
