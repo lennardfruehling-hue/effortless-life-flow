@@ -1,17 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { Task, WeeklyStructureBlock } from "@/lib/types";
 import { CategoryBadge } from "./CategoryBadge";
-import { ChevronLeft, ChevronRight, CalendarRange, Inbox, Repeat, CheckCircle2, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarRange, Inbox, Repeat, CheckCircle2, Check, Trash2, Plus, X } from "lucide-react";
 import { setDragTaskId, touchDragProps, TOUCH_DROP_EVENT, TouchDropDetail } from "@/lib/dragTask";
 
 interface Props {
   tasks: Task[];
   onSave: (tasks: Task[]) => void;
   structure?: WeeklyStructureBlock[];
+  /** When provided, structure blocks become editable/movable straight from this view. */
+  onSaveStructure?: (blocks: WeeklyStructureBlock[]) => void;
   onEditTask?: (task: Task) => void;
   /** Rendered inside the tasks page (tighter spacing) vs. the full calendar page. */
   compact?: boolean;
 }
+
 
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
