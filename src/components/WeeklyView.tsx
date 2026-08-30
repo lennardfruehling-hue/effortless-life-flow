@@ -330,20 +330,18 @@ export default function WeeklyView({ tasks, onSave, structure = [], onEditTask, 
         <div className="mt-3 rounded-md border border-border bg-secondary/30 p-2">
           <div className="mb-1.5 flex items-center gap-1.5">
             <Repeat size={12} className="text-muted-foreground" />
-            <span className="text-xs font-medium text-foreground">Every week</span>
+            <span className="text-xs font-medium text-foreground">Every week · no day yet</span>
             <span className="font-mono text-[11px] text-muted-foreground">{weeklyRecurring.length}</span>
+            <span className="ml-auto text-[11px] text-muted-foreground">Drag onto a day to schedule it</span>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {weeklyRecurring.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => onEditTask?.(t)}
-                className="rounded-md border border-border bg-card px-1.5 py-1 text-[11px] text-foreground hover:border-primary/40"
-              >
-                {t.title}
-              </button>
+              <div key={t.id} className="w-40 max-w-full">
+                <TaskChip t={t} />
+              </div>
             ))}
           </div>
+
         </div>
       )}
 
