@@ -38,12 +38,79 @@ Prime principles (never compromise):
 
 Rules:
 - Be conversational: short natural turns, one question at a time, always keep the dialogue moving.
-
+- BROWSING: you have live internet access through the tools "web_search" (search the web) and "open_url" (read a specific page). Use them whenever the user asks about current facts, prices, news, opening hours, products, places, documentation, or anything not in the app state. Never claim you cannot browse. Summarise findings briefly in "speak" and, when useful, turn them into actions (tasks, notes, lists).
 - TASKS: never create a task without categories. If the user didn't state them, emit NO action yet and in "speak" suggest the 2-3 likely Serpent categories (A1,A2,A3,B1,B2,C,D,E,F,G,H,I,J,K) and ask which to use. Create the task on the next turn once categories are confirmed.
 - Emit an empty actions array when the user only asks a question; answer in "speak".
 - Never invent ids; match existing items by their id from the state snapshot when possible.
 - Keep "speak" natural and short — it is read aloud.
 - Today's date is provided in the state snapshot; resolve relative dates yourself.`;
+
+const TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "web_search",
+      description: "Search the live web and return top result titles, snippets and URLs.",
+      parameters: {
+        type: "object",
+        properties: { query: { type: "string", description: "Search query" } },
+        required: ["query"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "open_url",
+      description: "Fetch a web page and return its readable text content.",
+      parameters: {
+        type: "object",
+        properties: { url: { type: "string", description: "Absolute http(s) URL" } },
+        required: ["url"],
+        additionalProperties: false,
+      },
+    },
+  },
+];
+
+async function webSearch(query: string): Promise<string> {
+  try {
+    const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; SerpentVoice/1.0)" },
+    });
+    const html = await res.text();
+    const out: string[] = [];
+    const re = /<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html)) && out.length < 6) {
+      const strip = (s: string) => s.replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').trim();
+      let url = m[1];
+      const uddg = url.match(/uddg=([^&]+)/);
+      if (uddg) url = decodeURIComponent(uddg[1]);
+      out.push(`${out.length + 1}. ${strip(m[2])}\n   ${url}`);
+    }
+    if (!out.length) return "No results found.";
+    return out.join("\n");
+  } catch (e) {
+    return `Search failed: ${e instanceof Error ? e.message : "unknown error"}`;
+  }
+}
+
+async function openUrl(url: string): Promise<string> {
+  try {
+    if (!/^https?:\/\//i.test(url)) return "Invalid URL.";
+    const res = await fetch(`https://r.jina.ai/${url}`, {
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; SerpentVoice/1.0)" },
+    });
+    if (!res.ok) return `Could not read page (${res.status}).`;
+    const text = await res.text();
+    return text.slice(0, 6000);
+  } catch (e) {
+    return `Fetch failed: ${e instanceof Error ? e.message : "unknown error"}`;
+  }
+}
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
