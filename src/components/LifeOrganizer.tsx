@@ -477,22 +477,54 @@ export default function LifeOrganizer({
         {error && <p className="text-xs text-destructive">{error}</p>}
       </div>
 
-      <form
-        onSubmit={(e) => { e.preventDefault(); const v = text; setText(""); send(v); }}
-        className="border-t border-border p-3 flex items-center gap-2"
-      >
-        <Sparkles size={15} className="text-primary flex-shrink-0" />
-        <input
-          ref={inputRef}
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="e.g. rebuild my week around work and the apartment hunt"
-          className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-primary"
-        />
-        <button type="submit" disabled={busy || !text.trim()} className="p-2 text-primary disabled:opacity-40">
-          <Send size={16} />
-        </button>
-      </form>
+      <div className="border-t border-border p-3 space-y-2">
+        {interim && <p className="text-xs italic text-muted-foreground text-right">{interim}</p>}
+        <form
+          onSubmit={(e) => { e.preventDefault(); const v = text; setText(""); send(v); }}
+          className="flex items-center gap-2"
+        >
+          <Sparkles size={15} className="text-primary flex-shrink-0" />
+          <input
+            ref={inputRef}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Type, or press Talk to speak"
+            className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-primary"
+          />
+          <button
+            type="button"
+            disabled={!voiceSupported || busy}
+            onClick={() => (listening ? stopListening() : startListening())}
+            title={voiceSupported ? "Talk to the organizer" : "Voice input isn't supported in this browser"}
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-40 ${
+              listening ? "bg-destructive text-destructive-foreground animate-pulse" : "bg-primary text-primary-foreground hover:opacity-90"
+            }`}
+          >
+            {listening ? <MicOff size={15} /> : <Mic size={15} />}
+            <span className="hidden sm:inline">{listening ? "Listening…" : "Talk"}</span>
+          </button>
+          <button
+            type="button"
+            disabled={!voiceSupported}
+            onClick={() => {
+              const next = !handsFree;
+              setHandsFree(next);
+              handsFreeRef.current = next;
+              if (next) startListening();
+              else stopListening();
+            }}
+            title="Hands-free conversation"
+            className={`rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-colors disabled:opacity-40 ${
+              handsFree ? "bg-emerald-500/15 border-emerald-500 text-emerald-600" : "border-border text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Hands-free
+          </button>
+          <button type="submit" disabled={busy || !text.trim()} className="p-2 text-primary disabled:opacity-40">
+            <Send size={16} />
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
