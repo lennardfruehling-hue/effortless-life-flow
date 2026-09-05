@@ -382,6 +382,7 @@ serve(async (req) => {
     };
 
     let raw = "";
+    let lastProse = "";
     for (let step = 0; step < 4; step++) {
       const last = step === 3;
       const out = await callModel(!last);
@@ -397,20 +398,33 @@ serve(async (req) => {
       const content = msg?.content ? String(msg.content) : "";
 
       if (Array.isArray(calls) && calls.length > 0) {
-        convo.push(msg);
+        if (content.trim()) lastProse = content;
+        // Feed tool output back as a plain user turn: the gateway rejects
+        // conversations that end on a model/tool turn.
+        const results: string[] = [];
         for (const call of calls) {
           let args: any = {};
           try { args = JSON.parse(call?.function?.arguments || "{}"); } catch {}
+          const name = call?.function?.name;
           let result = "Unknown tool.";
-          if (call?.function?.name === "web_search") result = await webSearch(String(args.query ?? ""));
-          else if (call?.function?.name === "get_weather") result = await getWeather(String(args.place ?? ""));
-        else if (call?.function?.name === "open_url") result = await openUrl(String(args.url ?? ""));
-          convo.push({ role: "tool", tool_call_id: call.id, content: result });
+          if (name === "web_search") result = await webSearch(String(args.query ?? ""));
+          else if (name === "get_weather") result = await getWeather(String(args.place ?? ""));
+          else if (name === "open_url") result = await openUrl(String(args.url ?? ""));
+          results.push(`${name}(${JSON.stringify(args)}):\n${result}`);
         }
+        convo.push({
+          role: "user",
+          content:
+            `Live results from the tools you requested:\n\n${results.join("\n\n").slice(0, 12000)}\n\n` +
+            "Use these. If you need another lookup, call a tool again; otherwise reply with the required JSON object.",
+        });
         continue;
       }
 
+
+
       if (content.trim()) {
+        lastProse = content;
         if (last || looksJson(content)) { raw = content; break; }
         // Prose answer on a tool round: keep it and ask for the final JSON without tools.
         convo.push({ role: "assistant", content });
@@ -438,13 +452,39 @@ serve(async (req) => {
       parsed = JSON.parse(raw);
     } catch {
       const m = String(raw).match(/\{[\s\S]*\}/);
-      parsed = m ? JSON.parse(m[0]) : { speak: String(raw), actions: [] };
+      try {
+        parsed = m ? JSON.parse(m[0]) : { speak: String(raw), actions: [] };
+      } catch {
+        parsed = { speak: String(raw), actions: [] };
+      }
     }
 
+    const plan = Array.isArray(parsed.plan) ? parsed.plan : [];
+    let speak = typeof parsed.speak === "string" ? parsed.speak.trim() : "";
+    if (!speak && lastProse.trim() && !looksJson(lastProse)) speak = lastProse.trim();
+    if (!speak && plan.length) {
+      speak =
+        "Here's what I'd suggest: " +
+        plan
+          .slice(0, 3)
+          .map((p: any) => String(p?.title ?? "").trim())
+          .filter(Boolean)
+          .join("; ") +
+        ". Shall I set these up for you?";
+    }
+    if (!speak) speak = "I couldn't put that together just now — try asking again in a moment.";
+
     return new Response(
-      JSON.stringify({ speak: parsed.speak ?? "", plan: Array.isArray(parsed.plan) ? parsed.plan : [], actions: Array.isArray(parsed.actions) ? parsed.actions : [] }),
+      JSON.stringify({
+        speak,
+        plan,
+        actions: Array.isArray(parsed.actions) ? parsed.actions : [],
+        questions: Array.isArray(parsed.questions) ? parsed.questions : [],
+        conflicts: Array.isArray(parsed.conflicts) ? parsed.conflicts : [],
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+
   } catch (e) {
     console.error("serpent-voice error", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
