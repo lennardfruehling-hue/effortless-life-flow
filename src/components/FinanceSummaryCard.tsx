@@ -158,6 +158,14 @@ export default function FinanceSummaryCard() {
       if (g.target > 0 && g.saved <= 0)
         warnings.push({ id: `goal-${g.id}`, text: `${g.name} has no progress yet`, tone: "warn" });
     }
+    for (const w of data.ziteWarnings || []) {
+      warnings.push({
+        id: w.id,
+        text: w.title ? `${w.title} — ${w.detail}` : w.detail,
+        tone: /critical|high/i.test(w.severity) ? "danger" : "warn",
+      });
+    }
+
     // ---- Top financial tips (prioritised advice from the Wealth Command Centre) ----
     const cats = [...(data.spending || [])].sort((a, b) => (b.amount || 0) - (a.amount || 0));
     const biggest = cats[0];
