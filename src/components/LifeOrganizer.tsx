@@ -3,7 +3,7 @@ import { AlertTriangle, Check, HelpCircle, Loader2, Mic, MicOff, Send, Sparkles,
 import { Task, Project, Reminder, LifePlanProject } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { buildVoiceState, runVoiceActions, VoiceAction } from "@/lib/voiceActions";
+import { buildVoiceState, describeAction, isMutatingAction, runVoiceActions, VoiceAction } from "@/lib/voiceActions";
 import { useCloudState } from "@/hooks/useCloudState";
 import { CLOUD_KEYS } from "@/lib/cloudStore";
 import { Habit } from "@/lib/habits";

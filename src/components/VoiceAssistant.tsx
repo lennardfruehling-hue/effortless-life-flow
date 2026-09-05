@@ -3,7 +3,7 @@ import { Mic, MicOff, Loader2, Volume2, VolumeX, Send, Trash2 } from "lucide-rea
 import { Task, Project } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { buildVoiceState, runVoiceActions, VoiceAction } from "@/lib/voiceActions";
+import { buildVoiceState, describeAction, isMutatingAction, runVoiceActions, VoiceAction } from "@/lib/voiceActions";
 
 interface Props {
   tasks: Task[];
