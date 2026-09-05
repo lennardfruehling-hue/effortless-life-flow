@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useCloudState } from "@/hooks/useCloudState";
 import { CLOUD_KEYS } from "@/lib/cloudStore";
+import { syncZite, syncZiteIfStale, type ZiteFinance } from "@/lib/ziteSync";
 import {
   Wallet,
   TrendingUp,
@@ -17,7 +18,9 @@ import {
   Plus,
   Trash2,
   Lightbulb,
+  RefreshCw,
 } from "lucide-react";
+
 
 export interface FinanceAccount {
   id: string;
