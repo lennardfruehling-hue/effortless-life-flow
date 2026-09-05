@@ -3,7 +3,7 @@ import { AlertTriangle, Check, HelpCircle, Loader2, Mic, MicOff, Send, Sparkles,
 import { Task, Project, Reminder, LifePlanProject } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { buildVoiceState, runVoiceActions, VoiceAction } from "@/lib/voiceActions";
+import { buildVoiceState, describeAction, isMutatingAction, runVoiceActions, VoiceAction } from "@/lib/voiceActions";
 import { useCloudState } from "@/hooks/useCloudState";
 import { CLOUD_KEYS } from "@/lib/cloudStore";
 import { Habit } from "@/lib/habits";
@@ -48,18 +48,6 @@ interface Turn {
   applied?: string[];
 }
 
-/** Plain-language description of a proposed change, so the user knows what they approve. */
-function describeAction(a: VoiceAction): string {
-  const label = a.title || a.name || a.match?.title || a.match?.name || a.id || "";
-  const t = String(a.type || "").toLowerCase();
-  const pretty = t.replace(/[_.]/g, " ");
-  if (t.includes("delete") || t.includes("remove")) return `Delete ${label || "an item"}`;
-  if (t.includes("create") || t.includes("add")) return `Create ${label ? `"${label}"` : "a new item"}`;
-  if (t.includes("update") || t.includes("edit") || t.includes("complete") || t.includes("schedule") || t.includes("move"))
-    return `${pretty.charAt(0).toUpperCase()}${pretty.slice(1)}${label ? `: ${label}` : ""}`;
-  if (t.includes("navigate") || t.includes("open")) return `Open ${a.view || a.tab || label || "a section"}`;
-  return `${pretty.charAt(0).toUpperCase()}${pretty.slice(1)}${label ? `: ${label}` : ""}`;
-}
 
 const QUICK_PROMPTS = [
   "Organize my day",
@@ -294,6 +282,7 @@ export default function LifeOrganizer({
       projects,
       setTasks: onSaveTasks,
       setProjects: onSaveProjects,
+      approved: true,
     };
     let applied: string[] = [];
     try {

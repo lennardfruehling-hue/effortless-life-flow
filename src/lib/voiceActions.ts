@@ -16,6 +16,8 @@ export interface VoiceCtx {
   projects: Project[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
+  /** Must be true for any data-changing action to run. */
+  approved?: boolean;
 }
 
 const COLLECTION_KEYS: Record<string, string> = {
@@ -132,11 +134,35 @@ async function addLifePlanProject(name: string, userId?: string) {
 }
 
 
-/** Execute a batch of assistant actions. Returns short human-readable summaries. */
+/** Actions that only move the user around the app — safe to run without approval. */
+const READ_ONLY_ACTIONS = new Set(["navigate"]);
+
+/** True when the action would create, change or delete the user's data. */
+export function isMutatingAction(a: VoiceAction): boolean {
+  return !READ_ONLY_ACTIONS.has(String(a?.type || ""));
+}
+
+/** Plain-language description of a proposed change, so the user knows what they approve. */
+export function describeAction(a: VoiceAction): string {
+  const label = a.title || a.name || a.match?.title || a.match?.name || a.id || "";
+  const t = String(a.type || "").toLowerCase();
+  const pretty = t.replace(/[_.]/g, " ");
+  if (t.includes("delete") || t.includes("remove")) return `Delete ${label || "an item"}`;
+  if (t.includes("create") || t.includes("add")) return `Create ${label ? `"${label}"` : "a new item"}`;
+  if (t.includes("navigate") || t.includes("open")) return `Open ${a.view || a.tab || label || "a section"}`;
+  return `${pretty.charAt(0).toUpperCase()}${pretty.slice(1)}${label ? `: ${label}` : ""}`;
+}
+
+/**
+ * Execute a batch of assistant actions. Returns short human-readable summaries.
+ * Anything that changes data is skipped unless the user explicitly approved it
+ * (`ctx.approved === true`). Navigation is always allowed.
+ */
 export async function runVoiceActions(actions: VoiceAction[], ctx: VoiceCtx): Promise<string[]> {
   const done: string[] = [];
+  const allowed = ctx.approved === true ? actions : actions.filter((a) => !isMutatingAction(a));
 
-  for (const a of actions) {
+  for (const a of allowed) {
     try {
       switch (a.type) {
         case "create_task": {

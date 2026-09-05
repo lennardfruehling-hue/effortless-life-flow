@@ -3,7 +3,7 @@ import { Mic, MicOff, Loader2, Volume2, VolumeX, Send, Trash2 } from "lucide-rea
 import { Task, Project } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { buildVoiceState, runVoiceActions, VoiceAction } from "@/lib/voiceActions";
+import { buildVoiceState, describeAction, isMutatingAction, runVoiceActions, VoiceAction } from "@/lib/voiceActions";
 
 interface Props {
   tasks: Task[];
@@ -16,6 +16,8 @@ interface Turn {
   role: "user" | "assistant";
   text: string;
   actions?: string[];
+  proposed?: VoiceAction[];
+  status?: "pending" | "approved" | "declined";
 }
 
 function getRecognition(): any | null {
@@ -89,9 +91,22 @@ export default function VoiceAssistant({ tasks, projects, onSaveTasks, onSavePro
       if (fnErr) throw fnErr;
 
       const actions: VoiceAction[] = Array.isArray(data?.actions) ? data.actions : [];
-      const applied = actions.length ? await runVoiceActions(actions, ctx) : [];
-      const reply: string = data?.speak || (applied.length ? applied.join(". ") : "Done.");
-      setTurns((prev) => [...prev, { role: "assistant", text: reply, actions: applied }]);
+      // Navigation runs straight away; anything that changes data waits for approval.
+      const navOnly = actions.filter((a) => !isMutatingAction(a));
+      const pending = actions.filter(isMutatingAction);
+      const applied = navOnly.length ? await runVoiceActions(navOnly, ctx) : [];
+      const base: string = data?.speak || (applied.length ? applied.join(". ") : "Done.");
+      const reply = pending.length ? `${base} I need your permission before I change anything.` : base;
+      setTurns((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: reply,
+          actions: applied,
+          proposed: pending,
+          status: pending.length ? "pending" : undefined,
+        },
+      ]);
       speak(reply);
     } catch (e: any) {
       console.error("[voice] failed", e);
@@ -105,6 +120,39 @@ export default function VoiceAssistant({ tasks, projects, onSaveTasks, onSavePro
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, projects, onSaveTasks, onSaveProjects, user?.id, turns, speak, speakBack]);
+
+  const approve = useCallback(async (index: number) => {
+    const turn = turns[index];
+    if (!turn?.proposed?.length) return;
+    let applied: string[] = [];
+    try {
+      applied = await runVoiceActions(turn.proposed, {
+        userId: user?.id,
+        tasks,
+        projects,
+        setTasks: onSaveTasks,
+        setProjects: onSaveProjects,
+        approved: true,
+      });
+    } catch (e) {
+      console.error("[voice] action failed", e);
+      applied = ["Some changes couldn't be applied."];
+    }
+    setTurns((prev) =>
+      prev.map((t, i) =>
+        i === index
+          ? { ...t, status: "approved" as const, actions: [...(t.actions ?? []), ...applied], proposed: [] }
+          : t
+      )
+    );
+  }, [turns, tasks, projects, onSaveTasks, onSaveProjects, user?.id]);
+
+  const decline = useCallback((index: number) => {
+    setTurns((prev) =>
+      prev.map((t, i) => (i === index ? { ...t, status: "declined" as const, proposed: [] } : t))
+    );
+  }, []);
+
 
   const ensureMicPermission = useCallback(async (): Promise<boolean> => {
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return true;
@@ -222,6 +270,35 @@ export default function VoiceAssistant({ tasks, projects, onSaveTasks, onSavePro
                   <li key={j} className="text-[11px] font-mono text-emerald-500">✓ {a}</li>
                 ))}
               </ul>
+            )}
+            {t.status === "pending" && t.proposed && t.proposed.length > 0 && (
+              <div className="mt-2 rounded-lg border border-amber-400/50 bg-amber-500/10 p-2.5">
+                <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                  Asking permission — {t.proposed.length} change{t.proposed.length > 1 ? "s" : ""}
+                </p>
+                <ul className="mt-1 space-y-0.5">
+                  {t.proposed.map((a, j) => (
+                    <li key={j} className="text-xs text-foreground">• {describeAction(a)}</li>
+                  ))}
+                </ul>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={() => approve(i)}
+                    className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90"
+                  >
+                    Allow
+                  </button>
+                  <button
+                    onClick={() => decline(i)}
+                    className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Don't change anything
+                  </button>
+                </div>
+              </div>
+            )}
+            {t.status === "declined" && (
+              <p className="mt-1 text-[11px] text-muted-foreground">Nothing was changed.</p>
             )}
           </div>
         ))}
