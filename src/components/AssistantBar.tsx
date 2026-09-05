@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bot, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass, Lightbulb, Trophy, AlertTriangle, Wand2 } from "lucide-react";
+import { Bot, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass, Lightbulb, Trophy, AlertTriangle } from "lucide-react";
 import { Task, Project, Reminder, LifePlanProject, DailyScheduleSlot } from "@/lib/types";
-import AIChat from "./AIChat";
 import VoiceAssistant from "./VoiceAssistant";
 import LifeOrganizer from "./LifeOrganizer";
 import SerpentFlow from "./SerpentFlow";
@@ -22,7 +21,7 @@ interface Props {
   dailySchedule?: DailyScheduleSlot[];
 }
 
-type Panel = "flow" | "organizer" | "voice" | "chat" | "tips" | "consistency" | "notifications" | null;
+type Panel = "flow" | "organizer" | "voice" | "tips" | "consistency" | "notifications" | null;
 
 export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProjects, reminders = [], lifePlanProjects = [], dailySchedule = [] }: Props) {
   const [panel, setPanel] = useState<Panel>(null);
@@ -32,11 +31,16 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
   useEffect(() => {
     const open = () => setPanel("notifications");
     const openFlow = () => setPanel("flow");
+    const openOrganizer = () => setPanel("organizer");
     window.addEventListener("serpent-open-notifications", open);
     window.addEventListener("serpent-open-flow", openFlow);
+    window.addEventListener("serpent-open-organizer", openOrganizer);
+    window.addEventListener("serpent-open-chat", openOrganizer);
     return () => {
       window.removeEventListener("serpent-open-notifications", open);
       window.removeEventListener("serpent-open-flow", openFlow);
+      window.removeEventListener("serpent-open-organizer", openOrganizer);
+      window.removeEventListener("serpent-open-chat", openOrganizer);
     };
   }, []);
 
@@ -89,9 +93,6 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
             )}
             {panel === "voice" && (
               <VoiceAssistant tasks={tasks} projects={projects} onSaveTasks={onSaveTasks} onSaveProjects={onSaveProjects} />
-            )}
-            {panel === "chat" && (
-              <AIChat tasks={tasks} projects={projects} onSaveTasks={onSaveTasks} onSaveProjects={onSaveProjects} />
             )}
             {panel === "tips" && (
               <div className="h-full flex flex-col">
@@ -225,9 +226,8 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
           </div>
 
           {tabBtn("flow", Compass, "Flow")}
-          {tabBtn("organizer", Wand2, "Life organizer")}
+          {tabBtn("organizer", MessageSquare, "Organization chat")}
           {tabBtn("voice", AudioLines, "Voice")}
-          {tabBtn("chat", MessageSquare, "Chat")}
           {tabBtn("tips", Lightbulb, "Tips")}
 
           <button
@@ -271,7 +271,7 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
           </button>
 
           <button
-            onClick={() => setPanel((c) => (c ? null : "chat"))}
+            onClick={() => setPanel((c) => (c ? null : "organizer"))}
             title={panel ? "Collapse" : "Expand"}
             className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
           >

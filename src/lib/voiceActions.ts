@@ -321,8 +321,14 @@ export async function runVoiceActions(actions: VoiceAction[], ctx: VoiceCtx): Pr
           break;
         }
         case "navigate": {
-          window.dispatchEvent(new CustomEvent("serpent-navigate", { detail: a.view }));
-          done.push(`Opened ${a.view}`);
+          const v = String(a.view ?? "").toLowerCase();
+          if (["ai", "chat", "organizer", "organization", "organization chat", "life organizer"].includes(v)) {
+            window.dispatchEvent(new CustomEvent("serpent-open-organizer"));
+            done.push("Opened Organization chat");
+          } else {
+            window.dispatchEvent(new CustomEvent("serpent-navigate", { detail: a.view }));
+            done.push(`Opened ${a.view}`);
+          }
           break;
         }
         default:
