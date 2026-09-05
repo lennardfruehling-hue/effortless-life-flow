@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useCloudState } from "@/hooks/useCloudState";
 import { CLOUD_KEYS } from "@/lib/cloudStore";
+import { syncZite, syncZiteIfStale, type ZiteFinance } from "@/lib/ziteSync";
 import {
   Wallet,
   TrendingUp,
@@ -17,7 +18,9 @@ import {
   Plus,
   Trash2,
   Lightbulb,
+  RefreshCw,
 } from "lucide-react";
+
 
 export interface FinanceAccount {
   id: string;
@@ -80,9 +83,11 @@ const eur = (n: number) =>
 type SectionKey = "health" | "tips" | "spending" | "accounts" | "goals";
 
 export default function FinanceSummaryCard() {
-  const [finance, setFinance] = useCloudState<FinanceState>(CLOUD_KEYS.finance, DEFAULT_FINANCE);
+  const [finance, setFinance, loaded] = useCloudState<FinanceState>(CLOUD_KEYS.finance, DEFAULT_FINANCE);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [sections, setSections] = useState<Record<SectionKey, boolean>>({
     health: true,
     tips: true,
@@ -91,10 +96,33 @@ export default function FinanceSummaryCard() {
     goals: false,
   });
 
-  const data = finance ?? DEFAULT_FINANCE;
+  const data = (finance ?? DEFAULT_FINANCE) as ZiteFinance;
   const spending = data.spending ?? [];
 
+  // Auto-refresh from Zite once a day (silently — manual refresh reports errors).
+  useEffect(() => {
+    if (!loaded) return;
+    syncZiteIfStale(data.syncedAt).then((next) => {
+      if (next) setFinance(next as FinanceState);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
+
+  const refresh = async () => {
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      const next = await syncZite();
+      setFinance(next as FinanceState);
+    } catch (e) {
+      setSyncError((e as Error).message || "Could not reach the budget page");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const toggleSection = (k: SectionKey) => setSections((s) => ({ ...s, [k]: !s[k] }));
+
 
   const { netBalance, assets, debts, savings, savingsRate, runway, warnings, tips } = useMemo(() => {
     const included = (data.accounts || []).filter((a) => a.included !== false);
@@ -130,6 +158,14 @@ export default function FinanceSummaryCard() {
       if (g.target > 0 && g.saved <= 0)
         warnings.push({ id: `goal-${g.id}`, text: `${g.name} has no progress yet`, tone: "warn" });
     }
+    for (const w of data.ziteWarnings || []) {
+      warnings.push({
+        id: w.id,
+        text: w.title ? `${w.title} — ${w.detail}` : w.detail,
+        tone: /critical|high/i.test(w.severity) ? "danger" : "warn",
+      });
+    }
+
     // ---- Top financial tips (prioritised advice from the Wealth Command Centre) ----
     const cats = [...(data.spending || [])].sort((a, b) => (b.amount || 0) - (a.amount || 0));
     const biggest = cats[0];
@@ -189,13 +225,30 @@ export default function FinanceSummaryCard() {
         <Wallet size={15} className="text-primary" />
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-foreground leading-none">Wealth Command Centre</h3>
-          <p className="text-[10px] text-muted-foreground mt-1">
-            {new Date().toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          <p className="text-[10px] text-muted-foreground mt-1 truncate">
+            {data.syncedAt
+              ? `Live balances · updated ${new Date(data.syncedAt).toLocaleString("en-IE", {
+                  day: "numeric",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}`
+              : new Date().toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            {syncError ? ` · ${syncError}` : ""}
           </p>
         </div>
         <span className={`ml-auto text-sm font-semibold ${netBalance < 0 ? "text-destructive" : "text-foreground"}`}>
           {eur(netBalance)}
         </span>
+        <button
+          onClick={refresh}
+          disabled={syncing}
+          className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+          aria-label="Refresh balances"
+          title="Refresh balances"
+        >
+          <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+        </button>
         <button
           onClick={() => setOpen(!open)}
           className="text-muted-foreground hover:text-foreground transition-colors"
@@ -204,6 +257,7 @@ export default function FinanceSummaryCard() {
           {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
       </div>
+
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-y lg:divide-y-0 divide-border">
