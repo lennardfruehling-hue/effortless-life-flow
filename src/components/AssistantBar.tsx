@@ -22,7 +22,7 @@ interface Props {
   dailySchedule?: DailyScheduleSlot[];
 }
 
-type Panel = "flow" | "organizer" | "voice" | "chat" | "tips" | "consistency" | "notifications" | null;
+type Panel = "flow" | "organizer" | "voice" | "tips" | "consistency" | "notifications" | null;
 
 export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProjects, reminders = [], lifePlanProjects = [], dailySchedule = [] }: Props) {
   const [panel, setPanel] = useState<Panel>(null);
