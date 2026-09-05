@@ -323,6 +323,13 @@ export default function LifeOrganizer({
           <span className="hidden sm:inline text-[11px] text-muted-foreground">
             Health {health.score} · {game.points.toLocaleString()} pts · streak {game.streak}
           </span>
+          <button
+            onClick={() => { setSpeakBack((v) => !v); window.speechSynthesis?.cancel(); }}
+            title={speakBack ? "Mute spoken replies" : "Speak replies out loud"}
+            className={`p-1 ${speakBack ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            {speakBack ? <Volume2 size={15} /> : <VolumeX size={15} />}
+          </button>
           <button onClick={() => setTurns([])} title="Clear" className="p-1 text-muted-foreground hover:text-destructive">
             <Trash2 size={15} />
           </button>
