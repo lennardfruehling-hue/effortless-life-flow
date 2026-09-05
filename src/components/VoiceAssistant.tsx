@@ -16,6 +16,8 @@ interface Turn {
   role: "user" | "assistant";
   text: string;
   actions?: string[];
+  proposed?: VoiceAction[];
+  status?: "pending" | "approved" | "declined";
 }
 
 function getRecognition(): any | null {
