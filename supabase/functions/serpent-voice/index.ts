@@ -39,7 +39,7 @@ Available actions (use exact "type" strings):
 - {"type":"collection_update","collection":same list,"match":{"id"?:string,"name"?:string,"title"?:string},"fields":object}
 - {"type":"collection_delete","collection":same list,"match":{"id"?:string,"name"?:string,"title"?:string}}
 - {"type":"baby_patch","path":string,"value":any}   // dot path inside the baby module object
-- {"type":"navigate","view":"tasks"|"lifeplan"|"consistency"|"research"|"lists"|"calendar"|"reminders"}
+- {"type":"navigate","view":"tasks"|"lifeplan"|"consistency"|"research"|"lists"|"calendar"|"reminders"|"organizer"}  // "organizer" opens the Organization chat
 
 ${PHILOSOPHY}
 
@@ -80,7 +80,7 @@ Use the same action objects as the Serpent assistant:
 - {"type":"create_habit","habit":{"name":string,"frequency":"daily"|"weekly"|"bi-daily"|"custom","weekdays"?:number[],"weeklyDay"?:number,"times"?:string[],"notes"?:string,"pushedToTasks"?:boolean}}
 - {"type":"log_habit","match":{"id"?:string,"name"?:string},"slot"?:string}
 - {"type":"collection_add"|"collection_update"|"collection_delete","collection":"cars"|"apartments"|"habits"|"weeklyStructure"|"calendarEvents"|"reminders"|"dailySchedule",...}
-- {"type":"navigate","view":"tasks"|"lifeplan"|"consistency"|"research"|"lists"|"calendar"|"reminders"}
+- {"type":"navigate","view":"tasks"|"lifeplan"|"consistency"|"research"|"lists"|"calendar"|"reminders"|"organizer"}  // "organizer" opens the Organization chat
 
 ${PHILOSOPHY}
 
