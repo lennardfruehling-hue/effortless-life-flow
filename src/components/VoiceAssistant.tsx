@@ -91,9 +91,22 @@ export default function VoiceAssistant({ tasks, projects, onSaveTasks, onSavePro
       if (fnErr) throw fnErr;
 
       const actions: VoiceAction[] = Array.isArray(data?.actions) ? data.actions : [];
-      const applied = actions.length ? await runVoiceActions(actions, ctx) : [];
-      const reply: string = data?.speak || (applied.length ? applied.join(". ") : "Done.");
-      setTurns((prev) => [...prev, { role: "assistant", text: reply, actions: applied }]);
+      // Navigation runs straight away; anything that changes data waits for approval.
+      const navOnly = actions.filter((a) => !isMutatingAction(a));
+      const pending = actions.filter(isMutatingAction);
+      const applied = navOnly.length ? await runVoiceActions(navOnly, ctx) : [];
+      const base: string = data?.speak || (applied.length ? applied.join(". ") : "Done.");
+      const reply = pending.length ? `${base} I need your permission before I change anything.` : base;
+      setTurns((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          text: reply,
+          actions: applied,
+          proposed: pending,
+          status: pending.length ? "pending" : undefined,
+        },
+      ]);
       speak(reply);
     } catch (e: any) {
       console.error("[voice] failed", e);
