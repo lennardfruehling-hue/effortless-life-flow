@@ -121,7 +121,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "web_search",
-      description: "Search the live web and return top result titles, snippets and URLs.",
+      description: "Search the live web and read the top pages. Returns result titles, URLs, snippets and the readable content of the best matches. Use freely and repeatedly, and refine the query if the first results are weak.",
       parameters: {
         type: "object",
         properties: { query: { type: "string", description: "Search query" } },
