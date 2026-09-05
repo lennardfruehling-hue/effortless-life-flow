@@ -455,8 +455,9 @@ serve(async (req) => {
 
     let raw = "";
     let lastProse = "";
-    for (let step = 0; step < 4; step++) {
-      const last = step === 3;
+    for (let step = 0; step < 7; step++) {
+      const last = step === 6;
+
       const out = await callModel(!last);
       if (out.error) {
         const reason =
