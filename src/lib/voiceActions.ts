@@ -16,6 +16,8 @@ export interface VoiceCtx {
   projects: Project[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
   setProjects: React.Dispatch<React.SetStateAction<Project[]>>;
+  /** Must be true for any data-changing action to run. */
+  approved?: boolean;
 }
 
 const COLLECTION_KEYS: Record<string, string> = {
