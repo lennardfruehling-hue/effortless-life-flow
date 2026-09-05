@@ -108,6 +108,7 @@ export default function LifeOrganizer({
   const recRef = useRef<any>(null);
   const handsFreeRef = useRef(false);
   const sendRef = useRef<(p: string) => void>(() => {});
+  const speakRef = useRef<(m: string) => void>(() => {});
   const voiceSupported =
     typeof window !== "undefined" && !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
 
