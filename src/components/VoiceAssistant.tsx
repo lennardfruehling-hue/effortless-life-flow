@@ -195,7 +195,7 @@ export default function VoiceAssistant({ tasks, projects, onSaveTasks, onSavePro
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-3 text-sm">
         {turns.length === 0 && (
           <div className="text-xs text-muted-foreground space-y-2">
-            <p>Talk to Serpent — it can create and edit anything: tasks, projects, reminders, calendar events, notes, lists, habits, cars, apartments and the baby module.</p>
+            <p>Talk to Serpent — it can create and edit anything: tasks, projects, reminders, calendar events, notes, lists, habits, cars and apartments.</p>
             <ul className="space-y-1 font-mono text-[11px]">
               <li>“Add task call the garage tomorrow at 9, category A1.”</li>
               <li>“Mark grocery shopping as done.”</li>
