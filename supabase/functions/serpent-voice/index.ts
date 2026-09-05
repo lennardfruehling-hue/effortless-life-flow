@@ -356,7 +356,6 @@ serve(async (req) => {
     ];
 
     const callModel = async (withTools: boolean) => {
-      console.log("call roles:", convo.map((m: any) => m.role + (m.tool_calls ? "*" : "")).join(","), "tools:", withTools);
       const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
