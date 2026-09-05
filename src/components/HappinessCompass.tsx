@@ -6,7 +6,6 @@ import {
   choiceStreak,
   loadChoiceLog,
   principleOfTheDay,
-  reframeToChoice,
   saveChoiceDay,
 } from "@/lib/philosophy";
 
@@ -39,15 +38,6 @@ export default function HappinessCompass({ tasks, direction }: Props) {
   const chosen = !!today?.chosen;
   const streak = useMemo(() => choiceStreak(log, date), [log, date]);
   const principle = useMemo(() => principleOfTheDay(date), [date]);
-
-  const nextStep = useMemo(() => {
-    const open = tasks.filter((t) => !t.completed);
-    return (
-      open.find((t) => t.categories.includes("A1")) ??
-      open.find((t) => t.dueDate === date) ??
-      open[0]
-    );
-  }, [tasks, date]);
 
   const update = (patch: Partial<ChoiceDay>) => {
     saveChoiceDay({ date, chosen, ...patch });
@@ -112,16 +102,6 @@ export default function HappinessCompass({ tasks, direction }: Props) {
             )}{" "}
             Nothing here is a duty; it is all something you chose.
           </p>
-
-          {/* Next step, in choice language */}
-          {nextStep && (
-            <div className="rounded-lg bg-muted/50 border border-border px-3 py-2">
-              <div className="text-[11px] uppercase tracking-wide text-muted-foreground mb-0.5">
-                Your next choice
-              </div>
-              <div className="text-sm text-foreground font-medium">{reframeToChoice(nextStep.title)}</div>
-            </div>
-          )}
 
           {/* Kernel principle of the day */}
           <div className="flex gap-2 items-start text-xs text-muted-foreground border-t border-border pt-2">
