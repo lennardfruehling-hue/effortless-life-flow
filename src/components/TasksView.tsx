@@ -5,6 +5,7 @@ import TaskForm from "@/components/TaskForm";
 import CalendarScheduleDay from "@/components/CalendarScheduleDay";
 import WeeklyView from "@/components/WeeklyView";
 import GameConsole from "@/components/GameConsole";
+import ImmediateTask from "@/components/ImmediateTask";
 
 import SerpentDailyList from "@/components/SerpentDailyList";
 import ScoreCard from "@/components/ScoreCard";
