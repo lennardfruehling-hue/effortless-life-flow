@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Send, Sparkles, Trash2, Wand2 } from "lucide-react";
+import { Check, Loader2, Send, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { Task, Project, Reminder, LifePlanProject } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,7 +31,24 @@ interface Turn {
   role: "user" | "assistant";
   text: string;
   plan?: PlanStep[];
+  /** Changes the organizer wants to make — nothing happens until the user approves. */
+  proposed?: VoiceAction[];
+  /** "pending" until the user decides. */
+  status?: "pending" | "approved" | "declined";
   applied?: string[];
+}
+
+/** Plain-language description of a proposed change, so the user knows what they approve. */
+function describeAction(a: VoiceAction): string {
+  const label = a.title || a.name || a.match?.title || a.match?.name || a.id || "";
+  const t = String(a.type || "").toLowerCase();
+  const pretty = t.replace(/[_.]/g, " ");
+  if (t.includes("delete") || t.includes("remove")) return `Delete ${label || "an item"}`;
+  if (t.includes("create") || t.includes("add")) return `Create ${label ? `"${label}"` : "a new item"}`;
+  if (t.includes("update") || t.includes("edit") || t.includes("complete") || t.includes("schedule") || t.includes("move"))
+    return `${pretty.charAt(0).toUpperCase()}${pretty.slice(1)}${label ? `: ${label}` : ""}`;
+  if (t.includes("navigate") || t.includes("open")) return `Open ${a.view || a.tab || label || "a section"}`;
+  return `${pretty.charAt(0).toUpperCase()}${pretty.slice(1)}${label ? `: ${label}` : ""}`;
 }
 
 const QUICK_PROMPTS = [
@@ -116,20 +133,16 @@ export default function LifeOrganizer({
       if (fnErr) throw fnErr;
       if (data?.error) throw new Error(String(data.error));
 
+      // Nothing is changed automatically: every action waits for the user's approval.
       const actions: VoiceAction[] = Array.isArray(data?.actions) ? data.actions : [];
-      // A failing action must never swallow the assistant's answer.
-      let applied: string[] = [];
-      try {
-        applied = actions.length ? await runVoiceActions(actions, ctx) : [];
-      } catch (actErr) {
-        console.error("[life-organizer] action failed", actErr);
-        applied = ["Some changes couldn't be applied."];
-      }
       const plan = Array.isArray(data?.plan) ? data.plan : [];
       const text =
         (typeof data?.speak === "string" && data.speak.trim()) ||
         (plan.length ? "Here's how I'd organize this." : "I didn't get a reply that time — try asking again.");
-      setTurns((prev) => [...prev, { role: "assistant", text, plan, applied }]);
+      setTurns((prev) => [
+        ...prev,
+        { role: "assistant", text, plan, proposed: actions, status: actions.length ? "pending" : undefined },
+      ]);
     } catch (e: any) {
       console.error("[life-organizer] failed", e);
       setError(e?.message ?? "Couldn't reach the organizer.");
@@ -139,6 +152,34 @@ export default function LifeOrganizer({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, projects, onSaveTasks, onSaveProjects, user?.id, turns, reminders, lifePlanProjects, habits, game, health]);
+
+  const approve = useCallback(async (index: number) => {
+    const turn = turns[index];
+    if (!turn?.proposed?.length) return;
+    const ctx = {
+      userId: user?.id,
+      tasks,
+      projects,
+      setTasks: onSaveTasks,
+      setProjects: onSaveProjects,
+    };
+    let applied: string[] = [];
+    try {
+      applied = await runVoiceActions(turn.proposed, ctx);
+    } catch (e) {
+      console.error("[life-organizer] action failed", e);
+      applied = ["Some changes couldn't be applied."];
+    }
+    setTurns((prev) =>
+      prev.map((t, i) => (i === index ? { ...t, status: "approved" as const, applied, proposed: [] } : t))
+    );
+  }, [turns, tasks, projects, onSaveTasks, onSaveProjects, user?.id]);
+
+  const decline = useCallback((index: number) => {
+    setTurns((prev) =>
+      prev.map((t, i) => (i === index ? { ...t, status: "declined" as const, proposed: [] } : t))
+    );
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -212,6 +253,37 @@ export default function LifeOrganizer({
                   </li>
                 ))}
               </ol>
+            )}
+
+            {t.status === "pending" && t.proposed && t.proposed.length > 0 && (
+              <div className="rounded-lg border border-primary/40 bg-primary/5 px-3 py-2 space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
+                  Asking permission — {t.proposed.length} change{t.proposed.length > 1 ? "s" : ""}
+                </p>
+                <ul className="space-y-0.5">
+                  {t.proposed.map((a, j) => (
+                    <li key={j} className="text-xs text-foreground">• {describeAction(a)}</li>
+                  ))}
+                </ul>
+                <div className="flex gap-2 pt-0.5">
+                  <button
+                    onClick={() => approve(i)}
+                    className="flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90"
+                  >
+                    <Check size={13} /> Allow
+                  </button>
+                  <button
+                    onClick={() => decline(i)}
+                    className="flex items-center gap-1 rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <X size={13} /> Don't change anything
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {t.status === "declined" && (
+              <p className="text-[11px] text-muted-foreground">Nothing was changed.</p>
             )}
 
             {t.applied && t.applied.length > 0 && (
