@@ -8,6 +8,7 @@ const pendingValue: Record<string, string | null> = {};
 const suppressUntil: Record<string, number> = {};
 const lastPushedHash: Record<string, string> = {};
 let patched = false;
+let realtimeChannel: any = null;
 let activeUserId: string | null = null;
 /** Keys that were modified locally before sync was active — flush them once a user is set. */
 const pendingKeys = new Set<string>();
@@ -274,8 +275,14 @@ export async function hydrateFromCloud(userId: string) {
   }
 
   // Realtime updates from any household member (RLS restricts visibility to the household).
-  supabase
-    .channel(`user_data_${userId}`)
+  // Remove any channel left over from a previous init so we never attach
+  // postgres_changes listeners to an already-subscribed channel.
+  if (realtimeChannel) {
+    try { void supabase.removeChannel(realtimeChannel); } catch {}
+    realtimeChannel = null;
+  }
+  realtimeChannel = supabase
+    .channel(`user_data_${userId}_${Date.now()}`)
     .on(
       "postgres_changes",
       { event: "*", schema: "public", table: "user_data" },

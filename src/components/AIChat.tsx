@@ -1,3 +1,4 @@
+import { PHILOSOPHY_PROMPT } from "@/lib/philosophy";
 import { useState, useRef, useEffect, type Dispatch, type SetStateAction } from "react";
 import { Task, Project, Category, ALL_CATEGORIES, CATEGORY_META } from "@/lib/types";
 import { store } from "@/lib/store";
@@ -341,6 +342,9 @@ function buildSystemPrompt(tasks: Task[], projects: Project[]): string {
   const projectList = projects.map((p) => `- [${p.id.slice(0, 8)}] "${p.name}"${p.description ? ` - ${p.description}` : ""}`).join("\n");
 
   return `You are the Serpent List AI assistant. You help manage tasks, projects, and life planning.
+
+${PHILOSOPHY_PROMPT}
+
 You have MEMORY of all previous conversations. Use this context to give better, personalized advice.
 You can analyze images sent to you via OCR - describe what you see and extract text/data from images.
 
