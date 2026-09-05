@@ -205,6 +205,86 @@ export default function LifeOrganizer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, projects, onSaveTasks, onSaveProjects, user?.id, turns, reminders, lifePlanProjects, habits, game, health]);
 
+  useEffect(() => { sendRef.current = send; }, [send]);
+
+  const startListening = useCallback(async () => {
+    if (!voiceSupported || busyRef.current) return;
+    if (typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((t) => t.stop());
+      } catch {
+        setError("Microphone access is blocked. Allow microphone permission for this app to talk to the organizer.");
+        setHandsFree(false);
+        handsFreeRef.current = false;
+        return;
+      }
+    }
+    try { recRef.current?.abort?.(); } catch { /* ignore */ }
+    const rec = getRecognition();
+    if (!rec) return;
+    recRef.current = rec;
+    let finalText = "";
+    rec.onresult = (ev: any) => {
+      let inter = "";
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        const res = ev.results[i];
+        if (res.isFinal) finalText += res[0].transcript;
+        else inter += res[0].transcript;
+      }
+      setInterim(inter);
+    };
+    rec.onerror = (ev: any) => {
+      if (ev?.error === "not-allowed") {
+        setError("Microphone permission denied.");
+        setHandsFree(false);
+        handsFreeRef.current = false;
+      }
+      setListening(false);
+      setInterim("");
+    };
+    rec.onend = () => {
+      setListening(false);
+      setInterim("");
+      const said = finalText.trim();
+      if (said) sendRef.current(said);
+      else if (handsFreeRef.current && !busyRef.current) setTimeout(() => startListening(), 400);
+    };
+    try {
+      rec.start();
+      setListening(true);
+      setError(null);
+    } catch { /* already running */ }
+  }, [voiceSupported]);
+
+  const stopListening = useCallback(() => {
+    handsFreeRef.current = false;
+    setHandsFree(false);
+    try { recRef.current?.stop?.(); } catch { /* ignore */ }
+    setListening(false);
+  }, []);
+
+  useEffect(() => {
+    speakRef.current = (msg: string) => {
+      if (!speakBack || !msg || typeof window === "undefined" || !window.speechSynthesis) {
+        if (handsFreeRef.current) setTimeout(() => startListening(), 300);
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const u = new SpeechSynthesisUtterance(msg);
+      u.lang = "en-US";
+      u.rate = 1.02;
+      u.onend = () => { if (handsFreeRef.current) startListening(); };
+      window.speechSynthesis.speak(u);
+    };
+  }, [speakBack, startListening]);
+
+  useEffect(() => () => {
+    try { recRef.current?.abort?.(); } catch { /* ignore */ }
+    window.speechSynthesis?.cancel();
+  }, []);
+
+
   const approve = useCallback(async (index: number) => {
     const turn = turns[index];
     if (!turn?.proposed?.length) return;
