@@ -121,6 +121,39 @@ export default function VoiceAssistant({ tasks, projects, onSaveTasks, onSavePro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, projects, onSaveTasks, onSaveProjects, user?.id, turns, speak, speakBack]);
 
+  const approve = useCallback(async (index: number) => {
+    const turn = turns[index];
+    if (!turn?.proposed?.length) return;
+    let applied: string[] = [];
+    try {
+      applied = await runVoiceActions(turn.proposed, {
+        userId: user?.id,
+        tasks,
+        projects,
+        setTasks: onSaveTasks,
+        setProjects: onSaveProjects,
+        approved: true,
+      });
+    } catch (e) {
+      console.error("[voice] action failed", e);
+      applied = ["Some changes couldn't be applied."];
+    }
+    setTurns((prev) =>
+      prev.map((t, i) =>
+        i === index
+          ? { ...t, status: "approved" as const, actions: [...(t.actions ?? []), ...applied], proposed: [] }
+          : t
+      )
+    );
+  }, [turns, tasks, projects, onSaveTasks, onSaveProjects, user?.id]);
+
+  const decline = useCallback((index: number) => {
+    setTurns((prev) =>
+      prev.map((t, i) => (i === index ? { ...t, status: "declined" as const, proposed: [] } : t))
+    );
+  }, []);
+
+
   const ensureMicPermission = useCallback(async (): Promise<boolean> => {
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return true;
     try {
