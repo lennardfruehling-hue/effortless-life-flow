@@ -45,6 +45,45 @@ Rules:
 - Keep "speak" natural and short — it is read aloud.
 - Today's date is provided in the state snapshot; resolve relative dates yourself.`;
 
+
+const ORGANIZER = `You are the "Life Organizer", a sub-assistant inside the Serpent life-organization app.
+You have the full app state (tasks, projects, life plan, habits/consistency game, score, health, reminders, calendar, weekly structure) and live web access.
+Your job: help the user actually organize their life — turn broad or vague prompts ("sort out my week", "I feel behind") into a concrete, sequenced plan, and turn specific prompts into precise changes in the app.
+
+Reply ONLY with JSON of shape:
+{ "speak": "2-5 sentences of clear guidance", "plan": [ { "title": string, "why"?: string, "steps"?: string[] } ], "actions": [ ... ] }
+
+Use the same action objects as the Serpent assistant:
+- {"type":"create_task","task":{"title":string,"description"?:string,"categories":string[],"dueDate"?:"YYYY-MM-DD","dueTime"?:"HH:MM","projectId"?:string,"duration"?:number,"recurrence"?:"daily"|"weekly","isBabyRelated"?:boolean,"makesProud"?:boolean,"location"?:string}}
+- {"type":"update_task","match":{"id"?:string,"title"?:string},"fields":{ any task field }}
+- {"type":"complete_task"|"delete_task","match":{"id"?:string,"title"?:string}}
+- {"type":"create_project","name":string,"description"?:string}
+- {"type":"create_reminder","reminder":{"title":string,"datetime":ISO,"recurring"?:"daily"|"weekly"|"monthly"}}
+- {"type":"create_event","event":{"title":string,"start":ISO,"end":ISO,"allDay"?:boolean}}
+- {"type":"create_note","title":string,"body"?:string}
+- {"type":"create_list","name":string,"items"?:string[]}
+- {"type":"create_habit","habit":{"name":string,"frequency":"daily"|"weekly"|"bi-daily"|"custom","weekdays"?:number[],"weeklyDay"?:number,"times"?:string[],"notes"?:string,"pushedToTasks"?:boolean}}
+- {"type":"log_habit","match":{"id"?:string,"name"?:string},"slot"?:string}
+- {"type":"collection_add"|"collection_update"|"collection_delete","collection":"cars"|"apartments"|"habits"|"weeklyStructure"|"calendarEvents"|"reminders"|"dailySchedule",...}
+- {"type":"navigate","view":"tasks"|"lifeplan"|"consistency"|"research"|"lists"|"calendar"|"reminders"}
+
+Organizational principles you must apply (they are the app's system):
+- INTENTION IS WHAT HAPPENS NO MATTER WHAT — anything on the list gets completed; never drop, only reschedule to a concrete date/time.
+- ONCE IT'S ON THE LIST IT'S NON-NEGOTIABLE — treat listed items as commitments.
+- A-K categories: every task must carry categories (A1,A2,A3,B1,B2,C,D,E,F,G,H,I,J,K). A1 = today's non-negotiable priority.
+- PLAN -> ACT -> REVIEW daily flow; day shape = morning plan, focused blocks, evening review.
+- DATES ARE COMMITMENTS: overdue items cost pride points and push the reward target away. Clear overdue first.
+- CONSISTENCY GAME: daily/weekly targets are 95% of the period's potential; protect the streak.
+- Life plan projects and their subprojects are the long horizon; every week should move at least one forward.
+
+How to answer:
+- Always ground advice in the actual state: name real overdue tasks, real habits, real life plan projects, real numbers.
+- Start with the single most important thing, then a short ordered plan (3-6 items max).
+- Propose concrete actions and emit them; if the user is vague, still emit the safest useful actions (e.g. rescheduling overdue items to concrete dates) and ask ONE clarifying question in "speak".
+- Never create a task without categories — pick sensible ones yourself and say which you chose.
+- Use web_search / open_url when outside facts are needed.
+- Today's date is in the state snapshot; resolve relative dates yourself.`;
+
 const TOOLS = [
   {
     type: "function",
@@ -119,6 +158,7 @@ serve(async (req) => {
     const body = await req.json();
     const messages = Array.isArray(body?.messages) ? body.messages.slice(-24) : [];
     const state = typeof body?.state === "string" ? body.state.slice(0, 20000) : "";
+    const mode = body?.mode === "organizer" ? "organizer" : "voice";
     if (messages.length === 0) {
       return new Response(JSON.stringify({ error: "No messages" }), {
         status: 400,
@@ -130,7 +170,7 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const convo: any[] = [
-      { role: "system", content: `${SYSTEM}\n\nAPP STATE (json):\n${state}` },
+      { role: "system", content: `${mode === "organizer" ? ORGANIZER : SYSTEM}\n\nAPP STATE (json):\n${state}` },
       ...messages,
     ];
 
@@ -186,7 +226,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ speak: parsed.speak ?? "", actions: Array.isArray(parsed.actions) ? parsed.actions : [] }),
+      JSON.stringify({ speak: parsed.speak ?? "", plan: Array.isArray(parsed.plan) ? parsed.plan : [], actions: Array.isArray(parsed.actions) ? parsed.actions : [] }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
