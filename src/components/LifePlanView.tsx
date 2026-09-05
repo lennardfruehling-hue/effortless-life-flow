@@ -37,6 +37,8 @@ interface ProjectGroup {
   endDate?: string;
   archived?: boolean;
   archivedAt?: string;
+  /** "period" = runs from startDate to endDate; "deadline" = single hard deadline (endDate). */
+  timing?: "period" | "deadline";
 }
 
 interface LifePlanData {
@@ -296,6 +298,13 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
     setData((d) => ({
       ...d,
       projects: d.projects.map((p) => (p.id === id ? { ...p, [field]: value } : p)),
+    }));
+  };
+
+  const updateProjectTiming = (id: string, timing: "period" | "deadline") => {
+    setData((d) => ({
+      ...d,
+      projects: d.projects.map((p) => (p.id === id ? { ...p, timing } : p)),
     }));
   };
 
@@ -565,20 +574,46 @@ export default function LifePlanView({ onNavigateToTasks, tasks = [], onSaveTask
                   </button>
                 </div>
 
-                {/* Timeline dates */}
-                {!isCollapsed && (
-                  <div className="px-4 py-2 border-t border-border/50 bg-secondary/30 flex items-center gap-3">
-                    <Calendar size={12} className="text-muted-foreground" />
-                    <div className="flex items-center gap-1.5">
-                      <label className="text-[10px] text-muted-foreground">Start:</label>
-                      <input type="date" value={project.startDate || ""} onChange={(e) => updateProjectDates(project.id, "startDate", e.target.value)} className="bg-transparent text-xs font-mono text-foreground focus:outline-none" />
+                {/* Timeline — period or single deadline */}
+                {!isCollapsed && (() => {
+                  const mode = project.timing ?? "period";
+                  const daysLeft = project.endDate
+                    ? Math.round((+new Date(project.endDate + "T00:00:00") - +new Date(new Date().toISOString().slice(0, 10) + "T00:00:00")) / 86400000)
+                    : null;
+                  return (
+                    <div className="px-4 py-2 border-t border-border/50 bg-secondary/30 flex flex-wrap items-center gap-3">
+                      <Calendar size={12} className="text-muted-foreground" />
+                      <div className="flex items-center rounded border border-border overflow-hidden">
+                        {(["period", "deadline"] as const).map((m) => (
+                          <button
+                            key={m}
+                            onClick={() => updateProjectTiming(project.id, m)}
+                            className={`px-2 py-0.5 text-[10px] font-mono transition-colors ${
+                              mode === m ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-secondary"
+                            }`}
+                          >
+                            {m === "period" ? "Period" : "Deadline"}
+                          </button>
+                        ))}
+                      </div>
+                      {mode === "period" && (
+                        <div className="flex items-center gap-1.5">
+                          <label className="text-[10px] text-muted-foreground">Start:</label>
+                          <input type="date" value={project.startDate || ""} onChange={(e) => updateProjectDates(project.id, "startDate", e.target.value)} className="bg-transparent text-xs font-mono text-foreground focus:outline-none" />
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-[10px] text-muted-foreground">{mode === "period" ? "End:" : "Due:"}</label>
+                        <input type="date" value={project.endDate || ""} onChange={(e) => updateProjectDates(project.id, "endDate", e.target.value)} className="bg-transparent text-xs font-mono text-foreground focus:outline-none" />
+                      </div>
+                      {daysLeft !== null && (
+                        <span className={`text-[10px] font-mono ml-auto ${daysLeft < 0 ? "text-destructive" : daysLeft <= 14 ? "text-cat-c" : "text-muted-foreground"}`}>
+                          {daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? "due today" : `${daysLeft}d left`}
+                        </span>
+                      )}
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <label className="text-[10px] text-muted-foreground">End:</label>
-                      <input type="date" value={project.endDate || ""} onChange={(e) => updateProjectDates(project.id, "endDate", e.target.value)} className="bg-transparent text-xs font-mono text-foreground focus:outline-none" />
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Tasks */}
                 {!isCollapsed && (

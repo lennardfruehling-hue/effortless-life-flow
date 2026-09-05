@@ -5,6 +5,7 @@ import TaskForm from "@/components/TaskForm";
 import CalendarScheduleDay from "@/components/CalendarScheduleDay";
 import WeeklyView from "@/components/WeeklyView";
 import GameConsole from "@/components/GameConsole";
+import ImmediateTask from "@/components/ImmediateTask";
 
 import SerpentDailyList from "@/components/SerpentDailyList";
 import ScoreCard from "@/components/ScoreCard";
@@ -326,6 +327,13 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
           <p className="text-xs text-muted-foreground mt-1">{CATEGORY_META[filterCat].description}</p>
         </div>
       )}
+      {/* The single next step */}
+      <ImmediateTask
+        tasks={tasks}
+        onToggle={handleToggle}
+        onEdit={(t) => { setEditTask(t); setShowForm(true); }}
+      />
+
       {/* Daily consistency check-in */}
       <ScoreCard tasks={tasks} />
       {!showSchedule && <div className="mb-4"><GameConsole /></div>}
