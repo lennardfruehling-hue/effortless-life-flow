@@ -191,100 +191,169 @@ const stripTags = (s: string) =>
     .replace(/\s+/g, " ")
     .trim();
 
-function parseDuck(html: string): string[] {
-  const out: string[] = [];
+const decodeDuck = (raw: string): string => {
+  let url = raw;
+  const uddg = url.match(/[?&]uddg=([^&)]+)/);
+  if (uddg) {
+    try { url = decodeURIComponent(uddg[1]); } catch { /* keep */ }
+  }
+  if (url.startsWith("//")) url = "https:" + url;
+  return url.replace(/[)\s]+$/, "");
+};
+
+type Hit = { title: string; url: string; snippet: string };
+
+const cleanMd = (s: string) =>
+  s.replace(/!\[[^\]]*\]\([^)]*\)/g, "")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\*\*/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+// Parse the markdown a reader proxy returns for a DuckDuckGo results page.
+function parseReaderResults(md: string): Hit[] {
+  const hits: Hit[] = [];
+  const seen = new Set<string>();
+  const lines = md.split("\n");
+  const linkRe = /\[([^\]]{4,180})\]\((https?:\/\/[^)\s]+)\)/;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const m = line.match(linkRe);
+    if (!m) continue;
+    const title = cleanMd(m[1]);
+    const url = decodeDuck(m[2]);
+    if (!title || title.length < 5) continue;
+    if (!/^https?:\/\//.test(url)) continue;
+    if (/duckduckgo\.com|bing\.com|google\.[a-z.]+\/search/.test(url)) continue;
+    if (seen.has(url)) continue;
+    seen.add(url);
+    // Snippet: following non-link lines
+    const parts: string[] = [];
+    for (let j = i + 1; j < Math.min(i + 5, lines.length); j++) {
+      const t = cleanMd(lines[j]);
+      if (!t) continue;
+      if (linkRe.test(lines[j]) && t.length < 90) break;
+      parts.push(t);
+      if (parts.join(" ").length > 220) break;
+    }
+    hits.push({ title, url, snippet: parts.join(" ").slice(0, 280) });
+    if (hits.length >= 8) break;
+  }
+  return hits;
+}
+
+function parseDuck(html: string): Hit[] {
+  const hits: Hit[] = [];
   const re = /<a[^>]*class="[^"]*result(?:__a|-link)[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(html)) && out.length < 6) {
-    let url = m[1];
-    const uddg = url.match(/uddg=([^&]+)/);
-    if (uddg) url = decodeURIComponent(uddg[1]);
-    if (url.startsWith("//")) url = "https:" + url;
+  while ((m = re.exec(html)) && hits.length < 8) {
+    const url = decodeDuck(m[1]);
     const title = stripTags(m[2]);
-    if (title) out.push(`${title}\n   ${url}`);
+    if (title) hits.push({ title, url, snippet: "" });
   }
-  return out;
+  return hits;
 }
 
-async function webSearch(query: string): Promise<string> {
-  const q = encodeURIComponent(query.trim()).replace(/%20/g, "+");
-  const attempts: (() => Promise<string[]>)[] = [
-    // 1. Bing RSS (reliable from server runtimes)
-    async () => {
-      const xml = await fetchText(`https://www.bing.com/search?q=${q}&format=rss`);
-      if (!xml) return [];
-      const out: string[] = [];
-      const items = xml.split("<item>").slice(1, 8);
-      for (const it of items) {
-        const title = stripTags((it.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || "");
-        const link = stripTags((it.match(/<link>([\s\S]*?)<\/link>/) || [])[1] || "");
-        const desc = stripTags((it.match(/<description>([\s\S]*?)<\/description>/) || [])[1] || "");
-        if (title) out.push(`${title}\n   ${desc}\n   ${link}`);
-      }
-      return out;
-    },
-    // 2. DuckDuckGo HTML endpoint
-    async () => {
-      const html = await fetchText(`https://html.duckduckgo.com/html/?q=${q}`);
-      return html ? parseDuck(html) : [];
-    },
-    // 3. DuckDuckGo lite
-    async () => {
-      const html = await fetchText(`https://lite.duckduckgo.com/lite/?q=${q}`);
-      if (!html) return [];
-      const out: string[] = [];
-      const re = /<a[^>]*href="(https?:\/\/[^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(html)) && out.length < 6) {
-        const url = m[1];
-        if (/duckduckgo\.com/.test(url)) continue;
-        const title = stripTags(m[2]);
-        if (title && title.length > 3) out.push(`${title}\n   ${url}`);
-      }
-      return out;
-    },
-    // 4. DuckDuckGo instant-answer API (facts, definitions)
-    async () => {
-      const json = await fetchText(`https://api.duckduckgo.com/?q=${q}&format=json&no_html=1&skip_disambig=1`);
-      if (!json) return [];
-      try {
-        const d = JSON.parse(json);
-        const out: string[] = [];
-        if (d.AbstractText) out.push(`${d.Heading || query}: ${d.AbstractText}\n   ${d.AbstractURL || ""}`);
-        for (const t of d.RelatedTopics || []) {
-          if (out.length >= 6) break;
-          if (t?.Text) out.push(`${t.Text}\n   ${t.FirstURL || ""}`);
-        }
-        return out;
-      } catch {
-        return [];
-      }
-    },
-    // 5. Reader proxy over a search engine (works when direct scraping is blocked)
-    async () => {
-      const txt = await fetchText(`https://r.jina.ai/https://duckduckgo.com/html/?q=${q}`, 20000);
-      if (!txt) return [];
-      const out: string[] = [];
-      const re = /\[([^\]]{6,120})\]\((https?:\/\/[^)\s]+)\)/g;
-      let m: RegExpExecArray | null;
-      while ((m = re.exec(txt)) && out.length < 6) {
-        if (/duckduckgo\.com/.test(m[2])) continue;
-        out.push(`${m[1].trim()}\n   ${m[2]}`);
-      }
-      return out;
-    },
-  ];
-
-  for (const attempt of attempts) {
+const searchSources: ((q: string) => Promise<Hit[]>)[] = [
+  // 1. Reader proxy over DuckDuckGo lite — most reliable from server runtimes.
+  async (q) => {
+    const md = await fetchText(`https://r.jina.ai/https://lite.duckduckgo.com/lite/?q=${q}`, 25000);
+    return md ? parseReaderResults(md) : [];
+  },
+  // 2. Reader proxy over the DuckDuckGo HTML endpoint.
+  async (q) => {
+    const md = await fetchText(`https://r.jina.ai/https://duckduckgo.com/html/?q=${q}`, 25000);
+    return md ? parseReaderResults(md) : [];
+  },
+  // 3. Direct DuckDuckGo HTML (works when not rate limited).
+  async (q) => {
+    const html = await fetchText(`https://html.duckduckgo.com/html/?q=${q}`);
+    return html && !/anomaly|unusual traffic/i.test(html) ? parseDuck(html) : [];
+  },
+  // 4. Reader proxy over Startpage.
+  async (q) => {
+    const md = await fetchText(`https://r.jina.ai/https://search.marcia.cc/search?q=${q}`, 20000);
+    return md ? parseReaderResults(md) : [];
+  },
+  // 5. Wikipedia (encyclopaedic facts).
+  async (q) => {
+    const json = await fetchText(
+      `https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=${q}&format=json&srlimit=5`
+    );
+    if (!json) return [];
     try {
-      const res = await attempt();
-      if (res.length) return res.map((r, i) => `${i + 1}. ${r}`).join("\n");
-    } catch (_) {
-      // try next source
-    }
-  }
-  return "No results found from any search source. Say so plainly instead of guessing.";
+      const d = JSON.parse(json);
+      return (d?.query?.search ?? []).map((r: any) => ({
+        title: r.title,
+        url: `https://en.wikipedia.org/wiki/${encodeURIComponent(String(r.title).replace(/ /g, "_"))}`,
+        snippet: stripTags(r.snippet || ""),
+      }));
+    } catch { return []; }
+  },
+  // 6. DuckDuckGo instant answers (definitions, entities).
+  async (q) => {
+    const json = await fetchText(`https://api.duckduckgo.com/?q=${q}&format=json&no_html=1&skip_disambig=1`);
+    if (!json) return [];
+    try {
+      const d = JSON.parse(json);
+      const out: Hit[] = [];
+      if (d.AbstractText) out.push({ title: d.Heading || "Summary", url: d.AbstractURL || "", snippet: d.AbstractText });
+      for (const t of d.RelatedTopics || []) {
+        if (out.length >= 6) break;
+        if (t?.Text) out.push({ title: t.Text.slice(0, 90), url: t.FirstURL || "", snippet: t.Text });
+      }
+      return out;
+    } catch { return []; }
+  },
+];
+
+// Score how well a result set matches the query, so a source that returns
+// unrelated junk (search engines do this when they block a server) is skipped.
+function relevance(query: string, hits: Hit[]): number {
+  const terms = query.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [];
+  if (!terms.length || !hits.length) return hits.length ? 1 : 0;
+  let matched = 0;
+  const blob = hits.map((h) => `${h.title} ${h.snippet} ${h.url}`).join(" ").toLowerCase();
+  for (const t of terms) if (blob.includes(t)) matched++;
+  return matched / terms.length;
 }
+
+async function webSearch(query: string, deep = true): Promise<string> {
+  const clean = query.trim();
+  const q = encodeURIComponent(clean).replace(/%20/g, "+");
+  let hits: Hit[] = [];
+  for (const source of searchSources) {
+    try {
+      const res = await source(q);
+      if (res.length && relevance(clean, res) >= 0.34) { hits = res; break; }
+      if (res.length && !hits.length) hits = res; // weak fallback, keep looking
+    } catch { /* next source */ }
+  }
+  if (!hits.length) {
+    return `No search results could be retrieved for "${clean}". Say so plainly instead of guessing, and offer to try a different wording.`;
+  }
+
+  const list = hits
+    .slice(0, 8)
+    .map((h, i) => `${i + 1}. ${h.title}\n   ${h.url}${h.snippet ? `\n   ${h.snippet}` : ""}`)
+    .join("\n");
+
+  if (!deep) return list;
+
+  // Read the top pages like a consumer assistant does, so the answer is grounded
+  // in page content rather than snippets alone.
+  const targets = hits.filter((h) => /^https?:\/\//.test(h.url)).slice(0, 3);
+  const pages = await Promise.all(
+    targets.map(async (h) => {
+      const text = await openUrl(h.url, 2500);
+      if (!text || /^Could not read/.test(text)) return "";
+      return `--- ${h.title} (${h.url}) ---\n${text}`;
+    })
+  );
+  const body = pages.filter(Boolean).join("\n\n");
+  return body ? `SEARCH RESULTS:\n${list}\n\nPAGE CONTENT:\n${body}` : list;
+}
+
 
 async function getWeather(place: string): Promise<string> {
   const geo = await fetchText(
