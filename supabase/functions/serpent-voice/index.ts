@@ -388,18 +388,21 @@ async function getWeather(place: string): Promise<string> {
   } catch { return "Weather lookup failed."; }
 }
 
-async function openUrl(url: string): Promise<string> {
+async function openUrl(url: string, limit = 6000): Promise<string> {
   if (!/^https?:\/\//i.test(url)) return "Invalid URL.";
-  const viaReader = await fetchText(`https://r.jina.ai/${url}`, 20000);
-  if (viaReader && viaReader.trim().length > 80) return viaReader.slice(0, 6000);
+  const viaReader = await fetchText(`https://r.jina.ai/${url}`, 25000);
+  if (viaReader && viaReader.trim().length > 80 && !/AbuseAlleviationError/.test(viaReader)) {
+    return viaReader.slice(0, limit);
+  }
   const direct = await fetchText(url, 15000);
   if (direct) {
     const body = direct.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "");
     const text = stripTags(body);
-    if (text.length > 40) return text.slice(0, 6000);
+    if (text.length > 40) return text.slice(0, limit);
   }
   return "Could not read that page.";
 }
+
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
