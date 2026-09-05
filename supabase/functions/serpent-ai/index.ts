@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { BROWSE_TOOLS, runBrowseTool } from "../_shared/browsing.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -104,23 +105,53 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Switched to OpenAI GPT-5 per user preference (Claude isn't available via Lovable AI Gateway)
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "openai/gpt-5",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
-      }),
-    });
+    const BROWSE_HINT = `
 
-    if (!response.ok) {
+## Live web access
+You have live internet access through the tools "web_search" (search the web), "open_url" (read a page) and "get_weather" (current weather + 3-day forecast for a place).
+Use them whenever the user asks about current facts, prices, news, weather, opening hours, products, places or documentation. Never claim you cannot browse. Cite the source URL when you used one.`;
+
+    const convo: any[] = [
+      { role: "system", content: `${systemPrompt}${BROWSE_HINT}` },
+      ...messages,
+    ];
+
+    const callModel = async (withTools: boolean) => {
+      return await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-3.7-flash",
+          messages: convo,
+          ...(withTools ? { tools: BROWSE_TOOLS, tool_choice: "auto" } : {}),
+        }),
+      });
+    };
+
+    let response = await callModel(true);
+    let data: any = null;
+
+    for (let step = 0; step < 4; step++) {
+      if (!response.ok) break;
+      data = await response.json();
+      const msg = data?.choices?.[0]?.message;
+      const calls = msg?.tool_calls;
+      if (!Array.isArray(calls) || calls.length === 0) break;
+
+      convo.push(msg);
+      for (const call of calls) {
+        let args: any = {};
+        try { args = JSON.parse(call?.function?.arguments || "{}"); } catch {}
+        const result = await runBrowseTool(call?.function?.name, args);
+        convo.push({ role: "tool", tool_call_id: call.id, content: result });
+      }
+      response = await callModel(step < 2);
+    }
+
+    if (!response.ok && !data) {
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit exceeded" }), {
           status: 429,
@@ -138,7 +169,7 @@ serve(async (req) => {
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
-    const data = await response.json();
+    if (!data) data = await response.json();
     return new Response(JSON.stringify(data), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

@@ -116,6 +116,19 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "get_weather",
+      description: "Current weather and 3-day forecast for a place name (live, reliable).",
+      parameters: {
+        type: "object",
+        properties: { place: { type: "string", description: "City or place name" } },
+        required: ["place"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "open_url",
       description: "Fetch a web page and return its readable text content.",
       parameters: {
@@ -128,43 +141,179 @@ const TOOLS = [
   },
 ];
 
-async function webSearch(query: string): Promise<string> {
+async function fetchText(url: string, timeoutMs = 12000): Promise<string | null> {
   try {
-    const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; SerpentVoice/1.0)" },
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
     });
-    const html = await res.text();
-    const out: string[] = [];
-    const re = /<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(html)) && out.length < 6) {
-      const strip = (s: string) => s.replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').trim();
-      let url = m[1];
-      const uddg = url.match(/uddg=([^&]+)/);
-      if (uddg) url = decodeURIComponent(uddg[1]);
-      out.push(`${out.length + 1}. ${strip(m[2])}\n   ${url}`);
-    }
-    if (!out.length) return "No results found.";
-    return out.join("\n");
-  } catch (e) {
-    return `Search failed: ${e instanceof Error ? e.message : "unknown error"}`;
+    clearTimeout(t);
+    if (!res.ok) return null;
+    return await res.text();
+  } catch {
+    return null;
   }
+}
+
+const stripTags = (s: string) =>
+  s
+    .replace(/<[^>]*>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&#x27;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+function parseDuck(html: string): string[] {
+  const out: string[] = [];
+  const re = /<a[^>]*class="[^"]*result(?:__a|-link)[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) && out.length < 6) {
+    let url = m[1];
+    const uddg = url.match(/uddg=([^&]+)/);
+    if (uddg) url = decodeURIComponent(uddg[1]);
+    if (url.startsWith("//")) url = "https:" + url;
+    const title = stripTags(m[2]);
+    if (title) out.push(`${title}\n   ${url}`);
+  }
+  return out;
+}
+
+async function webSearch(query: string): Promise<string> {
+  const q = encodeURIComponent(query.trim()).replace(/%20/g, "+");
+  const attempts: (() => Promise<string[]>)[] = [
+    // 1. Bing RSS (reliable from server runtimes)
+    async () => {
+      const xml = await fetchText(`https://www.bing.com/search?q=${q}&format=rss`);
+      if (!xml) return [];
+      const out: string[] = [];
+      const items = xml.split("<item>").slice(1, 8);
+      for (const it of items) {
+        const title = stripTags((it.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || "");
+        const link = stripTags((it.match(/<link>([\s\S]*?)<\/link>/) || [])[1] || "");
+        const desc = stripTags((it.match(/<description>([\s\S]*?)<\/description>/) || [])[1] || "");
+        if (title) out.push(`${title}\n   ${desc}\n   ${link}`);
+      }
+      return out;
+    },
+    // 2. DuckDuckGo HTML endpoint
+    async () => {
+      const html = await fetchText(`https://html.duckduckgo.com/html/?q=${q}`);
+      return html ? parseDuck(html) : [];
+    },
+    // 3. DuckDuckGo lite
+    async () => {
+      const html = await fetchText(`https://lite.duckduckgo.com/lite/?q=${q}`);
+      if (!html) return [];
+      const out: string[] = [];
+      const re = /<a[^>]*href="(https?:\/\/[^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(html)) && out.length < 6) {
+        const url = m[1];
+        if (/duckduckgo\.com/.test(url)) continue;
+        const title = stripTags(m[2]);
+        if (title && title.length > 3) out.push(`${title}\n   ${url}`);
+      }
+      return out;
+    },
+    // 4. DuckDuckGo instant-answer API (facts, definitions)
+    async () => {
+      const json = await fetchText(`https://api.duckduckgo.com/?q=${q}&format=json&no_html=1&skip_disambig=1`);
+      if (!json) return [];
+      try {
+        const d = JSON.parse(json);
+        const out: string[] = [];
+        if (d.AbstractText) out.push(`${d.Heading || query}: ${d.AbstractText}\n   ${d.AbstractURL || ""}`);
+        for (const t of d.RelatedTopics || []) {
+          if (out.length >= 6) break;
+          if (t?.Text) out.push(`${t.Text}\n   ${t.FirstURL || ""}`);
+        }
+        return out;
+      } catch {
+        return [];
+      }
+    },
+    // 5. Reader proxy over a search engine (works when direct scraping is blocked)
+    async () => {
+      const txt = await fetchText(`https://r.jina.ai/https://duckduckgo.com/html/?q=${q}`, 20000);
+      if (!txt) return [];
+      const out: string[] = [];
+      const re = /\[([^\]]{6,120})\]\((https?:\/\/[^)\s]+)\)/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(txt)) && out.length < 6) {
+        if (/duckduckgo\.com/.test(m[2])) continue;
+        out.push(`${m[1].trim()}\n   ${m[2]}`);
+      }
+      return out;
+    },
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      const res = await attempt();
+      if (res.length) return res.map((r, i) => `${i + 1}. ${r}`).join("\n");
+    } catch (_) {
+      // try next source
+    }
+  }
+  return "No results found from any search source. Say so plainly instead of guessing.";
+}
+
+async function getWeather(place: string): Promise<string> {
+  const geo = await fetchText(
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(place)}&count=1&language=en&format=json`
+  );
+  if (!geo) return "Weather lookup failed.";
+  let lat: number, lon: number, label = place;
+  try {
+    const g = JSON.parse(geo);
+    const r = g?.results?.[0];
+    if (!r) return `No place found for "${place}".`;
+    lat = r.latitude; lon = r.longitude;
+    label = [r.name, r.country].filter(Boolean).join(", ");
+  } catch { return "Weather lookup failed."; }
+  const wx = await fetchText(
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=3&timezone=auto`
+  );
+  if (!wx) return "Weather lookup failed.";
+  try {
+    const d = JSON.parse(wx);
+    const c = d.current || {};
+    const day = d.daily || {};
+    const lines = [
+      `${label}: now ${c.temperature_2m}°C (feels ${c.apparent_temperature}°C), wind ${c.wind_speed_10m} km/h, precipitation ${c.precipitation} mm.`,
+    ];
+    for (let i = 0; i < (day.time?.length ?? 0); i++) {
+      lines.push(
+        `${day.time[i]}: ${day.temperature_2m_min[i]}–${day.temperature_2m_max[i]}°C, rain chance ${day.precipitation_probability_max?.[i] ?? "?"}%.`
+      );
+    }
+    return lines.join("\n");
+  } catch { return "Weather lookup failed."; }
 }
 
 async function openUrl(url: string): Promise<string> {
-  try {
-    if (!/^https?:\/\//i.test(url)) return "Invalid URL.";
-    const res = await fetch(`https://r.jina.ai/${url}`, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; SerpentVoice/1.0)" },
-    });
-    if (!res.ok) return `Could not read page (${res.status}).`;
-    const text = await res.text();
-    return text.slice(0, 6000);
-  } catch (e) {
-    return `Fetch failed: ${e instanceof Error ? e.message : "unknown error"}`;
+  if (!/^https?:\/\//i.test(url)) return "Invalid URL.";
+  const viaReader = await fetchText(`https://r.jina.ai/${url}`, 20000);
+  if (viaReader && viaReader.trim().length > 80) return viaReader.slice(0, 6000);
+  const direct = await fetchText(url, 15000);
+  if (direct) {
+    const body = direct.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "");
+    const text = stripTags(body);
+    if (text.length > 40) return text.slice(0, 6000);
   }
+  return "Could not read that page.";
 }
-
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -195,8 +344,9 @@ serve(async (req) => {
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "google/gemini-3.6-flash",
-          response_format: { type: "json_object" },
-          ...(withTools ? { tools: TOOLS } : {}),
+          ...(withTools
+            ? { tools: TOOLS, tool_choice: "auto" }
+            : { response_format: { type: "json_object" } }),
           messages: convo,
         }),
       });
@@ -206,6 +356,12 @@ serve(async (req) => {
         return { error: res.status };
       }
       return { data: await res.json() };
+    };
+
+    const looksJson = (t: string) => {
+      const s = t.trim();
+      if (!s.startsWith("{") && !s.includes("{")) return false;
+      try { JSON.parse(s); return true; } catch { return /\{[\s\S]*"speak"[\s\S]*\}/.test(s); }
     };
 
     let raw = "";
@@ -221,19 +377,43 @@ serve(async (req) => {
       }
       const msg = out.data?.choices?.[0]?.message;
       const calls = msg?.tool_calls;
-      const content = msg?.content;
-      if (content && String(content).trim()) { raw = String(content); break; }
-      if (!Array.isArray(calls) || calls.length === 0) break;
+      const content = msg?.content ? String(msg.content) : "";
 
-      convo.push(msg);
-      for (const call of calls) {
-        let args: any = {};
-        try { args = JSON.parse(call?.function?.arguments || "{}"); } catch {}
-        let result = "Unknown tool.";
-        if (call?.function?.name === "web_search") result = await webSearch(String(args.query ?? ""));
+      if (Array.isArray(calls) && calls.length > 0) {
+        convo.push(msg);
+        for (const call of calls) {
+          let args: any = {};
+          try { args = JSON.parse(call?.function?.arguments || "{}"); } catch {}
+          let result = "Unknown tool.";
+          if (call?.function?.name === "web_search") result = await webSearch(String(args.query ?? ""));
+          else if (call?.function?.name === "get_weather") result = await getWeather(String(args.place ?? ""));
         else if (call?.function?.name === "open_url") result = await openUrl(String(args.url ?? ""));
-        convo.push({ role: "tool", tool_call_id: call.id, content: result });
+          convo.push({ role: "tool", tool_call_id: call.id, content: result });
+        }
+        continue;
       }
+
+      if (content.trim()) {
+        if (last || looksJson(content)) { raw = content; break; }
+        // Prose answer on a tool round: keep it and ask for the final JSON without tools.
+        convo.push({ role: "assistant", content });
+        convo.push({
+          role: "user",
+          content: "Now reply ONLY with the required JSON object (no prose, no markdown fences), using everything above.",
+        });
+        continue;
+      }
+      break;
+    }
+    // Never return an empty turn: force one final tool-free JSON answer.
+    if (!raw.trim()) {
+      convo.push({
+        role: "user",
+        content: "Reply now ONLY with the required JSON object, with a non-empty \"speak\" field.",
+      });
+      const finalOut = await callModel(false);
+      const c = finalOut.data?.choices?.[0]?.message?.content;
+      if (c && String(c).trim()) raw = String(c);
     }
     if (!raw) raw = "{}";
     let parsed: any = {};
