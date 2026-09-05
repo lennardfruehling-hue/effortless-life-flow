@@ -271,6 +271,35 @@ export default function VoiceAssistant({ tasks, projects, onSaveTasks, onSavePro
                 ))}
               </ul>
             )}
+            {t.status === "pending" && t.proposed && t.proposed.length > 0 && (
+              <div className="mt-2 rounded-lg border border-amber-400/50 bg-amber-500/10 p-2.5">
+                <p className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
+                  Asking permission — {t.proposed.length} change{t.proposed.length > 1 ? "s" : ""}
+                </p>
+                <ul className="mt-1 space-y-0.5">
+                  {t.proposed.map((a, j) => (
+                    <li key={j} className="text-xs text-foreground">• {describeAction(a)}</li>
+                  ))}
+                </ul>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    onClick={() => approve(i)}
+                    className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90"
+                  >
+                    Allow
+                  </button>
+                  <button
+                    onClick={() => decline(i)}
+                    className="rounded-md border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Don't change anything
+                  </button>
+                </div>
+              </div>
+            )}
+            {t.status === "declined" && (
+              <p className="mt-1 text-[11px] text-muted-foreground">Nothing was changed.</p>
+            )}
           </div>
         ))}
         {interim && <p className="text-muted-foreground italic text-right">{interim}</p>}
