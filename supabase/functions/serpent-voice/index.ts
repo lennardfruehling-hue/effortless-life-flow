@@ -190,7 +190,7 @@ function parseDuck(html: string): string[] {
 }
 
 async function webSearch(query: string): Promise<string> {
-  const q = encodeURIComponent(query);
+  const q = encodeURIComponent(query.trim()).replace(/%20/g, "+");
   const attempts: (() => Promise<string[]>)[] = [
     // 1. Bing RSS (reliable from server runtimes)
     async () => {
