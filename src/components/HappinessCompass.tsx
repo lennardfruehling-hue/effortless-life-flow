@@ -3,7 +3,6 @@ import { Heart, Sparkles, ChevronDown, ChevronRight, Check } from "lucide-react"
 import { Task } from "@/lib/types";
 import {
   ChoiceDay,
-  averageAlignment,
   choiceStreak,
   loadChoiceLog,
   principleOfTheDay,
@@ -28,12 +27,6 @@ export default function HappinessCompass({ tasks, direction }: Props) {
   const date = todayISO();
   const [log, setLog] = useState<Record<string, ChoiceDay>>(() => loadChoiceLog());
   const [open, setOpen] = useState<boolean>(() => localStorage.getItem(OPEN_KEY) !== "0");
-  const [note, setNote] = useState<string>("");
-
-  useEffect(() => {
-    setNote(log[date]?.note ?? "");
-  }, [date, log]);
-
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (!e.key || e.key === "serpent-choice-log") setLog(loadChoiceLog());
@@ -44,9 +37,7 @@ export default function HappinessCompass({ tasks, direction }: Props) {
 
   const today = log[date];
   const chosen = !!today?.chosen;
-  const alignment = today?.alignment;
   const streak = useMemo(() => choiceStreak(log, date), [log, date]);
-  const avg = useMemo(() => averageAlignment(log), [log]);
   const principle = useMemo(() => principleOfTheDay(date), [date]);
 
   const nextStep = useMemo(() => {
@@ -106,9 +97,6 @@ export default function HappinessCompass({ tasks, direction }: Props) {
               <Check size={14} />
               {chosen ? "I chose happiness today" : "I choose happiness today"}
             </button>
-            {avg !== null && (
-              <span className="text-[11px] text-muted-foreground">14-day alignment {avg}/10</span>
-            )}
           </div>
 
           {/* Direction */}
@@ -134,47 +122,6 @@ export default function HappinessCompass({ tasks, direction }: Props) {
               <div className="text-sm text-foreground font-medium">{reframeToChoice(nextStep.title)}</div>
             </div>
           )}
-
-          {/* Alignment */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                How aligned does today's list feel?
-              </span>
-              <span className="text-xs font-mono text-foreground">{alignment ?? "–"}/10</span>
-            </div>
-            <div className="flex gap-1">
-              {Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
-                <button
-                  key={n}
-                  onClick={() => update({ alignment: n })}
-                  aria-label={`Alignment ${n} of 10`}
-                  className={`h-6 flex-1 rounded text-[10px] font-medium transition-colors ${
-                    alignment && n <= alignment
-                      ? "bg-primary/80 text-primary-foreground"
-                      : "bg-muted hover:bg-muted/70 text-muted-foreground"
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-            {typeof alignment === "number" && alignment <= 5 && (
-              <p className="mt-1.5 text-[11px] text-destructive">
-                Low alignment is a contradiction, not a failure. Cut or re-choose what you resent — a short
-                aligned list beats a long one.
-              </p>
-            )}
-          </div>
-
-          {/* Note / belief rewrite */}
-          <input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            onBlur={() => update({ note })}
-            placeholder="What am I choosing today — and which belief am I rewriting?"
-            className="w-full text-sm bg-background border border-border rounded-lg px-3 py-2 outline-none focus:border-primary"
-          />
 
           {/* Kernel principle of the day */}
           <div className="flex gap-2 items-start text-xs text-muted-foreground border-t border-border pt-2">
