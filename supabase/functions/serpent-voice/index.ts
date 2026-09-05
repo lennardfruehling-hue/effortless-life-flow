@@ -174,35 +174,40 @@ serve(async (req) => {
       ...messages,
     ];
 
-    let data: any = null;
-    for (let step = 0; step < 3; step++) {
+    const callModel = async (withTools: boolean) => {
       const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "google/gemini-3.6-flash",
           response_format: { type: "json_object" },
-          tools: TOOLS,
+          ...(withTools ? { tools: TOOLS } : {}),
           messages: convo,
         }),
       });
-
       if (!res.ok) {
         const text = await res.text();
         console.error("voice gateway error", res.status, text);
-        const status = res.status === 429 || res.status === 402 ? res.status : 500;
-        return new Response(JSON.stringify({ error: `AI error ${res.status}` }), {
+        return { error: res.status };
+      }
+      return { data: await res.json() };
+    };
+
+    let raw = "";
+    for (let step = 0; step < 4; step++) {
+      const last = step === 3;
+      const out = await callModel(!last);
+      if (out.error) {
+        const status = out.error === 429 || out.error === 402 ? out.error : 500;
+        return new Response(JSON.stringify({ error: `AI error ${out.error}` }), {
           status,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-
-      data = await res.json();
-      const msg = data?.choices?.[0]?.message;
+      const msg = out.data?.choices?.[0]?.message;
       const calls = msg?.tool_calls;
+      const content = msg?.content;
+      if (content && String(content).trim()) { raw = String(content); break; }
       if (!Array.isArray(calls) || calls.length === 0) break;
 
       convo.push(msg);
@@ -213,35 +218,6 @@ serve(async (req) => {
         if (call?.function?.name === "web_search") result = await webSearch(String(args.query ?? ""));
         else if (call?.function?.name === "open_url") result = await openUrl(String(args.url ?? ""));
         convo.push({ role: "tool", tool_call_id: call.id, content: result });
-      }
-    }
-
-    let raw = data?.choices?.[0]?.message?.content ?? "";
-    if (!raw || !String(raw).trim()) {
-      // The model ended on tool calls (or returned nothing). Ask once more, without tools,
-      // so it must produce the final JSON answer.
-      const finalMsg = data?.choices?.[0]?.message;
-      if (finalMsg) convo.push(finalMsg);
-      if (Array.isArray(finalMsg?.tool_calls)) {
-        for (const call of finalMsg.tool_calls) {
-          convo.push({ role: "tool", tool_call_id: call.id, content: "Tool budget reached. Answer with what you have." });
-        }
-      }
-      convo.push({ role: "user", content: "Now reply with the final JSON object only." });
-      const res2 = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "google/gemini-3.6-flash",
-          response_format: { type: "json_object" },
-          messages: convo,
-        }),
-      });
-      if (res2.ok) {
-        const d2 = await res2.json();
-        raw = d2?.choices?.[0]?.message?.content ?? "";
-      } else {
-        console.error("voice final-call error", res2.status, await res2.text());
       }
     }
     if (!raw) raw = "{}";
