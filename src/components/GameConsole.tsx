@@ -13,7 +13,7 @@ import { buildConsistencyNudges, computeGame } from "@/lib/consistencyGame";
 import { IONIAN_GOAL } from "@/lib/pride";
 import {
   Gamepad2, Trophy, Flame, Gift, ChevronDown, ChevronUp, Target, Sparkles,
-  Check, X, Undo2, AlertTriangle,
+  Check, X, Undo2, AlertTriangle, ChevronLeft, ChevronRight,
 } from "lucide-react";
 
 interface Goal { title: string; weeks: number; subtitle: string }
@@ -98,7 +98,7 @@ export default function GameConsole() {
   const remainingPts = Math.max(0, game.datePotential - game.datePoints);
   const toWin = Math.max(0, game.target - game.points);
   const allAnswered = pending.length === 0;
-  const flashing = !allAnswered && new Date().getHours() >= FLASH_AFTER_HOUR;
+  const flashing = isToday && !allAnswered && new Date().getHours() >= FLASH_AFTER_HOUR;
 
   return (
     <section
@@ -125,6 +125,43 @@ export default function GameConsole() {
 
       {open && (
         <div className="px-3 pb-3 space-y-2.5">
+          {/* Day picker — log habits retroactively */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setDayOffset((o) => Math.min(o + 1, 60))}
+              title="Previous day"
+              className="p-1 rounded-md border border-border text-muted-foreground hover:bg-secondary"
+            >
+              <ChevronLeft size={13} />
+            </button>
+            <span className="text-[11px] font-mono text-foreground min-w-[92px] text-center">{dayLabel}</span>
+            <button
+              onClick={() => setDayOffset((o) => Math.max(0, o - 1))}
+              disabled={isToday}
+              title="Next day"
+              className="p-1 rounded-md border border-border text-muted-foreground hover:bg-secondary disabled:opacity-30"
+            >
+              <ChevronRight size={13} />
+            </button>
+            <input
+              type="date"
+              max={today}
+              value={date}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (!v) return;
+                const diff = Math.round((+new Date(today + "T00:00:00") - +new Date(v + "T00:00:00")) / 86400000);
+                setDayOffset(Math.max(0, diff));
+              }}
+              className="ml-auto bg-transparent border border-border rounded-md px-1.5 py-0.5 text-[10px] font-mono text-muted-foreground"
+            />
+            {!isToday && (
+              <button onClick={() => setDayOffset(0)} className="text-[10px] font-mono text-primary hover:underline">
+                today
+              </button>
+            )}
+          </div>
+
           {/* Goal status */}
           <div>
             <div className="flex items-baseline justify-between gap-2">
@@ -147,12 +184,12 @@ export default function GameConsole() {
           <div>
             <p className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground flex items-center gap-1">
               <Target size={10} />
-              {allAnswered ? `Round logged · +${game.datePoints} pts` : `Today's round · +${remainingPts} pts left`}
+              {allAnswered ? `Round logged · +${game.datePoints} pts` : `${dayLabel}'s round · ${pending.length} left`}
             </p>
 
             {due.length === 0 ? (
               <p className="text-[11px] text-muted-foreground mt-1">
-                No habits scheduled date — add some in Consistency to start scoring.
+                No habits scheduled that day — add some in Consistency to start scoring.
               </p>
             ) : (
               <div className="mt-1.5 space-y-1">
@@ -168,10 +205,10 @@ export default function GameConsole() {
                         {need > 1 && (
                           <span className="font-mono text-[10px] text-muted-foreground tabular-nums">{doneSlots.length}/{need}</span>
                         )}
-                        <button onClick={() => markDone(h)} title="Completed date" className="p-1 rounded-md text-emerald-600 hover:bg-emerald-500/10">
+                        <button onClick={() => markDone(h)} title="Completed" className="p-1 rounded-md text-emerald-600 hover:bg-emerald-500/10">
                           <Check size={14} />
                         </button>
-                        <button onClick={() => markMissed(h)} title="Not done date" className="p-1 rounded-md text-muted-foreground hover:bg-secondary">
+                        <button onClick={() => markMissed(h)} title="Not done" className="p-1 rounded-md text-muted-foreground hover:bg-secondary">
                           <X size={14} />
                         </button>
                       </div>
