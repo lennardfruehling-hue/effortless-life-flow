@@ -371,7 +371,7 @@ export default function LifeOrganizer({
           ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="e.g. rebuild my week around the baby routine and the apartment hunt"
+          placeholder="e.g. rebuild my week around work and the apartment hunt"
           className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm outline-none focus:border-primary"
         />
         <button type="submit" disabled={busy || !text.trim()} className="p-2 text-primary disabled:opacity-40">
