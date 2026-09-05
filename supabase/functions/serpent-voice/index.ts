@@ -409,6 +409,11 @@ serve(async (req) => {
           else if (call?.function?.name === "open_url") result = await openUrl(String(args.url ?? ""));
           convo.push({ role: "tool", tool_call_id: call.id, content: result });
         }
+        // The gateway rejects requests whose last turn isn't a user turn.
+        convo.push({
+          role: "user",
+          content: "Those are the tool results. Use them and continue; when you have enough, reply with the required JSON object.",
+        });
         continue;
       }
 
