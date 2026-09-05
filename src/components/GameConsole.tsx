@@ -56,33 +56,46 @@ export default function GameConsole() {
 
   const list = habits || [];
   const today = todayISO();
+  // Retroactive logging: 0 = today, 1 = yesterday, …
+  const [dayOffset, setDayOffset] = useState(0);
+  const date = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - dayOffset);
+    return todayISO(d);
+  }, [dayOffset]);
+  const isToday = dayOffset === 0;
+  const dayLabel = isToday
+    ? "Today"
+    : dayOffset === 1
+      ? "Yesterday"
+      : new Date(date + "T00:00:00").toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
   const game = useMemo(() => computeGame(list, goal.weeks || 26), [list, goal.weeks]);
   const nudges = useMemo(() => buildConsistencyNudges(list, game), [list, game]);
 
-  const due = useMemo(() => list.filter((h) => isHabitDue(h, today)), [list, today]);
-  const skippedToday = skips[today] ?? [];
-  const doneHabits = due.filter((h) => isHabitCompleteOn(h, today));
-  const pending = due.filter((h) => !isHabitCompleteOn(h, today) && !skippedToday.includes(h.id));
-  const missed = due.filter((h) => !isHabitCompleteOn(h, today) && skippedToday.includes(h.id));
+  const due = useMemo(() => list.filter((h) => isHabitDue(h, date)), [list, date]);
+  const skippedToday = skips[date] ?? [];
+  const doneHabits = due.filter((h) => isHabitCompleteOn(h, date));
+  const pending = due.filter((h) => !isHabitCompleteOn(h, date) && !skippedToday.includes(h.id));
+  const missed = due.filter((h) => !isHabitCompleteOn(h, date) && skippedToday.includes(h.id));
 
   const markDone = (h: Habit) => {
     const slots = h.times.length > 0 ? h.times : ["any"];
-    setSkips((prev) => ({ ...prev, [today]: (prev[today] ?? []).filter((id) => id !== h.id) }));
-    setHabits((prev) => (prev || []).map((x) => (x.id === h.id ? { ...x, log: { ...x.log, [today]: slots } } : x)));
+    setSkips((prev) => ({ ...prev, [date]: (prev[date] ?? []).filter((id) => id !== h.id) }));
+    setHabits((prev) => (prev || []).map((x) => (x.id === h.id ? { ...x, log: { ...x.log, [date]: slots } } : x)));
   };
   const undo = (h: Habit) => {
-    setSkips((prev) => ({ ...prev, [today]: (prev[today] ?? []).filter((id) => id !== h.id) }));
-    setHabits((prev) => (prev || []).map((x) => (x.id === h.id ? { ...x, log: { ...x.log, [today]: [] } } : x)));
+    setSkips((prev) => ({ ...prev, [date]: (prev[date] ?? []).filter((id) => id !== h.id) }));
+    setHabits((prev) => (prev || []).map((x) => (x.id === h.id ? { ...x, log: { ...x.log, [date]: [] } } : x)));
   };
   const toggleSlot = (h: Habit, slot: string) =>
-    setHabits((prev) => (prev || []).map((x) => (x.id === h.id ? toggleHabitSlot(x, today, slot) : x)));
+    setHabits((prev) => (prev || []).map((x) => (x.id === h.id ? toggleHabitSlot(x, date, slot) : x)));
   const markMissed = (h: Habit) =>
-    setSkips((prev) => ({ ...prev, [today]: [...(prev[today] ?? []), h.id] }));
+    setSkips((prev) => ({ ...prev, [date]: [...(prev[date] ?? []), h.id] }));
 
   if (!loaded) return null;
 
   const pct = Math.round(game.progress * 100);
-  const remainingPts = Math.max(0, game.todayPotential - game.todayPoints);
+  const remainingPts = Math.max(0, game.datePotential - game.datePoints);
   const toWin = Math.max(0, game.target - game.points);
   const allAnswered = pending.length === 0;
   const flashing = !allAnswered && new Date().getHours() >= FLASH_AFTER_HOUR;
@@ -134,17 +147,17 @@ export default function GameConsole() {
           <div>
             <p className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground flex items-center gap-1">
               <Target size={10} />
-              {allAnswered ? `Round logged · +${game.todayPoints} pts` : `Today's round · +${remainingPts} pts left`}
+              {allAnswered ? `Round logged · +${game.datePoints} pts` : `Today's round · +${remainingPts} pts left`}
             </p>
 
             {due.length === 0 ? (
               <p className="text-[11px] text-muted-foreground mt-1">
-                No habits scheduled today — add some in Consistency to start scoring.
+                No habits scheduled date — add some in Consistency to start scoring.
               </p>
             ) : (
               <div className="mt-1.5 space-y-1">
                 {pending.map((h) => {
-                  const doneSlots = h.log[today] ?? [];
+                  const doneSlots = h.log[date] ?? [];
                   const need = requiredCount(h);
                   const slots = h.times.length ? h.times : ["any"];
                   return (
@@ -155,10 +168,10 @@ export default function GameConsole() {
                         {need > 1 && (
                           <span className="font-mono text-[10px] text-muted-foreground tabular-nums">{doneSlots.length}/{need}</span>
                         )}
-                        <button onClick={() => markDone(h)} title="Completed today" className="p-1 rounded-md text-emerald-600 hover:bg-emerald-500/10">
+                        <button onClick={() => markDone(h)} title="Completed date" className="p-1 rounded-md text-emerald-600 hover:bg-emerald-500/10">
                           <Check size={14} />
                         </button>
-                        <button onClick={() => markMissed(h)} title="Not done today" className="p-1 rounded-md text-muted-foreground hover:bg-secondary">
+                        <button onClick={() => markMissed(h)} title="Not done date" className="p-1 rounded-md text-muted-foreground hover:bg-secondary">
                           <X size={14} />
                         </button>
                       </div>
