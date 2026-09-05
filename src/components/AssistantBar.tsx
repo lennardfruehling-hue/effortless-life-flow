@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bot, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass, Lightbulb, Trophy, AlertTriangle } from "lucide-react";
+import { Bot, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass, Lightbulb, Trophy, AlertTriangle } from "lucide-react";
 import { Task, Project, Reminder, LifePlanProject, DailyScheduleSlot } from "@/lib/types";
-import VoiceAssistant from "./VoiceAssistant";
 import LifeOrganizer from "./LifeOrganizer";
 import SerpentFlow from "./SerpentFlow";
 import { useNotificationCenter } from "@/hooks/useNotificationCenter";
@@ -21,7 +20,7 @@ interface Props {
   dailySchedule?: DailyScheduleSlot[];
 }
 
-type Panel = "flow" | "organizer" | "voice" | "tips" | "consistency" | "notifications" | null;
+type Panel = "flow" | "organizer" | "tips" | "consistency" | "notifications" | null;
 
 export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProjects, reminders = [], lifePlanProjects = [], dailySchedule = [] }: Props) {
   const [panel, setPanel] = useState<Panel>(null);
@@ -36,11 +35,13 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
     window.addEventListener("serpent-open-flow", openFlow);
     window.addEventListener("serpent-open-organizer", openOrganizer);
     window.addEventListener("serpent-open-chat", openOrganizer);
+    window.addEventListener("serpent-open-voice", openOrganizer);
     return () => {
       window.removeEventListener("serpent-open-notifications", open);
       window.removeEventListener("serpent-open-flow", openFlow);
       window.removeEventListener("serpent-open-organizer", openOrganizer);
       window.removeEventListener("serpent-open-chat", openOrganizer);
+      window.removeEventListener("serpent-open-voice", openOrganizer);
     };
   }, []);
 
@@ -90,9 +91,6 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
                 reminders={reminders}
                 lifePlanProjects={lifePlanProjects}
               />
-            )}
-            {panel === "voice" && (
-              <VoiceAssistant tasks={tasks} projects={projects} onSaveTasks={onSaveTasks} onSaveProjects={onSaveProjects} />
             )}
             {panel === "tips" && (
               <div className="h-full flex flex-col">
@@ -227,7 +225,6 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
 
           {tabBtn("flow", Compass, "Flow")}
           {tabBtn("organizer", MessageSquare, "Organization chat")}
-          {tabBtn("voice", AudioLines, "Voice")}
           {tabBtn("tips", Lightbulb, "Tips")}
 
           <button
