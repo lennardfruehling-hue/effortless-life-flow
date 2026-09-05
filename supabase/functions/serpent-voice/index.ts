@@ -259,6 +259,23 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    const url0 = new URL(req.url);
+    if (url0.searchParams.get("debug_search")) {
+      const q = url0.searchParams.get("debug_search")!;
+      const diag: Record<string, string> = {};
+      for (const [name, target] of [
+        ["ddg_html", `https://html.duckduckgo.com/html/?q=${encodeURIComponent(q)}`],
+        ["ddg_lite", `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(q)}`],
+        ["ddg_api", `https://api.duckduckgo.com/?q=${encodeURIComponent(q)}&format=json&no_html=1`],
+        ["jina", `https://r.jina.ai/https://example.com`],
+      ] as const) {
+        const t = await fetchText(target, 15000);
+        diag[name] = t === null ? "NULL" : `len=${t.length}`;
+      }
+      return new Response(JSON.stringify({ diag, result: await webSearch(q) }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     const body = await req.json();
     const messages = Array.isArray(body?.messages) ? body.messages.slice(-24) : [];
     const state = typeof body?.state === "string" ? body.state.slice(0, 20000) : "";
