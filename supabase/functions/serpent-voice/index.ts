@@ -128,43 +128,132 @@ const TOOLS = [
   },
 ];
 
-async function webSearch(query: string): Promise<string> {
+async function fetchText(url: string, timeoutMs = 12000): Promise<string | null> {
   try {
-    const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; SerpentVoice/1.0)" },
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
     });
-    const html = await res.text();
-    const out: string[] = [];
-    const re = /<a[^>]*class="[^"]*result__a[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(html)) && out.length < 6) {
-      const strip = (s: string) => s.replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&#x27;/g, "'").replace(/&quot;/g, '"').trim();
-      let url = m[1];
-      const uddg = url.match(/uddg=([^&]+)/);
-      if (uddg) url = decodeURIComponent(uddg[1]);
-      out.push(`${out.length + 1}. ${strip(m[2])}\n   ${url}`);
-    }
-    if (!out.length) return "No results found.";
-    return out.join("\n");
-  } catch (e) {
-    return `Search failed: ${e instanceof Error ? e.message : "unknown error"}`;
+    clearTimeout(t);
+    if (!res.ok) return null;
+    return await res.text();
+  } catch {
+    return null;
   }
+}
+
+const stripTags = (s: string) =>
+  s
+    .replace(/<[^>]*>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&#x27;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+function parseDuck(html: string): string[] {
+  const out: string[] = [];
+  const re = /<a[^>]*class="[^"]*result(?:__a|-link)[^"]*"[^>]*href="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) && out.length < 6) {
+    let url = m[1];
+    const uddg = url.match(/uddg=([^&]+)/);
+    if (uddg) url = decodeURIComponent(uddg[1]);
+    if (url.startsWith("//")) url = "https:" + url;
+    const title = stripTags(m[2]);
+    if (title) out.push(`${title}\n   ${url}`);
+  }
+  return out;
+}
+
+async function webSearch(query: string): Promise<string> {
+  const q = encodeURIComponent(query);
+  const attempts: (() => Promise<string[]>)[] = [
+    // 1. DuckDuckGo HTML endpoint
+    async () => {
+      const html = await fetchText(`https://html.duckduckgo.com/html/?q=${q}`);
+      return html ? parseDuck(html) : [];
+    },
+    // 2. DuckDuckGo lite
+    async () => {
+      const html = await fetchText(`https://lite.duckduckgo.com/lite/?q=${q}`);
+      if (!html) return [];
+      const out: string[] = [];
+      const re = /<a[^>]*href="(https?:\/\/[^"]+)"[^>]*>([\s\S]*?)<\/a>/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(html)) && out.length < 6) {
+        const url = m[1];
+        if (/duckduckgo\.com/.test(url)) continue;
+        const title = stripTags(m[2]);
+        if (title && title.length > 3) out.push(`${title}\n   ${url}`);
+      }
+      return out;
+    },
+    // 3. DuckDuckGo instant-answer API (facts, definitions)
+    async () => {
+      const json = await fetchText(`https://api.duckduckgo.com/?q=${q}&format=json&no_html=1&skip_disambig=1`);
+      if (!json) return [];
+      try {
+        const d = JSON.parse(json);
+        const out: string[] = [];
+        if (d.AbstractText) out.push(`${d.Heading || query}: ${d.AbstractText}\n   ${d.AbstractURL || ""}`);
+        for (const t of d.RelatedTopics || []) {
+          if (out.length >= 6) break;
+          if (t?.Text) out.push(`${t.Text}\n   ${t.FirstURL || ""}`);
+        }
+        return out;
+      } catch {
+        return [];
+      }
+    },
+    // 4. Reader proxy over a search engine (works when direct scraping is blocked)
+    async () => {
+      const txt = await fetchText(`https://r.jina.ai/https://duckduckgo.com/html/?q=${q}`, 20000);
+      if (!txt) return [];
+      const out: string[] = [];
+      const re = /\[([^\]]{6,120})\]\((https?:\/\/[^)\s]+)\)/g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(txt)) && out.length < 6) {
+        if (/duckduckgo\.com/.test(m[2])) continue;
+        out.push(`${m[1].trim()}\n   ${m[2]}`);
+      }
+      return out;
+    },
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      const res = await attempt();
+      if (res.length) return res.map((r, i) => `${i + 1}. ${r}`).join("\n");
+    } catch (_) {
+      // try next source
+    }
+  }
+  return "No results found from any search source. Say so plainly instead of guessing.";
 }
 
 async function openUrl(url: string): Promise<string> {
-  try {
-    if (!/^https?:\/\//i.test(url)) return "Invalid URL.";
-    const res = await fetch(`https://r.jina.ai/${url}`, {
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; SerpentVoice/1.0)" },
-    });
-    if (!res.ok) return `Could not read page (${res.status}).`;
-    const text = await res.text();
-    return text.slice(0, 6000);
-  } catch (e) {
-    return `Fetch failed: ${e instanceof Error ? e.message : "unknown error"}`;
+  if (!/^https?:\/\//i.test(url)) return "Invalid URL.";
+  const viaReader = await fetchText(`https://r.jina.ai/${url}`, 20000);
+  if (viaReader && viaReader.trim().length > 80) return viaReader.slice(0, 6000);
+  const direct = await fetchText(url, 15000);
+  if (direct) {
+    const body = direct.replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<style[\s\S]*?<\/style>/gi, "");
+    const text = stripTags(body);
+    if (text.length > 40) return text.slice(0, 6000);
   }
+  return "Could not read that page.";
 }
-
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -195,8 +284,9 @@ serve(async (req) => {
         headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "google/gemini-3.6-flash",
-          response_format: { type: "json_object" },
-          ...(withTools ? { tools: TOOLS } : {}),
+          ...(withTools
+            ? { tools: TOOLS, tool_choice: "auto" }
+            : { response_format: { type: "json_object" } }),
           messages: convo,
         }),
       });
