@@ -114,18 +114,22 @@ export default function LifeOrganizer({
         },
       });
       if (fnErr) throw fnErr;
+      if (data?.error) throw new Error(String(data.error));
 
       const actions: VoiceAction[] = Array.isArray(data?.actions) ? data.actions : [];
-      const applied = actions.length ? await runVoiceActions(actions, ctx) : [];
-      setTurns((prev) => [
-        ...prev,
-        {
-          role: "assistant",
-          text: data?.speak || "Here's how I'd organize this.",
-          plan: Array.isArray(data?.plan) ? data.plan : [],
-          applied,
-        },
-      ]);
+      // A failing action must never swallow the assistant's answer.
+      let applied: string[] = [];
+      try {
+        applied = actions.length ? await runVoiceActions(actions, ctx) : [];
+      } catch (actErr) {
+        console.error("[life-organizer] action failed", actErr);
+        applied = ["Some changes couldn't be applied."];
+      }
+      const plan = Array.isArray(data?.plan) ? data.plan : [];
+      const text =
+        (typeof data?.speak === "string" && data.speak.trim()) ||
+        (plan.length ? "Here's how I'd organize this." : "I didn't get a reply that time — try asking again.");
+      setTurns((prev) => [...prev, { role: "assistant", text, plan, applied }]);
     } catch (e: any) {
       console.error("[life-organizer] failed", e);
       setError(e?.message ?? "Couldn't reach the organizer.");
