@@ -298,6 +298,12 @@ serve(async (req) => {
       return { data: await res.json() };
     };
 
+    const looksJson = (t: string) => {
+      const s = t.trim();
+      if (!s.startsWith("{") && !s.includes("{")) return false;
+      try { JSON.parse(s); return true; } catch { return /\{[\s\S]*"speak"[\s\S]*\}/.test(s); }
+    };
+
     let raw = "";
     for (let step = 0; step < 4; step++) {
       const last = step === 3;
@@ -311,19 +317,42 @@ serve(async (req) => {
       }
       const msg = out.data?.choices?.[0]?.message;
       const calls = msg?.tool_calls;
-      const content = msg?.content;
-      if (content && String(content).trim()) { raw = String(content); break; }
-      if (!Array.isArray(calls) || calls.length === 0) break;
+      const content = msg?.content ? String(msg.content) : "";
 
-      convo.push(msg);
-      for (const call of calls) {
-        let args: any = {};
-        try { args = JSON.parse(call?.function?.arguments || "{}"); } catch {}
-        let result = "Unknown tool.";
-        if (call?.function?.name === "web_search") result = await webSearch(String(args.query ?? ""));
-        else if (call?.function?.name === "open_url") result = await openUrl(String(args.url ?? ""));
-        convo.push({ role: "tool", tool_call_id: call.id, content: result });
+      if (Array.isArray(calls) && calls.length > 0) {
+        convo.push(msg);
+        for (const call of calls) {
+          let args: any = {};
+          try { args = JSON.parse(call?.function?.arguments || "{}"); } catch {}
+          let result = "Unknown tool.";
+          if (call?.function?.name === "web_search") result = await webSearch(String(args.query ?? ""));
+          else if (call?.function?.name === "open_url") result = await openUrl(String(args.url ?? ""));
+          convo.push({ role: "tool", tool_call_id: call.id, content: result });
+        }
+        continue;
       }
+
+      if (content.trim()) {
+        if (last || looksJson(content)) { raw = content; break; }
+        // Prose answer on a tool round: keep it and ask for the final JSON without tools.
+        convo.push({ role: "assistant", content });
+        convo.push({
+          role: "user",
+          content: "Now reply ONLY with the required JSON object (no prose, no markdown fences), using everything above.",
+        });
+        continue;
+      }
+      break;
+    }
+    // Never return an empty turn: force one final tool-free JSON answer.
+    if (!raw.trim()) {
+      convo.push({
+        role: "user",
+        content: "Reply now ONLY with the required JSON object, with a non-empty \"speak\" field.",
+      });
+      const finalOut = await callModel(false);
+      const c = finalOut.data?.choices?.[0]?.message?.content;
+      if (c && String(c).trim()) raw = String(c);
     }
     if (!raw) raw = "{}";
     let parsed: any = {};
