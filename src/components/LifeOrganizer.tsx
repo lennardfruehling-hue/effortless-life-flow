@@ -192,6 +192,9 @@ export default function LifeOrganizer({
           status: actions.length ? "pending" : undefined,
         },
       ]);
+      speakRef.current(
+        actions.length ? `${text} I need your permission before I change anything.` : text
+      );
     } catch (e: any) {
       console.error("[life-organizer] failed", e);
       setError(e?.message ?? "Couldn't reach the organizer.");
