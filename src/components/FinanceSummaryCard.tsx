@@ -83,9 +83,11 @@ const eur = (n: number) =>
 type SectionKey = "health" | "tips" | "spending" | "accounts" | "goals";
 
 export default function FinanceSummaryCard() {
-  const [finance, setFinance] = useCloudState<FinanceState>(CLOUD_KEYS.finance, DEFAULT_FINANCE);
+  const [finance, setFinance, loaded] = useCloudState<FinanceState>(CLOUD_KEYS.finance, DEFAULT_FINANCE);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const [sections, setSections] = useState<Record<SectionKey, boolean>>({
     health: true,
     tips: true,
@@ -94,10 +96,33 @@ export default function FinanceSummaryCard() {
     goals: false,
   });
 
-  const data = finance ?? DEFAULT_FINANCE;
+  const data = (finance ?? DEFAULT_FINANCE) as ZiteFinance;
   const spending = data.spending ?? [];
 
+  // Auto-refresh from Zite once a day (silently — manual refresh reports errors).
+  useEffect(() => {
+    if (!loaded) return;
+    syncZiteIfStale(data.syncedAt).then((next) => {
+      if (next) setFinance(next as FinanceState);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
+
+  const refresh = async () => {
+    setSyncing(true);
+    setSyncError(null);
+    try {
+      const next = await syncZite();
+      setFinance(next as FinanceState);
+    } catch (e) {
+      setSyncError((e as Error).message || "Could not reach the budget page");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const toggleSection = (k: SectionKey) => setSections((s) => ({ ...s, [k]: !s[k] }));
+
 
   const { netBalance, assets, debts, savings, savingsRate, runway, warnings, tips } = useMemo(() => {
     const included = (data.accounts || []).filter((a) => a.included !== false);
