@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, Loader2, Send, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { AlertTriangle, Check, HelpCircle, Loader2, Send, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { Task, Project, Reminder, LifePlanProject } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,10 +27,20 @@ interface PlanStep {
   steps?: string[];
 }
 
+interface Conflict {
+  issue: string;
+  detail?: string;
+  fix?: string;
+}
+
 interface Turn {
   role: "user" | "assistant";
   text: string;
   plan?: PlanStep[];
+  /** Follow-up questions that narrow a broad request into specifics. */
+  questions?: string[];
+  /** Clashes and inconsistencies the organizer found in the plan. */
+  conflicts?: Conflict[];
   /** Changes the organizer wants to make — nothing happens until the user approves. */
   proposed?: VoiceAction[];
   /** "pending" until the user decides. */
@@ -139,9 +149,23 @@ export default function LifeOrganizer({
       const text =
         (typeof data?.speak === "string" && data.speak.trim()) ||
         (plan.length ? "Here's how I'd organize this." : "I didn't get a reply that time — try asking again.");
+      const questions: string[] = Array.isArray(data?.questions)
+        ? data.questions.filter((q: unknown) => typeof q === "string" && q.trim()).slice(0, 5)
+        : [];
+      const conflicts: Conflict[] = Array.isArray(data?.conflicts)
+        ? data.conflicts.filter((c: any) => c && typeof c.issue === "string").slice(0, 6)
+        : [];
       setTurns((prev) => [
         ...prev,
-        { role: "assistant", text, plan, proposed: actions, status: actions.length ? "pending" : undefined },
+        {
+          role: "assistant",
+          text,
+          plan,
+          questions,
+          conflicts,
+          proposed: actions,
+          status: actions.length ? "pending" : undefined,
+        },
       ]);
     } catch (e: any) {
       console.error("[life-organizer] failed", e);
@@ -253,6 +277,40 @@ export default function LifeOrganizer({
                   </li>
                 ))}
               </ol>
+            )}
+
+            {t.conflicts && t.conflicts.length > 0 && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-3 py-2 space-y-1.5">
+                <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-destructive">
+                  <AlertTriangle size={12} /> Clashes to resolve
+                </p>
+                {t.conflicts.map((c, j) => (
+                  <div key={j} className="text-xs">
+                    <span className="font-medium text-foreground">{c.issue}</span>
+                    {c.detail && <span className="text-muted-foreground"> — {c.detail}</span>}
+                    {c.fix && <div className="text-[11px] text-primary">Fix: {c.fix}</div>}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {t.questions && t.questions.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                  <HelpCircle size={12} /> Answer to get specific
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {t.questions.map((q, j) => (
+                    <button
+                      key={j}
+                      onClick={() => send(q)}
+                      className="rounded-full border border-border px-3 py-1 text-xs text-left text-muted-foreground hover:text-foreground hover:border-primary transition-colors"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
 
             {t.status === "pending" && t.proposed && t.proposed.length > 0 && (
