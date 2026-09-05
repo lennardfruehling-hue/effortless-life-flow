@@ -100,6 +100,18 @@ export default function LifeOrganizer({
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Voice control: the same organizer, spoken instead of typed.
+  const [listening, setListening] = useState(false);
+  const [handsFree, setHandsFree] = useState(false);
+  const [speakBack, setSpeakBack] = useState(false);
+  const [interim, setInterim] = useState("");
+  const recRef = useRef<any>(null);
+  const handsFreeRef = useRef(false);
+  const sendRef = useRef<(p: string) => void>(() => {});
+  const voiceSupported =
+    typeof window !== "undefined" && !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+
+  useEffect(() => { handsFreeRef.current = handsFree; }, [handsFree]);
   useEffect(() => { busyRef.current = busy; }, [busy]);
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [turns, busy]);
   useEffect(() => { inputRef.current?.focus(); }, []);
