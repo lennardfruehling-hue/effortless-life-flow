@@ -225,13 +225,30 @@ export default function FinanceSummaryCard() {
         <Wallet size={15} className="text-primary" />
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-foreground leading-none">Wealth Command Centre</h3>
-          <p className="text-[10px] text-muted-foreground mt-1">
-            {new Date().toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          <p className="text-[10px] text-muted-foreground mt-1 truncate">
+            {data.syncedAt
+              ? `Live balances · updated ${new Date(data.syncedAt).toLocaleString("en-IE", {
+                  day: "numeric",
+                  month: "short",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}`
+              : new Date().toLocaleDateString("en-IE", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+            {syncError ? ` · ${syncError}` : ""}
           </p>
         </div>
         <span className={`ml-auto text-sm font-semibold ${netBalance < 0 ? "text-destructive" : "text-foreground"}`}>
           {eur(netBalance)}
         </span>
+        <button
+          onClick={refresh}
+          disabled={syncing}
+          className="text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+          aria-label="Refresh balances"
+          title="Refresh balances"
+        >
+          <RefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+        </button>
         <button
           onClick={() => setOpen(!open)}
           className="text-muted-foreground hover:text-foreground transition-colors"
@@ -240,6 +257,7 @@ export default function FinanceSummaryCard() {
           {open ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
       </div>
+
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 divide-x divide-y lg:divide-y-0 divide-border">
