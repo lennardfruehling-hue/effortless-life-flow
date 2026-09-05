@@ -70,6 +70,18 @@ const QUICK_PROMPTS = [
   "Where am I losing time?",
 ];
 
+function getRecognition(): any | null {
+  const W = window as any;
+  const Ctor = W.SpeechRecognition || W.webkitSpeechRecognition;
+  if (!Ctor) return null;
+  const r = new Ctor();
+  r.lang = "en-US";
+  r.continuous = false;
+  r.interimResults = true;
+  r.maxAlternatives = 1;
+  return r;
+}
+
 export default function LifeOrganizer({
   tasks,
   projects,
