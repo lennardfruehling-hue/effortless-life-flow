@@ -387,9 +387,17 @@ serve(async (req) => {
       const last = step === 3;
       const out = await callModel(!last);
       if (out.error) {
-        const status = out.error === 429 || out.error === 402 ? out.error : 500;
-        return new Response(JSON.stringify({ error: `AI error ${out.error}` }), {
-          status,
+        const reason =
+          out.error === 403
+            ? "The AI usage limit for this workspace has been reached. The workspace owner needs to raise the limit before the assistant can answer again."
+            : out.error === 402
+            ? "The workspace has run out of AI credits. Add credits to keep using the assistant."
+            : out.error === 429
+            ? "Too many requests right now — wait a few seconds and ask again."
+            : "The assistant service is temporarily unavailable. Please try again shortly.";
+        // Answer 200 so the app can show the real reason instead of a generic failure.
+        return new Response(JSON.stringify({ error: reason, speak: reason, code: out.error }), {
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
