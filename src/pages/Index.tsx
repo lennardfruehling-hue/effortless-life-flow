@@ -13,7 +13,7 @@ import RemindersView from "@/components/RemindersView";
 import ResearchTabs from "@/components/ResearchTabs";
 import ListsView from "@/components/ListsView";
 import CalendarView from "@/components/CalendarView";
-import AIChat from "@/components/AIChat";
+import LifeOrganizer from "@/components/LifeOrganizer";
 import AssistantBar from "@/components/AssistantBar";
 
 import ConsistencyView from "@/components/ConsistencyView";
@@ -190,7 +190,16 @@ export default function Index() {
         )}
         {view === "reminders" && <RemindersView reminders={reminders} tasks={visibleTasks} onSave={setReminders} />}
         {view === "consistency" && <ConsistencyView tasks={visibleTasks} />}
-        {view === "ai" && <AIChat tasks={visibleTasks} projects={allProjects} onSaveTasks={setVisibleTasks} onSaveProjects={setProjects} />}
+        {view === "ai" && (
+          <LifeOrganizer
+            tasks={visibleTasks}
+            projects={allProjects}
+            onSaveTasks={setVisibleTasks}
+            onSaveProjects={setProjects}
+            reminders={reminders}
+            lifePlanProjects={lifePlanProjects}
+          />
+        )}
       </main>
       <AssistantBar
         tasks={visibleTasks}
