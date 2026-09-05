@@ -282,6 +282,7 @@ export default function LifeOrganizer({
       projects,
       setTasks: onSaveTasks,
       setProjects: onSaveProjects,
+      approved: true,
     };
     let applied: string[] = [];
     try {
