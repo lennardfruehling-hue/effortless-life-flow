@@ -116,6 +116,19 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "get_weather",
+      description: "Current weather and 3-day forecast for a place name (live, reliable).",
+      parameters: {
+        type: "object",
+        properties: { place: { type: "string", description: "City or place name" } },
+        required: ["place"],
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "open_url",
       description: "Fetch a web page and return its readable text content.",
       parameters: {
@@ -179,12 +192,26 @@ function parseDuck(html: string): string[] {
 async function webSearch(query: string): Promise<string> {
   const q = encodeURIComponent(query);
   const attempts: (() => Promise<string[]>)[] = [
-    // 1. DuckDuckGo HTML endpoint
+    // 1. Bing RSS (reliable from server runtimes)
+    async () => {
+      const xml = await fetchText(`https://www.bing.com/search?q=${q}&format=rss`);
+      if (!xml) return [];
+      const out: string[] = [];
+      const items = xml.split("<item>").slice(1, 8);
+      for (const it of items) {
+        const title = stripTags((it.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || "");
+        const link = stripTags((it.match(/<link>([\s\S]*?)<\/link>/) || [])[1] || "");
+        const desc = stripTags((it.match(/<description>([\s\S]*?)<\/description>/) || [])[1] || "");
+        if (title) out.push(`${title}\n   ${desc}\n   ${link}`);
+      }
+      return out;
+    },
+    // 2. DuckDuckGo HTML endpoint
     async () => {
       const html = await fetchText(`https://html.duckduckgo.com/html/?q=${q}`);
       return html ? parseDuck(html) : [];
     },
-    // 2. DuckDuckGo lite
+    // 3. DuckDuckGo lite
     async () => {
       const html = await fetchText(`https://lite.duckduckgo.com/lite/?q=${q}`);
       if (!html) return [];
@@ -199,7 +226,7 @@ async function webSearch(query: string): Promise<string> {
       }
       return out;
     },
-    // 3. DuckDuckGo instant-answer API (facts, definitions)
+    // 4. DuckDuckGo instant-answer API (facts, definitions)
     async () => {
       const json = await fetchText(`https://api.duckduckgo.com/?q=${q}&format=json&no_html=1&skip_disambig=1`);
       if (!json) return [];
@@ -216,7 +243,7 @@ async function webSearch(query: string): Promise<string> {
         return [];
       }
     },
-    // 4. Reader proxy over a search engine (works when direct scraping is blocked)
+    // 5. Reader proxy over a search engine (works when direct scraping is blocked)
     async () => {
       const txt = await fetchText(`https://r.jina.ai/https://duckduckgo.com/html/?q=${q}`, 20000);
       if (!txt) return [];
@@ -240,6 +267,39 @@ async function webSearch(query: string): Promise<string> {
     }
   }
   return "No results found from any search source. Say so plainly instead of guessing.";
+}
+
+async function getWeather(place: string): Promise<string> {
+  const geo = await fetchText(
+    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(place)}&count=1&language=en&format=json`
+  );
+  if (!geo) return "Weather lookup failed.";
+  let lat: number, lon: number, label = place;
+  try {
+    const g = JSON.parse(geo);
+    const r = g?.results?.[0];
+    if (!r) return `No place found for "${place}".`;
+    lat = r.latitude; lon = r.longitude;
+    label = [r.name, r.country].filter(Boolean).join(", ");
+  } catch { return "Weather lookup failed."; }
+  const wx = await fetchText(
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,precipitation,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max&forecast_days=3&timezone=auto`
+  );
+  if (!wx) return "Weather lookup failed.";
+  try {
+    const d = JSON.parse(wx);
+    const c = d.current || {};
+    const day = d.daily || {};
+    const lines = [
+      `${label}: now ${c.temperature_2m}°C (feels ${c.apparent_temperature}°C), wind ${c.wind_speed_10m} km/h, precipitation ${c.precipitation} mm.`,
+    ];
+    for (let i = 0; i < (day.time?.length ?? 0); i++) {
+      lines.push(
+        `${day.time[i]}: ${day.temperature_2m_min[i]}–${day.temperature_2m_max[i]}°C, rain chance ${day.precipitation_probability_max?.[i] ?? "?"}%.`
+      );
+    }
+    return lines.join("\n");
+  } catch { return "Weather lookup failed."; }
 }
 
 async function openUrl(url: string): Promise<string> {
@@ -343,7 +403,8 @@ serve(async (req) => {
           try { args = JSON.parse(call?.function?.arguments || "{}"); } catch {}
           let result = "Unknown tool.";
           if (call?.function?.name === "web_search") result = await webSearch(String(args.query ?? ""));
-          else if (call?.function?.name === "open_url") result = await openUrl(String(args.url ?? ""));
+          else if (call?.function?.name === "get_weather") result = await getWeather(String(args.place ?? ""));
+        else if (call?.function?.name === "open_url") result = await openUrl(String(args.url ?? ""));
           convo.push({ role: "tool", tool_call_id: call.id, content: result });
         }
         continue;
