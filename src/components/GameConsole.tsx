@@ -95,7 +95,7 @@ export default function GameConsole() {
   if (!loaded) return null;
 
   const pct = Math.round(game.progress * 100);
-  const remainingPts = Math.max(0, game.datePotential - game.datePoints);
+  const remainingPts = Math.max(0, game.todayPotential - game.todayPoints);
   const toWin = Math.max(0, game.target - game.points);
   const allAnswered = pending.length === 0;
   const flashing = isToday && !allAnswered && new Date().getHours() >= FLASH_AFTER_HOUR;
@@ -184,7 +184,7 @@ export default function GameConsole() {
           <div>
             <p className="text-[10px] uppercase tracking-wider font-mono text-muted-foreground flex items-center gap-1">
               <Target size={10} />
-              {allAnswered ? `Round logged · +${game.datePoints} pts` : `${dayLabel}'s round · ${pending.length} left`}
+              {allAnswered ? `${dayLabel} logged` : `${dayLabel} · ${pending.length} to log`}
             </p>
 
             {due.length === 0 ? (
