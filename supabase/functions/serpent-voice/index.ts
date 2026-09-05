@@ -400,23 +400,29 @@ serve(async (req) => {
 
       if (Array.isArray(calls) && calls.length > 0) {
         if (content.trim()) lastProse = content;
-        convo.push(msg);
+        // Feed tool output back as a plain user turn: the gateway rejects
+        // conversations that end on a model/tool turn.
+        const results: string[] = [];
         for (const call of calls) {
           let args: any = {};
           try { args = JSON.parse(call?.function?.arguments || "{}"); } catch {}
+          const name = call?.function?.name;
           let result = "Unknown tool.";
-          if (call?.function?.name === "web_search") result = await webSearch(String(args.query ?? ""));
-          else if (call?.function?.name === "get_weather") result = await getWeather(String(args.place ?? ""));
-          else if (call?.function?.name === "open_url") result = await openUrl(String(args.url ?? ""));
-          convo.push({ role: "tool", tool_call_id: call.id, content: result });
+          if (name === "web_search") result = await webSearch(String(args.query ?? ""));
+          else if (name === "get_weather") result = await getWeather(String(args.place ?? ""));
+          else if (name === "open_url") result = await openUrl(String(args.url ?? ""));
+          results.push(`${name}(${JSON.stringify(args)}):\n${result}`);
         }
-        // The gateway rejects requests whose last turn isn't a user turn.
         convo.push({
           role: "user",
-          content: "Those are the tool results. Use them and continue; when you have enough, reply with the required JSON object.",
+          content:
+            `Live results from the tools you requested:\n\n${results.join("\n\n").slice(0, 12000)}\n\n` +
+            "Use these. If you need another lookup, call a tool again; otherwise reply with the required JSON object.",
         });
         continue;
       }
+
+
 
       if (content.trim()) {
         lastProse = content;
