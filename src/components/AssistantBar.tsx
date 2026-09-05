@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Bot, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass, Lightbulb, Trophy, AlertTriangle } from "lucide-react";
+import { Bot, AudioLines, MessageSquare, Bell, ChevronUp, ChevronDown, X, Compass, Lightbulb, Trophy, AlertTriangle, Wand2 } from "lucide-react";
 import { Task, Project, Reminder, LifePlanProject, DailyScheduleSlot } from "@/lib/types";
 import AIChat from "./AIChat";
 import VoiceAssistant from "./VoiceAssistant";
+import LifeOrganizer from "./LifeOrganizer";
 import SerpentFlow from "./SerpentFlow";
 import { useNotificationCenter } from "@/hooks/useNotificationCenter";
 import { useCloudState } from "@/hooks/useCloudState";
@@ -21,7 +22,7 @@ interface Props {
   dailySchedule?: DailyScheduleSlot[];
 }
 
-type Panel = "flow" | "voice" | "chat" | "tips" | "consistency" | "notifications" | null;
+type Panel = "flow" | "organizer" | "voice" | "chat" | "tips" | "consistency" | "notifications" | null;
 
 export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProjects, reminders = [], lifePlanProjects = [], dailySchedule = [] }: Props) {
   const [panel, setPanel] = useState<Panel>(null);
@@ -76,6 +77,16 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
                 embedded
               />
             </div>
+            {panel === "organizer" && (
+              <LifeOrganizer
+                tasks={tasks}
+                projects={projects}
+                onSaveTasks={onSaveTasks}
+                onSaveProjects={onSaveProjects}
+                reminders={reminders}
+                lifePlanProjects={lifePlanProjects}
+              />
+            )}
             {panel === "voice" && (
               <VoiceAssistant tasks={tasks} projects={projects} onSaveTasks={onSaveTasks} onSaveProjects={onSaveProjects} />
             )}
@@ -214,6 +225,7 @@ export default function AssistantBar({ tasks, projects, onSaveTasks, onSaveProje
           </div>
 
           {tabBtn("flow", Compass, "Flow")}
+          {tabBtn("organizer", Wand2, "Life organizer")}
           {tabBtn("voice", AudioLines, "Voice")}
           {tabBtn("chat", MessageSquare, "Chat")}
           {tabBtn("tips", Lightbulb, "Tips")}
