@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AlertTriangle, Check, HelpCircle, Loader2, Send, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { AlertTriangle, Check, HelpCircle, Loader2, Mic, MicOff, Send, Sparkles, Trash2, Volume2, VolumeX, Wand2, X } from "lucide-react";
 import { Task, Project, Reminder, LifePlanProject } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
