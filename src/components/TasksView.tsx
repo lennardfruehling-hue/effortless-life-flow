@@ -82,6 +82,10 @@ const SECTION_PREF_KEY = "serpent-task-sections-v1";
 
 export default function TasksView({ tasks, projects, onSave, dailySchedule, onSaveDailySchedule, weeklyStructure, onSaveWeeklyStructure, filterProjectId, onClearProjectFilter }: TasksViewProps) {
   const [showForm, setShowForm] = useState(false);
+  const [localProject, setLocalProject] = useState<string>(() => localStorage.getItem("serpent-task-project-filter") || "");
+  useEffect(() => { if (filterProjectId) setLocalProject(filterProjectId); }, [filterProjectId]);
+  useEffect(() => { localStorage.setItem("serpent-task-project-filter", localProject); }, [localProject]);
+  const activeProjectId = localProject || undefined;
   const [showOverdue, setShowOverdue] = useState(() => localStorage.getItem("serpent-overdue-open") !== "false");
 
   const [editTask, setEditTask] = useState<Task | undefined>();
@@ -144,16 +148,16 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
     };
   }, [showSchedule]);
 
-  const dailyTasks = useMemo(() => tasks.filter((t) => t.recurrence === "daily"), [tasks]);
-  const weeklyTasks = useMemo(() => tasks.filter((t) => t.recurrence === "weekly"), [tasks]);
+  const dailyTasks = useMemo(() => tasks.filter((t) => t.recurrence === "daily" && (!activeProjectId || t.projectId === activeProjectId)), [tasks, activeProjectId]);
+  const weeklyTasks = useMemo(() => tasks.filter((t) => t.recurrence === "weekly" && (!activeProjectId || t.projectId === activeProjectId)), [tasks, activeProjectId]);
 
   const filteredTasks = useMemo(() => {
     let list = tasks.filter((t) => !t.recurrence); // recurring shown in their own groups
-    if (filterProjectId) list = list.filter((t) => t.projectId === filterProjectId);
+    if (activeProjectId) list = list.filter((t) => t.projectId === activeProjectId);
     if (filterCat) list = list.filter((t) => t.categories.includes(filterCat));
     if (!showCompleted) list = list.filter((t) => !t.completed);
     return sortTasks(list);
-  }, [tasks, filterCat, showCompleted, filterProjectId]);
+  }, [tasks, filterCat, showCompleted, activeProjectId]);
 
   // Split the non-recurring list into "Overdue", "Today" and "Upcoming / backlog".
   const { overdueTasks, todayTasks, laterTasks } = useMemo(() => {
@@ -201,7 +205,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
 
   const todayCount = tasks.filter((t) => !t.completed && t.categories.includes("A1")).length;
   const activeCount = tasks.filter((t) => !t.completed).length;
-  const filterProject = filterProjectId ? projects.find(p => p.id === filterProjectId) : null;
+  const filterProject = activeProjectId ? projects.find(p => p.id === activeProjectId) : null;
   const prideTotal = totalPride(tasks);
   const prideWeek = prideThisWeek(tasks);
 
@@ -258,13 +262,21 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
       {/* Wealth Command Centre summary */}
       <FinanceSummaryCard />
 
-      {/* Project filter banner */}
-      {filterProject && (
-        <div className="mb-4 p-3 bg-primary/10 border border-primary/20 rounded-md flex items-center justify-between">
-          <span className="text-sm text-primary font-medium">Filtered: {filterProject.name}</span>
-          <button onClick={onClearProjectFilter} className="text-primary hover:opacity-80"><X size={16} /></button>
-        </div>
-      )}
+      {/* Project focus selector */}
+      <div className={`mb-4 p-3 rounded-md border flex items-center gap-2 flex-wrap ${filterProject ? "bg-primary/10 border-primary/30" : "bg-card border-border"}`}>
+        <span className="text-sm font-medium text-foreground">Project:</span>
+        <select
+          value={localProject}
+          onChange={(e) => { setLocalProject(e.target.value); if (!e.target.value) onClearProjectFilter?.(); }}
+          className="flex-1 min-w-[160px] bg-secondary border border-border rounded px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+        >
+          <option value="">All projects</option>
+          {projects.map((p) => (<option key={p.id} value={p.id}>{p.name}</option>))}
+        </select>
+        {filterProject && (
+          <button onClick={() => { setLocalProject(""); onClearProjectFilter?.(); }} className="text-primary hover:opacity-80" aria-label="Show all projects"><X size={16} /></button>
+        )}
+      </div>
       {showWeekly && (
         <div className="mb-4">
           <WeeklyView
@@ -473,7 +485,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
       {filteredTasks.length === 0 && dailyTasks.length === 0 && weeklyTasks.length === 0 && (
         <div className="text-center py-16">
           <p className="text-muted-foreground text-sm">
-            {filterCat ? `No tasks in ${filterCat}` : filterProjectId ? "No tasks linked to this project" : "No tasks yet"}
+            {filterCat ? `No tasks in ${filterCat}` : activeProjectId ? "No tasks linked to this project" : "No tasks yet"}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             Add your first task to start getting organized 🐍
@@ -504,6 +516,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
       {(showForm || editTask) && (
         <TaskForm
           projects={projects}
+          defaultProjectId={activeProjectId}
           tasks={tasks}
           editTask={editTask}
           onSubmit={handleSubmit}
