@@ -247,7 +247,7 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
           )}
         </div>
 
-        {projects.length > 0 && (
+        {(
           <div>
             <label className="text-sm text-muted-foreground mb-1 block">Project (optional)</label>
             <select
@@ -260,7 +260,7 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
-            <p className="text-xs text-muted-foreground mt-1">Assign this task to a Life Plan project.</p>
+            <p className="text-xs text-muted-foreground mt-1">Assign this task to any project or Life Plan project.</p>
           </div>
         )}
 
