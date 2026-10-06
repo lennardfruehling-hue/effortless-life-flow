@@ -516,6 +516,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
       {(showForm || editTask) && (
         <TaskForm
           projects={projects}
+          defaultProjectId={activeProjectId}
           tasks={tasks}
           editTask={editTask}
           onSubmit={handleSubmit}
