@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookOpen, Mail, NotebookPen, Car, Baby, Home } from "lucide-react";
+import { BookOpen, Mail, NotebookPen, Car, Baby, Home, Briefcase } from "lucide-react";
 import { Project, Task, Reminder } from "@/lib/types";
 import ResearchView from "./ResearchView";
 import GmailView from "./GmailView";
@@ -7,14 +7,16 @@ import OneNoteView from "./OneNoteView";
 import CarMaintenanceView from "./CarMaintenanceView";
 import BabyView from "./BabyView";
 import ApartmentHuntView from "./ApartmentHuntView";
+import JobHuntView from "./JobHuntView";
 
-type Sub = "notes" | "baby" | "car" | "apartments" | "gmail" | "onenote";
+type Sub = "notes" | "baby" | "car" | "apartments" | "jobs" | "gmail" | "onenote";
 
 const TABS: { id: Sub; label: string; icon: typeof BookOpen }[] = [
   { id: "notes", label: "Notes", icon: BookOpen },
   { id: "baby", label: "Baby", icon: Baby },
   { id: "car", label: "Car", icon: Car },
   { id: "apartments", label: "Apartments", icon: Home },
+  { id: "jobs", label: "Job Hunt", icon: Briefcase },
   { id: "gmail", label: "Gmail", icon: Mail },
   { id: "onenote", label: "OneNote", icon: NotebookPen },
 ];
@@ -63,6 +65,7 @@ export default function ResearchTabs({ projects, tasks, onSaveTasks, reminders, 
           />
         )}
         {sub === "apartments" && <ApartmentHuntView />}
+        {sub === "jobs" && <JobHuntView tasks={tasks} onSaveTasks={onSaveTasks} projects={projects} />}
         {sub === "gmail" && <GmailView />}
         {sub === "onenote" && <OneNoteView />}
       </div>
