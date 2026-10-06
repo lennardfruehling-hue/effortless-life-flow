@@ -18,7 +18,7 @@ interface TaskFormProps {
   editTask?: Task;
 }
 
-export default function TaskForm({ projects, tasks = [], onSubmit, onClose, editTask }: TaskFormProps) {
+export default function TaskForm({ projects, tasks = [], onSubmit, onClose, editTask, defaultProjectId }: TaskFormProps & { defaultProjectId?: string }) {
   const knownLocations = Array.from(
     new Set(
       tasks
@@ -29,7 +29,7 @@ export default function TaskForm({ projects, tasks = [], onSubmit, onClose, edit
   const [title, setTitle] = useState(editTask?.title || "");
   const [description, setDescription] = useState(editTask?.description || "");
   const [categories, setCategories] = useState<Category[]>(editTask?.categories || []);
-  const [projectId, setProjectId] = useState(editTask?.projectId || "");
+  const [projectId, setProjectId] = useState(editTask?.projectId || defaultProjectId || "");
   const [location, setLocation] = useState(editTask?.location || "");
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(
     editTask?.locationLat != null && editTask?.locationLon != null
