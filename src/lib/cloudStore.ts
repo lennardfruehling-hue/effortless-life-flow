@@ -18,6 +18,11 @@ export const CLOUD_KEYS = {
   jobs: "serpent-jobs",
   finance: "serpent-finance",
   consistencyGoal: "serpent-consistency-goal",
+  jobContacts: "serpent-job-contacts",
+  jobInterviews: "serpent-job-interviews",
+  jobCompanies: "serpent-job-companies",
+  jobResumes: "serpent-job-resumes",
+  jobGoals: "serpent-job-goals",
 
 } as const;
 
