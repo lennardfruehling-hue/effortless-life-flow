@@ -4,6 +4,7 @@ import { CLOUD_KEYS, cloudGet, cloudGetShared, cloudSet, isPersonalKey } from "@
 import { store } from "@/lib/store";
 import { Task, Project, Reminder, CalendarEvent, Category, ALL_CATEGORIES } from "@/lib/types";
 import { Habit, todayISO } from "@/lib/habits";
+import { JOB_COLLECTIONS, isJobCollection, jobGoalFields, prepareJobRecord } from "@/lib/jobHuntActions";
 
 export interface VoiceAction {
   type: string;
@@ -21,6 +22,7 @@ export interface VoiceCtx {
 }
 
 const COLLECTION_KEYS: Record<string, string> = {
+  ...JOB_COLLECTIONS,
   cars: CLOUD_KEYS.cars,
   apartments: CLOUD_KEYS.apartments,
   habits: CLOUD_KEYS.habits,
@@ -36,7 +38,7 @@ function norm(s?: string) {
 
 function matches(item: any, match: any) {
   if (!match) return false;
-  if (match.id && String(item.id) === String(match.id)) return true;
+  if (match.id) return String(item.id) === String(match.id);
   if (match.title && norm(item.title) === norm(match.title)) return true;
   if (match.name && norm(item.name) === norm(match.name)) return true;
   if (match.title && norm(item.title).includes(norm(match.title))) return true;
@@ -144,6 +146,12 @@ export function isMutatingAction(a: VoiceAction): boolean {
 
 /** Plain-language description of a proposed change, so the user knows what they approve. */
 export function describeAction(a: VoiceAction): string {
+  if (isJobCollection(String(a.collection))) {
+    const fields = a.item ?? a.fields ?? {};
+    const target = [fields.company, fields.role].filter(Boolean).join(" — ") || fields.name || a.match?.id || "record";
+    return `${a.type === "collection_add" ? "Add" : "Update"} ${a.collection}: ${target}${a.fields ? ` (${Object.entries(a.fields).map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`).join(", ")})` : ""}`;
+  }
+  if (a.type === "job_goals_update") return `Update Job Hunt goals: ${JSON.stringify(a.fields)}`;
   const label = a.title || a.name || a.match?.title || a.match?.name || a.id || "";
   const t = String(a.type || "").toLowerCase();
   const pretty = t.replace(/[_.]/g, " ");
@@ -165,6 +173,14 @@ export async function runVoiceActions(actions: VoiceAction[], ctx: VoiceCtx): Pr
   for (const a of allowed) {
     try {
       switch (a.type) {
+        case "job_goals_update": {
+          if (!ctx.userId) throw new Error("Sign in to edit Job Hunt");
+          const fields = jobGoalFields.parse(a.fields);
+          const current = await cloudGetShared<Record<string, any>>(CLOUD_KEYS.jobGoals, { appsPerWeek: 10, networkPerWeek: 5 });
+          await writeJobValue(CLOUD_KEYS.jobGoals, { ...current, ...fields }, ctx.userId);
+          done.push("Job Hunt goals updated");
+          break;
+        }
         case "create_task": {
           const t = a.task ?? {};
           const task: Task = {
@@ -311,6 +327,13 @@ export async function runVoiceActions(actions: VoiceAction[], ctx: VoiceCtx): Pr
           const key = COLLECTION_KEYS[a.collection];
           if (!key) break;
           const list = await readCollection<any>(key, ctx.userId);
+          if (isJobCollection(a.collection)) {
+            if (!ctx.userId) throw new Error("Sign in to edit Job Hunt");
+            const item = prepareJobRecord(a.collection, a.item ?? {}, undefined, uuid());
+            await writeJobValue(key, [...list, item], ctx.userId);
+            done.push(`Added to ${a.collection}: ${item.company || item.name || item.round || "Interview"}`);
+            break;
+          }
           const item = { id: uuid(), ...(a.item ?? {}) };
           await writeCollection(key, [...list, item], ctx.userId);
           done.push(`Added to ${a.collection}`);
@@ -320,6 +343,15 @@ export async function runVoiceActions(actions: VoiceAction[], ctx: VoiceCtx): Pr
           const key = COLLECTION_KEYS[a.collection];
           if (!key) break;
           const list = await readCollection<any>(key, ctx.userId);
+          if (isJobCollection(a.collection)) {
+            if (!ctx.userId) throw new Error("Sign in to edit Job Hunt");
+            const hits = list.filter((item) => matches(item, a.match));
+            if (hits.length !== 1) throw new Error("Choose exactly one Job Hunt record by its ID");
+            const next = prepareJobRecord(a.collection, a.fields ?? {}, hits[0]);
+            await writeJobValue(key, list.map((item) => item.id === next.id ? next : item), ctx.userId);
+            done.push(`Updated ${a.collection}: ${next.company || next.name || next.round || "Interview"}`);
+            break;
+          }
           await writeCollection(
             key,
             list.map((i) => (matches(i, a.match) ? { ...i, ...(a.fields ?? {}) } : i)),
@@ -362,7 +394,7 @@ export async function runVoiceActions(actions: VoiceAction[], ctx: VoiceCtx): Pr
       }
     } catch (e) {
       console.error("[voice] action failed", a, e);
-      done.push(`Failed: ${a.type}`);
+      done.push(`Failed: ${a.type}${e instanceof Error ? ` — ${e.message}` : ""}`);
     }
   }
 
@@ -371,10 +403,17 @@ export async function runVoiceActions(actions: VoiceAction[], ctx: VoiceCtx): Pr
 
 /** Compact snapshot of app state for the assistant. */
 export async function buildVoiceState(ctx: VoiceCtx) {
+  const [applications, contacts, interviews, companies, resumes, goals] = await Promise.all([
+    readCollection<any>(CLOUD_KEYS.jobs, ctx.userId), readCollection<any>(CLOUD_KEYS.jobContacts, ctx.userId),
+    readCollection<any>(CLOUD_KEYS.jobInterviews, ctx.userId), readCollection<any>(CLOUD_KEYS.jobCompanies, ctx.userId),
+    readCollection<any>(CLOUD_KEYS.jobResumes, ctx.userId),
+    ctx.userId ? cloudGetShared(CLOUD_KEYS.jobGoals, { appsPerWeek: 10, networkPerWeek: 5 }) : Promise.resolve(null),
+  ]);
   const habits = await readCollection<Habit>(CLOUD_KEYS.habits, ctx.userId);
   const cars = await readCollection<any>(CLOUD_KEYS.cars, ctx.userId);
   const apartments = await readCollection<any>(CLOUD_KEYS.apartments, ctx.userId);
   return {
+    jobHunt: { applications, contacts, interviews, companies, resumes, goals },
     today: new Date().toISOString().slice(0, 10),
     now: new Date().toISOString(),
     categories: ALL_CATEGORIES,
@@ -389,4 +428,15 @@ export async function buildVoiceState(ctx: VoiceCtx) {
     cars: cars.map((c: any) => ({ id: c.id, name: c.name ?? c.make })),
     apartments: apartments.map((x: any) => ({ id: x.id, address: x.address, stage: x.stage, price: x.price })),
   };
+}
+
+async function writeJobValue(key: string, value: unknown, userId: string) {
+  const { error } = await supabase.from("user_data").upsert(
+    { user_id: userId, key, value: value as any, updated_at: new Date().toISOString() },
+    { onConflict: "user_id,key" }
+  );
+  if (error) throw error;
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* Cloud remains authoritative. */ }
+  window.dispatchEvent(new StorageEvent("storage", { key }));
+  window.dispatchEvent(new CustomEvent("serpent-data-updated", { detail: { key } }));
 }
