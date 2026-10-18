@@ -1,4 +1,5 @@
-import { useMemo, useState, DragEvent } from "react";
+import { useEffect, useMemo, useState, DragEvent } from "react";
+import { withJobStage } from "@/lib/jobHuntActions";
 import { CLOUD_KEYS } from "@/lib/cloudStore";
 import { useCloudState } from "@/hooks/useCloudState";
 import {
@@ -102,12 +103,24 @@ export default function JobHuntView({ tasks, onSaveTasks, projects }: Props) {
 
   const jobProject = projects.find((p) => /job/i.test(p.name));
 
+  useEffect(() => {
+    const refresh = (event: StorageEvent) => {
+      const setters: Record<string, (value: any) => void> = {
+        [CLOUD_KEYS.jobs]: setCards, [CLOUD_KEYS.jobContacts]: setContacts,
+        [CLOUD_KEYS.jobInterviews]: setInterviews, [CLOUD_KEYS.jobCompanies]: setCompanies,
+        [CLOUD_KEYS.jobResumes]: setResumes, [CLOUD_KEYS.jobGoals]: setGoals,
+      };
+      if (!event.key || !setters[event.key]) return;
+      const raw = localStorage.getItem(event.key);
+      if (!raw) return;
+      try { setters[event.key](JSON.parse(raw)); } catch { /* Ignore invalid cache. */ }
+    };
+    window.addEventListener("storage", refresh);
+    return () => window.removeEventListener("storage", refresh);
+  }, [setCards, setContacts, setInterviews, setCompanies, setResumes, setGoals]);
+
   const withStage = (x: JobCard, stage: string): JobCard => {
-    if (x.stage === stage) return x;
-    const t = today();
-    const appliedDate = stage === "applied" && !x.appliedDate ? t : x.appliedDate;
-    const followUpDate = stage === "applied" && !x.followUpDate ? addDays(t, 7) : x.followUpDate;
-    return { ...x, stage, appliedDate, followUpDate, history: [...(x.history || []), { stage, date: t }], updatedAt: new Date().toISOString() };
+    return withJobStage(x, stage);
   };
   const add = (stage = "wishlist") => {
     const now = new Date().toISOString();
