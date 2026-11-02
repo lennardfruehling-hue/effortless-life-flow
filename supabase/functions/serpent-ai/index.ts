@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { BROWSE_TOOLS, runBrowseTool } from "../_shared/browsing.ts";
+import { callAnthropic, joinText, toAnthropicConversation, toAnthropicTools } from "../_shared/anthropic.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -133,7 +134,6 @@ Use them whenever the user asks about current facts, prices, news, weather, open
         results.push({ type: "tool_result", tool_use_id: u.id, content: String(result) });
       }
       convo.push({ role: "user", content: results });
-      // Last step goes without tools so it must answer; keep the tool list while history has tool blocks.
       response = await callModel(true);
       data = null;
     }
