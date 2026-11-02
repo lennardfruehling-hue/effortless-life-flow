@@ -445,29 +445,29 @@ serve(async (req) => {
       });
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) throw new Error("ANTHROPIC_API_KEY is not configured");
 
-    const convo: any[] = [
-      { role: "system", content: `${mode === "organizer" ? ORGANIZER : SYSTEM}\n\nAPP STATE (json):\n${state}` },
-      ...messages,
-    ];
+    const { system, messages: convo } = toAnthropicConversation(
+      `${mode === "organizer" ? ORGANIZER : SYSTEM}\n\nAPP STATE (json):\n${state}`,
+      messages,
+    );
+    const tools = toAnthropicTools(TOOLS);
+    const JSON_ONLY = "\n\nReply ONLY with the required JSON object (no prose, no markdown fences).";
+    let usedTools = false;
 
     const callModel = async (withTools: boolean) => {
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "google/gemini-3.6-flash",
-          ...(withTools
-            ? { tools: TOOLS, tool_choice: "auto" }
-            : { response_format: { type: "json_object" } }),
-          messages: convo,
-        }),
+      // Anthropic needs the tool definitions whenever history contains tool blocks.
+      const sendTools = withTools || usedTools;
+      const res = await callAnthropic(ANTHROPIC_API_KEY, {
+        system: withTools ? system : system + JSON_ONLY,
+        messages: convo,
+        ...(sendTools ? { tools } : {}),
+        ...(sendTools && !withTools ? { tool_choice: { type: "none" } } : {}),
       });
       if (!res.ok) {
         const text = await res.text();
-        console.error("voice gateway error", res.status, text);
+        console.error("Anthropic API error", res.status, text);
         return { error: res.status };
       }
       return { data: await res.json() };
@@ -487,12 +487,16 @@ serve(async (req) => {
       const out = await callModel(!last);
       if (out.error) {
         const reason =
-          out.error === 403
+          out.error === 401
+            ? "The Anthropic API key is missing or invalid."
+            : out.error === 403
             ? "The AI usage limit for this workspace has been reached. The workspace owner needs to raise the limit before the assistant can answer again."
             : out.error === 402
             ? "The workspace has run out of AI credits. Add credits to keep using the assistant."
             : out.error === 429
             ? "Too many requests right now — wait a few seconds and ask again."
+            : out.error === 529
+            ? "The assistant is busy right now — please try again in a moment."
             : "The assistant service is temporarily unavailable. Please try again shortly.";
         // Answer 200 so the app can show the real reason instead of a generic failure.
         return new Response(JSON.stringify({ error: reason, speak: reason, code: out.error }), {
@@ -500,57 +504,42 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const msg = out.data?.choices?.[0]?.message;
-      const calls = msg?.tool_calls;
-      const content = msg?.content ? String(msg.content) : "";
+      const blocks: any[] = Array.isArray(out.data?.content) ? out.data.content : [];
+      const uses = blocks.filter((b) => b?.type === "tool_use");
+      const content = joinText(out.data);
 
-      if (Array.isArray(calls) && calls.length > 0) {
+      if (out.data?.stop_reason === "tool_use" && uses.length > 0) {
         if (content.trim()) lastProse = content;
-        // Feed tool output back as a plain user turn: the gateway rejects
-        // conversations that end on a model/tool turn.
-        const results: string[] = [];
-        for (const call of calls) {
-          let args: any = {};
-          try { args = JSON.parse(call?.function?.arguments || "{}"); } catch {}
-          const name = call?.function?.name;
+        usedTools = true;
+        convo.push({ role: "assistant", content: blocks });
+        const results: any[] = [];
+        for (const u of uses) {
+          const args: any = u.input ?? {};
           let result = "Unknown tool.";
-          if (name === "web_search") result = await webSearch(String(args.query ?? ""));
-          else if (name === "get_weather") result = await getWeather(String(args.place ?? ""));
-          else if (name === "open_url") result = await openUrl(String(args.url ?? ""));
-          results.push(`${name}(${JSON.stringify(args)}):\n${result}`);
+          if (u.name === "web_search") result = await webSearch(String(args.query ?? ""));
+          else if (u.name === "get_weather") result = await getWeather(String(args.place ?? ""));
+          else if (u.name === "open_url") result = await openUrl(String(args.url ?? ""));
+          results.push({ type: "tool_result", tool_use_id: u.id, content: String(result).slice(0, 12000) });
         }
-        convo.push({
-          role: "user",
-          content:
-            `Live results from the tools you requested:\n\n${results.join("\n\n").slice(0, 12000)}\n\n` +
-            "Use these. If you need another lookup, call a tool again; otherwise reply with the required JSON object.",
-        });
+        convo.push({ role: "user", content: results });
         continue;
       }
-
-
 
       if (content.trim()) {
         lastProse = content;
         if (last || looksJson(content)) { raw = content; break; }
         // Prose answer on a tool round: keep it and ask for the final JSON without tools.
-        convo.push({ role: "assistant", content });
-        convo.push({
-          role: "user",
-          content: "Now reply ONLY with the required JSON object (no prose, no markdown fences), using everything above.",
-        });
+        pushTurn(convo, "assistant", content);
+        pushTurn(convo, "user", "Now reply ONLY with the required JSON object (no prose, no markdown fences), using everything above.");
         continue;
       }
       break;
     }
     // Never return an empty turn: force one final tool-free JSON answer.
     if (!raw.trim()) {
-      convo.push({
-        role: "user",
-        content: "Reply now ONLY with the required JSON object, with a non-empty \"speak\" field.",
-      });
+      pushTurn(convo, "user", "Reply now ONLY with the required JSON object, with a non-empty \"speak\" field.");
       const finalOut = await callModel(false);
-      const c = finalOut.data?.choices?.[0]?.message?.content;
+      const c = finalOut.data ? joinText(finalOut.data) : "";
       if (c && String(c).trim()) raw = String(c);
     }
     if (!raw) raw = "{}";

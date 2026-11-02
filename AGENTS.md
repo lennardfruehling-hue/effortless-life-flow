@@ -1,3 +1,3 @@
 # Architecture rules
 - Job Hunt assistant field validation and stage transitions live in `src/lib/jobHuntActions.ts`; both chat actions and the pipeline reuse stage handling to keep timelines and follow-ups consistent.
-- Organization chat uses the existing `serpent-voice` boundary and `voiceActions` approval gate; Job Hunt data is loaded from the same cloud keys as Notes to avoid a second source of truth.
+- Organization chat uses the existing `serpent-voice` boundary and `voiceActions` approval gate; Job Hunt data is loaded from the same cloud keys as Notes to avoid a second source of truth.- AI edge functions (serpent-ai, serpent-voice) call the Anthropic Messages API directly via `supabase/functions/_shared/anthropic.ts`; serpent-ai converts replies back to the OpenAI-shaped {choices:[{message}]} so the frontend contract stays unchanged.

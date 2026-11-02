@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { BROWSE_TOOLS, runBrowseTool } from "../_shared/browsing.ts";
+import { callAnthropic, joinText, toAnthropicConversation, toAnthropicTools } from "../_shared/anthropic.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -100,9 +101,9 @@ serve(async (req) => {
       }
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      throw new Error("ANTHROPIC_API_KEY is not configured");
     }
 
     const BROWSE_HINT = `
@@ -111,25 +112,11 @@ serve(async (req) => {
 You have live internet access through the tools "web_search" (search the web), "open_url" (read a page) and "get_weather" (current weather + 3-day forecast for a place).
 Use them whenever the user asks about current facts, prices, news, weather, opening hours, products, places or documentation. Never claim you cannot browse. Cite the source URL when you used one.`;
 
-    const convo: any[] = [
-      { role: "system", content: `${systemPrompt}${BROWSE_HINT}` },
-      ...messages,
-    ];
+    const { system, messages: convo } = toAnthropicConversation(`${systemPrompt}${BROWSE_HINT}`, messages);
+    const tools = toAnthropicTools(BROWSE_TOOLS);
 
-    const callModel = async (withTools: boolean) => {
-      return await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3.7-flash",
-          messages: convo,
-          ...(withTools ? { tools: BROWSE_TOOLS, tool_choice: "auto" } : {}),
-        }),
-      });
-    };
+    const callModel = (withTools: boolean) =>
+      callAnthropic(ANTHROPIC_API_KEY, { system, messages: convo, ...(withTools ? { tools } : {}) });
 
     let response = await callModel(true);
     let data: any = null;
@@ -137,18 +124,18 @@ Use them whenever the user asks about current facts, prices, news, weather, open
     for (let step = 0; step < 4; step++) {
       if (!response.ok) break;
       data = await response.json();
-      const msg = data?.choices?.[0]?.message;
-      const calls = msg?.tool_calls;
-      if (!Array.isArray(calls) || calls.length === 0) break;
+      const uses = Array.isArray(data?.content) ? data.content.filter((b: any) => b?.type === "tool_use") : [];
+      if (data?.stop_reason !== "tool_use" || uses.length === 0) break;
 
-      convo.push(msg);
-      for (const call of calls) {
-        let args: any = {};
-        try { args = JSON.parse(call?.function?.arguments || "{}"); } catch {}
-        const result = await runBrowseTool(call?.function?.name, args);
-        convo.push({ role: "tool", tool_call_id: call.id, content: result });
+      convo.push({ role: "assistant", content: data.content });
+      const results: any[] = [];
+      for (const u of uses) {
+        const result = await runBrowseTool(u.name, u.input ?? {});
+        results.push({ type: "tool_result", tool_use_id: u.id, content: String(result) });
       }
-      response = await callModel(step < 2);
+      convo.push({ role: "user", content: results });
+      response = await callModel(true);
+      data = null;
     }
 
     if (!response.ok && !data) {
@@ -164,13 +151,20 @@ Use them whenever the user asks about current facts, prices, news, weather, open
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      if (response.status === 529) {
+        return new Response(JSON.stringify({ error: "The assistant is busy right now — please try again in a moment." }), {
+          status: 503,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const text = await response.text();
-      console.error("AI gateway error:", response.status, text);
-      throw new Error(`AI gateway error: ${response.status}`);
+      console.error("Anthropic API error:", response.status, text);
+      throw new Error(`AI service error: ${response.status}`);
     }
 
     if (!data) data = await response.json();
-    return new Response(JSON.stringify(data), {
+    const content = joinText(data);
+    return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content } }] }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {

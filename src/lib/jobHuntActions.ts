@@ -32,7 +32,7 @@ export function isJobCollection(value: string): value is JobCollection {
   return Object.prototype.hasOwnProperty.call(JOB_COLLECTIONS, value);
 }
 
-export function withJobStage<T extends { stage: string; appliedDate?: string; followUpDate?: string; history?: { stage: string; date: string }[] }>(card: T, stage: string, now = new Date()): T {
+export function withJobStage<T extends { stage?: string; appliedDate?: string; followUpDate?: string; history?: { stage?: string; date?: string }[] }>(card: T, stage: string, now = new Date()): T {
   jobStage.parse(stage);
   if (card.stage === stage) return card;
   const day = now.toISOString().slice(0, 10);
@@ -43,7 +43,7 @@ export function withJobStage<T extends { stage: string; appliedDate?: string; fo
 }
 
 export function prepareJobRecord(collection: JobCollection, fields: unknown, existing?: Record<string, any>, id?: string, now = new Date()): Record<string, any> {
-  const patch = schemas[collection].parse(fields);
+  const patch: Record<string, any> = schemas[collection].parse(fields);
   const timestamp = now.toISOString();
   if (collection !== "jobs") {
     const next = { ...existing, ...patch, id: existing?.id ?? id };
@@ -51,7 +51,7 @@ export function prepareJobRecord(collection: JobCollection, fields: unknown, exi
     return next;
   }
   const initial = existing ?? { id, company: "", role: "", stage: "wishlist", priority: "medium", history: [], createdAt: timestamp };
-  const merged = { ...initial, ...patch, id: initial.id, createdAt: initial.createdAt, updatedAt: timestamp };
+  const merged: Record<string, any> = { ...initial, ...patch, id: initial.id, createdAt: initial.createdAt, updatedAt: timestamp };
   if (!String(merged.company).trim() || !String(merged.role).trim()) throw new Error("Company and role are required");
   const next = withJobStage({ ...merged, stage: existing?.stage ?? "wishlist" }, merged.stage, now);
   if (!existing && !next.history?.length) next.history = [{ stage: next.stage, date: timestamp.slice(0, 10) }];
