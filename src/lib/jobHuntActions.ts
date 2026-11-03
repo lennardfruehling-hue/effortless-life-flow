@@ -46,14 +46,14 @@ export function prepareJobRecord(collection: JobCollection, fields: unknown, exi
   const patch: Record<string, any> = schemas[collection].parse(fields);
   const timestamp = now.toISOString();
   if (collection !== "jobs") {
-    const next = { ...existing, ...patch, id: existing?.id ?? id };
+    const next: Record<string, any> = { ...existing, ...patch, id: existing?.id ?? id, updatedAt: timestamp };
     if (!existing && collection !== "jobInterviews" && !String(next.name || "").trim()) throw new Error("A name is required");
     return next;
   }
   const initial = existing ?? { id, company: "", role: "", stage: "wishlist", priority: "medium", history: [], createdAt: timestamp };
   const merged: Record<string, any> = { ...initial, ...patch, id: initial.id, createdAt: initial.createdAt, updatedAt: timestamp };
   if (!String(merged.company).trim() || !String(merged.role).trim()) throw new Error("Company and role are required");
-  const next = withJobStage({ ...merged, stage: existing?.stage ?? "wishlist" }, merged.stage, now);
+  const next: Record<string, any> = withJobStage<Record<string, any>>({ ...merged, stage: existing?.stage ?? "wishlist" }, merged.stage, now);
   if (!existing && !next.history?.length) next.history = [{ stage: next.stage, date: timestamp.slice(0, 10) }];
   return next;
 }
