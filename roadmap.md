@@ -2,3 +2,10 @@
 - [ ] Include all Job Hunt records in Organization chat context.
 - [ ] Support approved edits, new records, stages, follow-ups, and related pipeline fields.
 - [ ] Refresh Job Hunt after chat changes and test the approval/persistence flow.
+
+# Claude bridge
+- [ ] Fix Job Hunt type errors and verify tests.
+- [ ] Restore in-app chat through Gemini 3.8 Flash, preserving prompts and contracts.
+- [ ] Enable protected OAuth MCP with account-scoped tools and consent.
+- [ ] Add safe two-way synchronization and remote-change notifications.
+- [ ] Extract the MCP catalog, verify accessible flows, and publish the connector.
