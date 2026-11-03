@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { BROWSE_TOOLS, runBrowseTool } from "../_shared/browsing.ts";
-import { callAnthropic, joinText, toAnthropicConversation, toAnthropicTools } from "../_shared/anthropic.ts";
+import { callGateway } from "../_shared/gateway.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -101,9 +101,9 @@ serve(async (req) => {
       }
     }
 
-    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-    if (!ANTHROPIC_API_KEY) {
-      throw new Error("ANTHROPIC_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     const BROWSE_HINT = `
@@ -112,11 +112,10 @@ serve(async (req) => {
 You have live internet access through the tools "web_search" (search the web), "open_url" (read a page) and "get_weather" (current weather + 3-day forecast for a place).
 Use them whenever the user asks about current facts, prices, news, weather, opening hours, products, places or documentation. Never claim you cannot browse. Cite the source URL when you used one.`;
 
-    const { system, messages: convo } = toAnthropicConversation(`${systemPrompt}${BROWSE_HINT}`, messages);
-    const tools = toAnthropicTools(BROWSE_TOOLS);
+    const convo: any[] = [{ role: "system", content: `${systemPrompt}${BROWSE_HINT}` }, ...messages];
 
     const callModel = (withTools: boolean) =>
-      callAnthropic(ANTHROPIC_API_KEY, { system, messages: convo, ...(withTools ? { tools } : {}) });
+      callGateway(LOVABLE_API_KEY, convo, withTools ? BROWSE_TOOLS : undefined);
 
     let response = await callModel(true);
     let data: any = null;
@@ -124,17 +123,16 @@ Use them whenever the user asks about current facts, prices, news, weather, open
     for (let step = 0; step < 4; step++) {
       if (!response.ok) break;
       data = await response.json();
-      const uses = Array.isArray(data?.content) ? data.content.filter((b: any) => b?.type === "tool_use") : [];
-      if (data?.stop_reason !== "tool_use" || uses.length === 0) break;
+      const message = data?.choices?.[0]?.message;
+      const uses = message?.tool_calls ?? [];
+      if (uses.length === 0) break;
 
-      convo.push({ role: "assistant", content: data.content });
-      const results: any[] = [];
+      convo.push(message);
       for (const u of uses) {
-        const result = await runBrowseTool(u.name, u.input ?? {});
-        results.push({ type: "tool_result", tool_use_id: u.id, content: String(result) });
+        const result = await runBrowseTool(u.function.name, JSON.parse(u.function.arguments || "{}"));
+        convo.push({ role: "tool", tool_call_id: u.id, content: String(result) });
       }
-      convo.push({ role: "user", content: results });
-      response = await callModel(true);
+      response = await callModel(step < 3);
       data = null;
     }
 
@@ -158,12 +156,12 @@ Use them whenever the user asks about current facts, prices, news, weather, open
         });
       }
       const text = await response.text();
-      console.error("Anthropic API error:", response.status, text);
+      console.error("AI service error:", response.status);
       throw new Error(`AI service error: ${response.status}`);
     }
 
     if (!data) data = await response.json();
-    const content = joinText(data);
+    const content = data?.choices?.[0]?.message?.content ?? "";
     return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content } }] }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
