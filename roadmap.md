@@ -9,3 +9,8 @@
 - [ ] Enable protected OAuth MCP with account-scoped tools and consent.
 - [ ] Add safe two-way synchronization and remote-change notifications.
 - [ ] Extract the MCP catalog, verify accessible flows, and publish the connector.
+
+# Househunt
+- [ ] Add personal serpent-househunt array with fresh reads and id-merged, conflict-safe saves.
+- [ ] Add Househunt beside Job Hunt, score-sorted draggable board, summary and editable details.
+- [ ] Test stage history, score sorting and stale-state protection; verify the page.
