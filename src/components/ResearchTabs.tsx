@@ -8,8 +8,10 @@ import CarMaintenanceView from "./CarMaintenanceView";
 import BabyView from "./BabyView";
 import ApartmentHuntView from "./ApartmentHuntView";
 import JobHuntView from "./JobHuntView";
+import HousehuntView from "./HousehuntView";
+import { Button } from "@/components/ui/button";
 
-type Sub = "notes" | "baby" | "car" | "apartments" | "jobs" | "gmail" | "onenote";
+type Sub = "notes" | "baby" | "car" | "apartments" | "jobs" | "househunt" | "gmail" | "onenote";
 
 const TABS: { id: Sub; label: string; icon: typeof BookOpen }[] = [
   { id: "notes", label: "Notes", icon: BookOpen },
@@ -17,6 +19,7 @@ const TABS: { id: Sub; label: string; icon: typeof BookOpen }[] = [
   { id: "car", label: "Car", icon: Car },
   { id: "apartments", label: "Apartments", icon: Home },
   { id: "jobs", label: "Job Hunt", icon: Briefcase },
+  { id: "househunt", label: "Househunt", icon: Home },
   { id: "gmail", label: "Gmail", icon: Mail },
   { id: "onenote", label: "OneNote", icon: NotebookPen },
 ];
@@ -35,19 +38,19 @@ export default function ResearchTabs({ projects, tasks, onSaveTasks, reminders, 
   return (
     <div className="flex-1 flex flex-col h-screen overflow-hidden">
       {/* Subtab bar */}
-      <div className="flex-shrink-0 border-b border-border bg-card/30 px-4 flex items-center gap-1">
+      <div className="flex-shrink-0 border-b border-border bg-card/30 px-4 flex items-center gap-1 overflow-x-auto">
         {TABS.map(({ id, label, icon: Icon }) => (
-          <button
+          <Button variant="ghost"
             key={id}
             onClick={() => setSub(id)}
-            className={`flex items-center gap-1.5 px-3 py-2.5 text-sm border-b-2 -mb-px transition-colors ${
+            className={`shrink-0 rounded-none h-auto flex items-center gap-1.5 px-3 py-2.5 text-sm border-b-2 -mb-px transition-colors ${
               sub === id
                 ? "border-primary text-primary font-medium"
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             <Icon size={14} /> {label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -66,6 +69,7 @@ export default function ResearchTabs({ projects, tasks, onSaveTasks, reminders, 
         )}
         {sub === "apartments" && <ApartmentHuntView />}
         {sub === "jobs" && <JobHuntView tasks={tasks} onSaveTasks={onSaveTasks} projects={projects} />}
+        {sub === "househunt" && <HousehuntView />}
         {sub === "gmail" && <GmailView />}
         {sub === "onenote" && <OneNoteView />}
       </div>
