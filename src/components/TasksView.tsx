@@ -15,6 +15,7 @@ import { CategoryBadgeFull } from "@/components/CategoryBadge";
 import { Plus, Filter, Eye, EyeOff, Clock, X, Sparkles, Repeat, Sun, CalendarDays, AlertTriangle, ChevronDown, CalendarRange } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { applyRecurrenceReset, todayKey, weekKey, totalPride, prideThisWeek } from "@/lib/pride";
+import { setTaskCompleted } from "@/lib/taskCompletion";
 
 interface TasksViewProps {
   tasks: Task[];
@@ -187,14 +188,7 @@ export default function TasksView({ tasks, projects, onSave, dailySchedule, onSa
     onSave(
       tasks.map((t) => {
         if (t.id !== id) return t;
-        const nowCompleted = !t.completed;
-        const period = t.recurrence === "weekly" ? weekKey() : todayKey();
-        return {
-          ...t,
-          completed: nowCompleted,
-          completedAt: nowCompleted ? new Date().toISOString() : undefined,
-          lastCompletedPeriod: t.recurrence && nowCompleted ? period : t.lastCompletedPeriod,
-        };
+        return setTaskCompleted(t, !t.completed);
       })
     );
   };

@@ -5,6 +5,7 @@ import { store } from "@/lib/store";
 import { Task, Project, Reminder, CalendarEvent, Category, ALL_CATEGORIES } from "@/lib/types";
 import { Habit, todayISO } from "@/lib/habits";
 import { JOB_COLLECTIONS, isJobCollection, jobGoalFields, prepareJobRecord } from "@/lib/jobHuntActions";
+import { setTaskCompleted } from "./taskCompletion";
 
 export interface VoiceAction {
   type: string;
@@ -220,7 +221,7 @@ export async function runVoiceActions(actions: VoiceAction[], ctx: VoiceCtx): Pr
         case "complete_task": {
           ctx.setTasks((prev) =>
             prev.map((t) =>
-              matches(t, a.match) ? { ...t, completed: true, completedAt: new Date().toISOString() } : t
+              matches(t, a.match) ? setTaskCompleted(t, true) : t
             )
           );
           done.push("Task completed");

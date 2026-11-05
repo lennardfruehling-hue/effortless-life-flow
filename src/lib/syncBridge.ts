@@ -1,5 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { CLOUD_KEYS, cloudGet, cloudGetShared, cloudSet, isPersonalKey } from "./cloudStore";
+import { mergeCloudArrays, stampArrayChanges } from "./cloudMerge";
+import { toast } from "sonner";
 
 const KEYS = Object.values(CLOUD_KEYS);
 const debounceTimers: Record<string, number> = {};
@@ -74,8 +76,11 @@ if (typeof window !== "undefined") {
   const flush = () => { try { flushAllPending(); } catch {} };
   window.addEventListener("pagehide", flush);
   window.addEventListener("beforeunload", flush);
+  const refresh = () => { if (activeUserId) for (const key of KEYS) void refreshKey(activeUserId, key); };
+  window.addEventListener("focus", refresh);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") flush();
+    else refresh();
   });
 }
 
@@ -86,6 +91,9 @@ function patchLocalStorage() {
   const origSet = localStorage.setItem.bind(localStorage);
   const origRemove = localStorage.removeItem.bind(localStorage);
   localStorage.setItem = (k: string, v: string) => {
+    if (activeUserId && KEYS.includes(k as any)) {
+      try { v = JSON.stringify(stampArrayChanges(JSON.parse(v), JSON.parse(localStorage.getItem(k) || "null"))); } catch { /* Preserve non-JSON values. */ }
+    }
     try { origSet(k, v); } catch (e) { console.warn(`[sync] setItem failed for ${k}`, e); }
     if (!KEYS.includes(k as any)) return;
     if (activeUserId) {
@@ -119,16 +127,8 @@ function safeSetItem(key: string, value: string) {
 
 /** Merge two arrays of objects by `id`, keeping the union (no destruction). */
 function mergeArraysById(a: any[], b: any[]): any[] {
-  const out: any[] = [];
-  const seen = new Set<string>();
-  for (const item of [...a, ...b]) {
-    if (!item || typeof item !== "object") { out.push(item); continue; }
-    const id = "id" in item ? String((item as any).id) : JSON.stringify(item);
-    if (seen.has(id)) continue;
-    seen.add(id);
-    out.push(item);
-  }
-  return out;
+  if (![...a, ...b].every(x => x && typeof x === "object" && "id" in x)) return a.length ? a : b;
+  return mergeCloudArrays(a, b, b.filter(x => a.some(y => y.id === x.id)));
 }
 
 async function refreshKey(userId: string, key: string) {
@@ -291,17 +291,14 @@ export async function hydrateFromCloud(userId: string) {
         if (!row) return;
         const key = row.key as string;
         if (!KEYS.includes(key as any)) return;
-        if (isPersonalKey(key)) {
-          if (row.user_id !== userId) return;
-          const prev = activeUserId;
-          activeUserId = null;
-          if (payload.eventType === "DELETE") localStorage.removeItem(key);
-          else localStorage.setItem(key, JSON.stringify(row.value));
-          activeUserId = prev;
-          window.dispatchEvent(new StorageEvent("storage", { key }));
-        } else {
-          void refreshKey(userId, key);
-        }
+        if (isPersonalKey(key) && row.user_id !== userId) return;
+        const before = localStorage.getItem(key);
+        void refreshKey(userId, key).then(() => {
+          if (before !== localStorage.getItem(key) && before !== lastPushedHash[key]) {
+            const claude = Array.isArray(row.value) && row.value.some((x: any) => x?.updatedBy === "claude");
+            toast.info(claude ? "Updated by Claude" : "Updated from another device", { id: "remote-sync" });
+          }
+        });
       }
     )
     .subscribe();
@@ -309,6 +306,9 @@ export async function hydrateFromCloud(userId: string) {
 
 export function clearCloudSync() {
   activeUserId = null;
+  if (realtimeChannel) { void supabase.removeChannel(realtimeChannel); realtimeChannel = null; }
+  for (const timer of Object.values(debounceTimers)) window.clearTimeout(timer);
+  for (const key of Object.keys(debounceTimers)) { delete debounceTimers[key]; delete pendingValue[key]; }
   // Wipe PERSONAL keys from localStorage on sign-out so the next user signing
   // in on this browser cannot inherit the previous user's tasks/schedule/chat.
   // Shared (household) keys are safe to leave — hydrate will merge them.

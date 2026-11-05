@@ -1,30 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
-
-export const CLOUD_KEYS = {
-  tasks: "serpent-tasks",
-  projects: "serpent-projects",
-  reminders: "serpent-reminders",
-  lifeplan: "serpent-lifeplan",
-  lifeplanV2: "serpent-lifeplan-v2",
-  research: "serpent-research",
-  chatHistory: "serpent-chat-history",
-  calendarEvents: "serpent-calendar-events",
-  dailySchedule: "serpent-daily-schedule",
-  weeklyStructure: "serpent-weekly-structure",
-  cars: "serpent-cars",
-  baby: "serpent-baby",
-  habits: "serpent-habits",
-  apartments: "serpent-apartments",
-  jobs: "serpent-jobs",
-  finance: "serpent-finance",
-  consistencyGoal: "serpent-consistency-goal",
-  jobContacts: "serpent-job-contacts",
-  jobInterviews: "serpent-job-interviews",
-  jobCompanies: "serpent-job-companies",
-  jobResumes: "serpent-job-resumes",
-  jobGoals: "serpent-job-goals",
-
-} as const;
+import { CLOUD_KEYS } from "./cloudKeys";
+import { mergeCloudArrays } from "./cloudMerge";
+export { CLOUD_KEYS } from "./cloudKeys";
+const baselines = new Map<string, any>();
+export function rememberCloudValue(userId: string, key: string, value: unknown) {
+  baselines.set(`${userId}:${key}`, structuredClone(value));
+}
 
 /**
  * Read every household member's value for a key (per-user, no merging).
@@ -71,7 +52,7 @@ export async function cloudAppendForUser<T extends { id: string }>(
     .eq("user_id", targetUserId)
     .eq("key", key)
     .maybeSingle();
-  const existing = Array.isArray(data?.value) ? (data!.value as T[]) : [];
+  const existing = Array.isArray(data?.value) ? (data.value as unknown as T[]) : [];
   const seen = new Set(existing.map((i) => i.id));
   const merged = [...existing, ...items.filter((i) => !seen.has(i.id))];
   await cloudSetForUser(targetUserId, key, merged);
@@ -86,6 +67,7 @@ export async function cloudGet<T>(userId: string, key: string, fallback: T): Pro
     .eq("key", key)
     .maybeSingle();
   if (error || !data) return fallback;
+  rememberCloudValue(userId, key, data.value);
   return (data.value as T) ?? fallback;
 }
 
@@ -122,39 +104,26 @@ export async function cloudGetShared<T>(key: string, fallback: T): Promise<T> {
 }
 
 export async function cloudSet<T>(userId: string, key: string, value: T): Promise<void> {
-  let toWrite: any = value;
-  // For SHARED array keys, merge with current cloud value so a stale local cache
-  // can never wipe out items added by another device sharing this account.
-  if (!isPersonalKey(key) && Array.isArray(value)) {
-    try {
-      const { data } = await supabase
-        .from("user_data")
-        .select("value")
-        .eq("user_id", userId)
-        .eq("key", key)
-        .maybeSingle();
-      const cloudArr = Array.isArray(data?.value) ? (data!.value as any[]) : [];
-      const localArr = value as any[];
-      const localIds = new Set(
-        localArr
-          .map(it => (it && typeof it === "object" && "id" in it) ? String(it.id) : null)
-          .filter(Boolean) as string[]
-      );
-      // Keep local items as-is (they reflect the user's intent: edits + deletes within local set),
-      // and re-add any cloud items whose id is NOT in local (they're from another device).
-      const extras = cloudArr.filter(it => {
-        if (!it || typeof it !== "object" || !("id" in it)) return false;
-        return !localIds.has(String((it as any).id));
-      });
-      toWrite = [...localArr, ...extras];
-    } catch (e) {
-      console.warn(`[cloud] merge-before-write failed for ${key}`, e);
+  const baseline = baselines.get(`${userId}:${key}`);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data, error } = await supabase.from("user_data").select("value,updated_at").eq("user_id", userId).eq("key", key).maybeSingle();
+    if (error) throw error;
+    const idArray = Array.isArray(value) && value.every(x => x && typeof x === "object" && "id" in x);
+    const toWrite = idArray ? mergeCloudArrays(Array.isArray(data?.value) ? data.value as any[] : [], value as any[], Array.isArray(baseline) ? baseline : []) : value;
+    const row = { user_id: userId, key, value: toWrite as any, updated_at: new Date().toISOString() };
+    if (!data) {
+      const result = await supabase.from("user_data").insert(row);
+      if (result.error?.code === "23505") continue;
+      if (result.error) throw result.error;
+    } else {
+      const result = await supabase.from("user_data").update(row).eq("user_id", userId).eq("key", key).eq("updated_at", data.updated_at).select("key");
+      if (result.error) throw result.error;
+      if (!result.data?.length) continue;
     }
+    rememberCloudValue(userId, key, toWrite);
+    return;
   }
-  await supabase.from("user_data").upsert(
-    { user_id: userId, key, value: toWrite as any, updated_at: new Date().toISOString() },
-    { onConflict: "user_id,key" }
-  );
+  throw new Error("Data changed while saving. Please try again.");
 }
 
 export function isPersonalKey(key: string): boolean {
