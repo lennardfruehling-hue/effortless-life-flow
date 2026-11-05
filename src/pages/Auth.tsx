@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
+import { oauthReturnPath } from "@/lib/oauth-return-path";
 
 export default function AuthPage() {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ export default function AuthPage() {
   const [busy, setBusy] = useState(false);
 
   const inviteToken = new URLSearchParams(window.location.search).get("invite");
+  const next = oauthReturnPath(new URLSearchParams(window.location.search).get("next") ?? sessionStorage.getItem("serpent-auth-next"));
 
   useEffect(() => {
     if (loading || !user) return;
@@ -28,9 +30,10 @@ export default function AuthPage() {
         else if ((data as any)?.ok) toast.success("Joined household!");
         else toast.error("Invite invalid or expired");
       }
-      navigate("/", { replace: true });
+      sessionStorage.removeItem("serpent-auth-next");
+      navigate(next, { replace: true });
     })();
-  }, [user, loading, navigate, inviteToken]);
+  }, [user, loading, navigate, inviteToken, next]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,14 +43,14 @@ export default function AuthPage() {
         const { error } = await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: window.location.origin },
+          options: { emailRedirectTo: new URL(next, window.location.origin).href },
         });
         if (error) throw error;
         toast.success("Check your email to confirm your account.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate("/", { replace: true });
+        navigate(next, { replace: true });
       }
     } catch (err: any) {
       toast.error(err.message || "Authentication failed");
@@ -58,7 +61,8 @@ export default function AuthPage() {
 
   const google = async () => {
     setBusy(true);
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+    sessionStorage.setItem("serpent-auth-next", next);
+    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: new URL(`/auth?next=${encodeURIComponent(next)}`, window.location.origin).href });
     if (result.error) toast.error("Google sign-in failed");
     if (!result.redirected) setBusy(false);
   };
